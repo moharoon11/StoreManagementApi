@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MySqlConnector;
+using NLog.Web;
 using StoreManagement.Api.Data;
 using StoreManagement.Api.Filters;
 using StoreManagement.Api.Logging;
@@ -11,6 +12,8 @@ using StoreManagement.Api.Repositories;
 using StoreManagement.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.ClearProviders();
+builder.Host.UseNLog();
 
 // 1. Database Connection Pooling via MySqlDataSource
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
@@ -19,7 +22,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 var dataSource = new MySqlDataSource(connectionString);
 builder.Services.AddSingleton(dataSource);
 builder.Services.AddScoped<IDbConnectionFactory, DbConnectionFactory>();
-builder.Services.AddSingleton<IControllerFileLogger, ControllerFileLogger>();
+builder.Services.AddSingleton<IControllerFileLogger, NLogControllerLogger>();
 builder.Services.AddScoped<ControllerLoggingFilter>();
 
 // 2. Services Registration
