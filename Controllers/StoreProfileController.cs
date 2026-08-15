@@ -37,10 +37,10 @@ namespace StoreManagement.Api.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateOrUpdateProfile([FromForm] CreateOrUpdateStoreProfileDto dto)
+        public async Task<IActionResult> CreateOrUpdateProfile([FromBody] CreateOrUpdateStoreProfileDto dto)
         {
-            Logger.Debug("CreateOrUpdateProfile started. StoreName: {0}", dto.StoreName);
-            if (!ModelState.IsValid)
+            Logger.Debug("CreateOrUpdateProfile started. StoreName: {0}", dto?.StoreName);
+            if (!ModelState.IsValid || dto == null)
             {
                 return BadRequest(ApiResponse.ErrorResult("Invalid store profile data."));
             }
@@ -76,7 +76,7 @@ namespace StoreManagement.Api.Controllers
         }
 
         [HttpPut]
-        public async Task<IActionResult> UpdateProfile([FromForm] CreateOrUpdateStoreProfileDto dto)
+        public async Task<IActionResult> UpdateProfile([FromBody] CreateOrUpdateStoreProfileDto dto)
         {
             Logger.Debug("UpdateProfile started.");
             return await CreateOrUpdateProfile(dto);
