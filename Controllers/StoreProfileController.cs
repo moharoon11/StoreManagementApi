@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NLog;
 using StoreManagement.Api.Dtos;
 using StoreManagement.Api.Helpers;
 using StoreManagement.Api.Models;
@@ -12,6 +13,7 @@ namespace StoreManagement.Api.Controllers
     [Route("api/store/profile")]
     public class StoreProfileController : BaseApiController
     {
+        private static readonly Logger Logger = LogManager.GetLogger("StoreProfileController");
         private readonly IStoreProfileRepository _storeProfileRepository;
         private readonly ICloudinaryService _cloudinaryService;
 

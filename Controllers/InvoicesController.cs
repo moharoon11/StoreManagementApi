@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NLog;
 using StoreManagement.Api.Helpers;
 using StoreManagement.Api.Models;
 using StoreManagement.Api.Repositories;
@@ -11,6 +12,7 @@ namespace StoreManagement.Api.Controllers
     [Route("api/invoices")]
     public class InvoicesController : BaseApiController
     {
+        private static readonly Logger Logger = LogManager.GetLogger("InvoicesController");
         private readonly IInvoiceRepository _invoiceRepository;
         private readonly IPdfService _pdfService;
 

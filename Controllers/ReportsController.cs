@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NLog;
 using StoreManagement.Api.Dtos;
 using StoreManagement.Api.Helpers;
 using StoreManagement.Api.Repositories;
@@ -10,6 +11,7 @@ namespace StoreManagement.Api.Controllers
     [Route("api/reports")]
     public class ReportsController : BaseApiController
     {
+        private static readonly Logger Logger = LogManager.GetLogger("ReportsController");
         private readonly IReportRepository _reportRepository;
 
         public ReportsController(IReportRepository reportRepository)

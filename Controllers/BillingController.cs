@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NLog;
 using StoreManagement.Api.Dtos;
 using StoreManagement.Api.Helpers;
 using StoreManagement.Api.Models;
@@ -11,6 +12,7 @@ namespace StoreManagement.Api.Controllers
     [Route("api/billing")]
     public class BillingController : BaseApiController
     {
+        private static readonly Logger Logger = LogManager.GetLogger("BillingController");
         private readonly IBillingRepository _billingRepository;
 
         public BillingController(IBillingRepository billingRepository)

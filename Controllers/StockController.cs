@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NLog;
 using StoreManagement.Api.Dtos;
 using StoreManagement.Api.Helpers;
 using StoreManagement.Api.Models;
@@ -11,6 +12,7 @@ namespace StoreManagement.Api.Controllers
     [Route("api/stock")]
     public class StockController : BaseApiController
     {
+        private static readonly Logger Logger = LogManager.GetLogger("StockController");
         private readonly IStockRepository _stockRepository;
         private readonly IProductRepository _productRepository;
 

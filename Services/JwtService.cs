@@ -2,12 +2,14 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
+using NLog;
 
 namespace StoreManagement.Api.Services
 {
     public class JwtService : IJwtService
     {
         private readonly IConfiguration _configuration;
+        private static readonly Logger Logger = LogManager.GetLogger("JwtService");
 
         public JwtService(IConfiguration configuration)
         {
@@ -16,6 +18,7 @@ namespace StoreManagement.Api.Services
 
         public string GenerateToken(int userId, string username)
         {
+            Logger.Debug("GenerateToken started. UserId: {0}, Username: {1}", userId, username);
             var secretKey = _configuration["JwtSettings:SecretKey"] ?? "DefaultSecretKeyThatIsAtLeast32BytesLongForSecurity!";
             var issuer = _configuration["JwtSettings:Issuer"] ?? "StoreManagementApi";
             var audience = _configuration["JwtSettings:Audience"] ?? "StoreManagementFlutterApp";
@@ -38,7 +41,9 @@ namespace StoreManagement.Api.Services
                 expires: DateTime.UtcNow.AddDays(expiryDays),
                 signingCredentials: credentials);
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
+            var generatedToken = new JwtSecurityTokenHandler().WriteToken(token);
+            Logger.Info("GenerateToken succeeded. UserId: {0}, Username: {1}", userId, username);
+            return generatedToken;
         }
     }
 }

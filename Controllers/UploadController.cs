@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NLog;
 using StoreManagement.Api.Helpers;
 using StoreManagement.Api.Services;
 
@@ -9,6 +10,7 @@ namespace StoreManagement.Api.Controllers
     [Route("api/upload")]
     public class UploadController : BaseApiController
     {
+        private static readonly Logger Logger = LogManager.GetLogger("UploadController");
         private readonly ICloudinaryService _cloudinaryService;
 
         public UploadController(ICloudinaryService cloudinaryService)

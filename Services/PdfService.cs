@@ -2,11 +2,13 @@ using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using StoreManagement.Api.Models;
+using NLog;
 
 namespace StoreManagement.Api.Services
 {
     public class PdfService : IPdfService
     {
+        private static readonly Logger Logger = LogManager.GetLogger("PdfService");
         public PdfService()
         {
             QuestPDF.Settings.License = LicenseType.Community;
@@ -14,6 +16,7 @@ namespace StoreManagement.Api.Services
 
         public byte[] GenerateInvoicePdf(Invoice invoice)
         {
+            Logger.Debug("GenerateInvoicePdf started. InvoiceId: {0}, InvoiceNumber: {1}", invoice.Id, invoice.InvoiceNumber);
             var document = Document.Create(container =>
             {
                 container.Page(page =>
@@ -29,7 +32,9 @@ namespace StoreManagement.Api.Services
                 });
             });
 
-            return document.GeneratePdf();
+            var pdf = document.GeneratePdf();
+            Logger.Info("GenerateInvoicePdf succeeded. InvoiceId: {0}, Bytes: {1}", invoice.Id, pdf.Length);
+            return pdf;
         }
 
         private static void ComposeHeader(IContainer container, Invoice invoice)

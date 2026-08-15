@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NLog;
 using StoreManagement.Api.Helpers;
 using StoreManagement.Api.Models;
 using StoreManagement.Api.Repositories;
@@ -10,6 +11,7 @@ namespace StoreManagement.Api.Controllers
     [Route("api/favourites")]
     public class FavouritesController : BaseApiController
     {
+        private static readonly Logger Logger = LogManager.GetLogger("FavouritesController");
         private readonly IFavouriteRepository _favouriteRepository;
         private readonly IProductRepository _productRepository;
 

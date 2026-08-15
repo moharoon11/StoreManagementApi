@@ -14,7 +14,7 @@ namespace StoreManagement.Api.Controllers
     {
         private readonly IUserRepository _userRepository;
         private readonly IJwtService _jwtService;
-        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger Logger = LogManager.GetLogger("AuthController");
 
         public AuthController(IUserRepository userRepository, IJwtService jwtService)
         {

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NLog;
 using StoreManagement.Api.Dtos;
 using StoreManagement.Api.Helpers;
 using StoreManagement.Api.Models;
@@ -12,6 +13,7 @@ namespace StoreManagement.Api.Controllers
     [Route("api/categories")]
     public class CategoriesController : BaseApiController
     {
+        private static readonly Logger Logger = LogManager.GetLogger("CategoriesController");
         private readonly ICategoryRepository _categoryRepository;
         private readonly ICloudinaryService _cloudinaryService;
 

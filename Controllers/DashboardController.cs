@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NLog;
 using StoreManagement.Api.Dtos;
 using StoreManagement.Api.Helpers;
 using StoreManagement.Api.Repositories;
@@ -10,6 +11,7 @@ namespace StoreManagement.Api.Controllers
     [Route("api/dashboard")]
     public class DashboardController : BaseApiController
     {
+        private static readonly Logger Logger = LogManager.GetLogger("DashboardController");
         private readonly IDashboardRepository _dashboardRepository;
 
         public DashboardController(IDashboardRepository dashboardRepository)
