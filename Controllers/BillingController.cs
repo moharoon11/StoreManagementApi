@@ -21,6 +21,7 @@ namespace StoreManagement.Api.Controllers
         [HttpPost("checkout")]
         public async Task<IActionResult> Checkout([FromBody] CheckoutRequestDto request)
         {
+            Logger.Debug("Checkout started.");
             if (!ModelState.IsValid || request.Items == null || !request.Items.Any())
             {
                 return BadRequest(ApiResponse.ErrorResult("Checkout request must contain at least one product."));

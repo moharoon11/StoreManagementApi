@@ -20,6 +20,7 @@ namespace StoreManagement.Api.Controllers
         [HttpGet]
         public async Task<IActionResult> GetDashboard()
         {
+            Logger.Debug("GetDashboard started.");
             var summary = await _dashboardRepository.GetDashboardSummaryAsync(CurrentUserId);
             return Ok(ApiResponse<DashboardSummaryDto>.SuccessResult(summary, "Dashboard statistics retrieved."));
         }

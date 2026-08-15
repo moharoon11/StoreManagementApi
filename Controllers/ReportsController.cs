@@ -20,6 +20,7 @@ namespace StoreManagement.Api.Controllers
         [HttpGet("sales")]
         public async Task<IActionResult> GetSalesReport([FromQuery] SalesReportFilterDto filter)
         {
+            Logger.Debug("GetSalesReport started.");
             var report = await _reportRepository.GetSalesReportAsync(CurrentUserId, filter);
             return Ok(ApiResponse<SalesReportDto>.SuccessResult(report, "Sales report retrieved successfully."));
         }

@@ -27,6 +27,7 @@ namespace StoreManagement.Api.Controllers
             [FromQuery] DateTime? fromDate = null,
             [FromQuery] DateTime? toDate = null)
         {
+            Logger.Debug("GetInvoiceHistory started. PageNumber: {0}, PageSize: {1}", pageNumber, pageSize);
             var history = await _invoiceRepository.GetInvoiceHistoryAsync(CurrentUserId, pageNumber, pageSize, fromDate, toDate);
             return Ok(ApiResponse<PagedResponse<Invoice>>.SuccessResult(history, "Invoice history retrieved."));
         }
@@ -34,6 +35,7 @@ namespace StoreManagement.Api.Controllers
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById(int id)
         {
+            Logger.Debug("GetById started. InvoiceId: {0}", id);
             var invoice = await _invoiceRepository.GetByIdAsync(id, CurrentUserId);
             if (invoice == null)
             {
@@ -46,6 +48,7 @@ namespace StoreManagement.Api.Controllers
         [HttpGet("{id:int}/pdf")]
         public async Task<IActionResult> DownloadPdf(int id)
         {
+            Logger.Debug("DownloadPdf started. InvoiceId: {0}", id);
             var invoice = await _invoiceRepository.GetByIdAsync(id, CurrentUserId);
             if (invoice == null)
             {

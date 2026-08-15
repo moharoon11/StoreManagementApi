@@ -22,6 +22,7 @@ namespace StoreManagement.Api.Controllers
         [HttpGet]
         public async Task<IActionResult> GetFavourites()
         {
+            Logger.Debug("GetFavourites started.");
             var favourites = await _favouriteRepository.GetFavouritesByUserIdAsync(CurrentUserId);
             return Ok(ApiResponse<IEnumerable<Product>>.SuccessResult(favourites, "Favourite products retrieved."));
         }
@@ -29,6 +30,7 @@ namespace StoreManagement.Api.Controllers
         [HttpPost("{productId:int}")]
         public async Task<IActionResult> AddFavourite(int productId)
         {
+            Logger.Debug("AddFavourite started. ProductId: {0}", productId);
             var product = await _productRepository.GetByIdAsync(productId, CurrentUserId);
             if (product == null)
             {
@@ -47,6 +49,7 @@ namespace StoreManagement.Api.Controllers
         [HttpDelete("{productId:int}")]
         public async Task<IActionResult> RemoveFavourite(int productId)
         {
+            Logger.Debug("RemoveFavourite started. ProductId: {0}", productId);
             var success = await _favouriteRepository.RemoveFavouriteAsync(CurrentUserId, productId);
             if (!success)
             {

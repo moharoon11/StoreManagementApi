@@ -24,6 +24,7 @@ namespace StoreManagement.Api.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
+            Logger.Debug("GetAll started.");
             var categories = await _categoryRepository.GetAllByUserIdAsync(CurrentUserId);
             return Ok(ApiResponse<IEnumerable<Category>>.SuccessResult(categories, "Categories retrieved."));
         }
@@ -31,6 +32,7 @@ namespace StoreManagement.Api.Controllers
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById(int id)
         {
+            Logger.Debug("GetById started. CategoryId: {0}", id);
             var category = await _categoryRepository.GetByIdAsync(id, CurrentUserId);
             if (category == null)
             {
@@ -43,6 +45,7 @@ namespace StoreManagement.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromForm] CreateCategoryDto dto)
         {
+            Logger.Debug("Create started. CategoryName: {0}", dto.Name);
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse.ErrorResult("Invalid category data."));
@@ -76,6 +79,7 @@ namespace StoreManagement.Api.Controllers
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromForm] UpdateCategoryDto dto)
         {
+            Logger.Debug("Update started. CategoryId: {0}", id);
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse.ErrorResult("Invalid category data."));
@@ -109,6 +113,7 @@ namespace StoreManagement.Api.Controllers
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
+            Logger.Debug("Delete started. CategoryId: {0}", id);
             var category = await _categoryRepository.GetByIdAsync(id, CurrentUserId);
             if (category == null)
             {

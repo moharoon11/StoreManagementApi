@@ -32,6 +32,7 @@ namespace StoreManagement.Api.Controllers
         [HttpGet]
         public async Task<IActionResult> GetFiltered([FromQuery] ProductFilterDto filter)
         {
+            Logger.Debug("GetFiltered started.");
             var result = await _productRepository.GetFilteredProductsAsync(CurrentUserId, filter);
             return Ok(ApiResponse<PagedResponse<Product>>.SuccessResult(result, "Products retrieved successfully."));
         }
@@ -39,6 +40,7 @@ namespace StoreManagement.Api.Controllers
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById(int id)
         {
+            Logger.Debug("GetById started. ProductId: {0}", id);
             var product = await _productRepository.GetByIdAsync(id, CurrentUserId);
             if (product == null)
             {
@@ -51,6 +53,7 @@ namespace StoreManagement.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromForm] CreateProductDto dto)
         {
+            Logger.Debug("Create started. ProductName: {0}", dto.Name);
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse.ErrorResult("Invalid product data."));
@@ -123,6 +126,7 @@ namespace StoreManagement.Api.Controllers
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromForm] UpdateProductDto dto)
         {
+            Logger.Debug("Update started. ProductId: {0}", id);
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse.ErrorResult("Invalid product data."));
@@ -174,6 +178,7 @@ namespace StoreManagement.Api.Controllers
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
+            Logger.Debug("Delete started. ProductId: {0}", id);
             var product = await _productRepository.GetByIdAsync(id, CurrentUserId);
             if (product == null)
             {
@@ -192,6 +197,7 @@ namespace StoreManagement.Api.Controllers
         [HttpPatch("{id:int}/stock")]
         public async Task<IActionResult> UpdateStock(int id, [FromBody] UpdateStockDto dto)
         {
+            Logger.Debug("UpdateStock started. ProductId: {0}", id);
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse.ErrorResult("Invalid stock update data."));

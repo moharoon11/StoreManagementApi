@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
+using NLog;
 
 namespace StoreManagement.Api.Controllers
 {
@@ -7,6 +8,12 @@ namespace StoreManagement.Api.Controllers
     [Route("api/[controller]")]
     public abstract class BaseApiController : ControllerBase
     {
+        protected Logger Logger { get; }
+
+        protected BaseApiController()
+        {
+            Logger = LogManager.GetLogger(GetType().Name);
+        }
         protected int CurrentUserId
         {
             get

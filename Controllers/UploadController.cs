@@ -19,6 +19,7 @@ namespace StoreManagement.Api.Controllers
         [HttpPost("image")]
         public async Task<IActionResult> UploadImage(IFormFile file, [FromQuery] string folder = "general")
         {
+            Logger.Debug("UploadImage started. FileName: {0}, Folder: {1}", file?.FileName, folder);
             if (file == null || file.Length == 0)
             {
                 return BadRequest(ApiResponse.ErrorResult("Please select an image file to upload."));

@@ -23,6 +23,7 @@ namespace StoreManagement.Api.Controllers
         [HttpGet("movements")]
         public async Task<IActionResult> GetMovements([FromQuery] int? productId = null, [FromQuery] int limit = 50)
         {
+            Logger.Debug("GetMovements started. ProductId: {0}, Limit: {1}", productId, limit);
             var movements = await _stockRepository.GetMovementsByUserIdAsync(CurrentUserId, productId, limit);
             return Ok(ApiResponse<IEnumerable<StockMovement>>.SuccessResult(movements, "Stock movement log retrieved."));
         }
@@ -30,6 +31,7 @@ namespace StoreManagement.Api.Controllers
         [HttpPost("adjust")]
         public async Task<IActionResult> AdjustStock([FromBody] ManualStockAdjustmentDto dto)
         {
+            Logger.Debug("AdjustStock started. ProductId: {0}", dto.ProductId);
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse.ErrorResult("Invalid stock adjustment data."));

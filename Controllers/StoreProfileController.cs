@@ -24,6 +24,7 @@ namespace StoreManagement.Api.Controllers
         [HttpGet]
         public async Task<IActionResult> GetProfile()
         {
+            Logger.Debug("GetProfile started.");
             var profile = await _storeProfileRepository.GetByUserIdAsync(CurrentUserId);
             if (profile == null)
             {
@@ -36,6 +37,7 @@ namespace StoreManagement.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateOrUpdateProfile([FromForm] CreateOrUpdateStoreProfileDto dto)
         {
+            Logger.Debug("CreateOrUpdateProfile started. StoreName: {0}", dto.StoreName);
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse.ErrorResult("Invalid store profile data."));
@@ -74,6 +76,7 @@ namespace StoreManagement.Api.Controllers
         [HttpPut]
         public async Task<IActionResult> UpdateProfile([FromForm] CreateOrUpdateStoreProfileDto dto)
         {
+            Logger.Debug("UpdateProfile started.");
             return await CreateOrUpdateProfile(dto);
         }
     }
