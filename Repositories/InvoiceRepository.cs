@@ -75,7 +75,10 @@ namespace StoreManagement.Api.Repositories
         {
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
 
-            const string invoiceSql = "SELECT * FROM Invoices WHERE Id = @Id AND UserId = @UserId LIMIT 1;";
+            string invoiceSql = userId > 0 
+                ? "SELECT * FROM Invoices WHERE Id = @Id AND UserId = @UserId LIMIT 1;" 
+                : "SELECT * FROM Invoices WHERE Id = @Id LIMIT 1;";
+
             var invoice = await connection.QuerySingleOrDefaultAsync<Invoice>(invoiceSql, new { Id = id, UserId = userId });
 
             if (invoice == null) return null;
@@ -85,7 +88,7 @@ namespace StoreManagement.Api.Repositories
             invoice.Items = items.ToList();
 
             const string storeSql = "SELECT * FROM StoreProfiles WHERE UserId = @UserId LIMIT 1;";
-            var store = await connection.QuerySingleOrDefaultAsync<StoreProfile>(storeSql, new { UserId = userId });
+            var store = await connection.QuerySingleOrDefaultAsync<StoreProfile>(storeSql, new { UserId = invoice.UserId });
             invoice.Store = store;
 
             return invoice;

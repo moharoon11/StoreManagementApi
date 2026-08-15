@@ -47,11 +47,12 @@ namespace StoreManagement.Api.Controllers
             return Ok(ApiResponse<Invoice>.SuccessResult(invoice, "Invoice details retrieved."));
         }
 
+        [AllowAnonymous]
         [HttpGet("{id:int}/pdf")]
         public async Task<IActionResult> DownloadPdf(int id)
         {
             Logger.Debug("DownloadPdf started. InvoiceId: {0}", id);
-            var invoice = await _invoiceRepository.GetByIdAsync(id, CurrentUserId);
+            var invoice = await _invoiceRepository.GetByIdAsync(id, 0);
             if (invoice == null)
             {
                 return NotFound(ApiResponse.ErrorResult("Invoice not found."));
