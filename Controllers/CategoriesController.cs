@@ -45,7 +45,7 @@ namespace StoreManagement.Api.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromForm] CreateCategoryDto dto)
+        public async Task<IActionResult> Create([FromBody] CreateCategoryDto dto)
         {
             Logger.Debug("Create started. CategoryName: {0}", dto.Name);
             if (!ModelState.IsValid)
@@ -79,7 +79,7 @@ namespace StoreManagement.Api.Controllers
         }
 
         [HttpPut("{id:int}")]
-        public async Task<IActionResult> Update(int id, [FromForm] UpdateCategoryDto dto)
+        public async Task<IActionResult> Update(int id, [FromBody] UpdateCategoryDto dto)
         {
             Logger.Debug("Update started. CategoryId: {0}", id);
             if (!ModelState.IsValid)
