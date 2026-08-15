@@ -4,6 +4,8 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MySqlConnector;
 using StoreManagement.Api.Data;
+using StoreManagement.Api.Filters;
+using StoreManagement.Api.Logging;
 using StoreManagement.Api.Middleware;
 using StoreManagement.Api.Repositories;
 using StoreManagement.Api.Services;
@@ -17,6 +19,8 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 var dataSource = new MySqlDataSource(connectionString);
 builder.Services.AddSingleton(dataSource);
 builder.Services.AddScoped<IDbConnectionFactory, DbConnectionFactory>();
+builder.Services.AddSingleton<IControllerFileLogger, ControllerFileLogger>();
+builder.Services.AddScoped<ControllerLoggingFilter>();
 
 // 2. Services Registration
 builder.Services.AddScoped<IJwtService, JwtService>();
@@ -74,7 +78,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options => options.Filters.AddService<ControllerLoggingFilter>());
 builder.Services.AddEndpointsApiExplorer();
 
 // 6. Swagger / OpenAPI Configuration with JWT Security Definition
