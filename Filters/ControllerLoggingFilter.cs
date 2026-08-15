@@ -2,7 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
-using StoreManagement.Api.Logging;
+using NLog;
 
 namespace StoreManagement.Api.Filters;
 
@@ -11,13 +11,6 @@ public sealed class ControllerLoggingFilter : IAsyncActionFilter, IAsyncResultFi
     internal const string FailureLoggedItemKey = "ControllerLoggingFailureLogged";
     private const string StartedAtItemKey = "ControllerLoggingStartedAt";
     private static readonly string[] SensitiveNames = ["password", "token", "secret", "apikey", "authorization", "credential"];
-    private readonly IControllerFileLogger _fileLogger;
-
-    public ControllerLoggingFilter(IControllerFileLogger fileLogger)
-    {
-        _fileLogger = fileLogger;
-    }
-
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
         if (context.ActionDescriptor is not ControllerActionDescriptor action)
@@ -28,8 +21,9 @@ public sealed class ControllerLoggingFilter : IAsyncActionFilter, IAsyncResultFi
 
         var startedAt = DateTimeOffset.UtcNow;
         context.HttpContext.Items[StartedAtItemKey] = startedAt;
+        var logger = LogManager.GetLogger(action.ControllerTypeInfo.Name);
 
-        await _fileLogger.WriteAsync(action.ControllerTypeInfo.Name, new
+        logger.Debug(JsonSerializer.Serialize(new
         {
             timestampUtc = startedAt,
             eventType = "method_entered",
@@ -40,13 +34,13 @@ public sealed class ControllerLoggingFilter : IAsyncActionFilter, IAsyncResultFi
             path = context.HttpContext.Request.Path.Value,
             payload = BuildPayload(context.ActionArguments),
             reason = "Controller action started."
-        }, context.HttpContext.RequestAborted);
+        }));
 
         var executed = await next();
         if (executed.Exception is not null && !executed.ExceptionHandled)
         {
             context.HttpContext.Items[FailureLoggedItemKey] = true;
-            await WriteFailureAsync(context.HttpContext, action, executed.Exception, 500);
+            WriteFailure(context.HttpContext, action, executed.Exception, 500);
         }
     }
 
@@ -66,7 +60,7 @@ public sealed class ControllerLoggingFilter : IAsyncActionFilter, IAsyncResultFi
             : (double?)null;
 
         var succeeded = statusCode < StatusCodes.Status400BadRequest;
-        await _fileLogger.WriteAsync(action.ControllerTypeInfo.Name, new
+        var message = JsonSerializer.Serialize(new
         {
             timestampUtc = DateTimeOffset.UtcNow,
             eventType = "method_finished",
@@ -79,11 +73,22 @@ public sealed class ControllerLoggingFilter : IAsyncActionFilter, IAsyncResultFi
             reason = succeeded
                 ? "Action completed with a successful HTTP response."
                 : $"Action completed with HTTP {statusCode}."
-        }, context.HttpContext.RequestAborted);
+        });
+
+        var logger = LogManager.GetLogger(action.ControllerTypeInfo.Name);
+        if (succeeded)
+        {
+            logger.Info(message);
+        }
+        else
+        {
+            logger.Error(message);
+        }
     }
 
-    public Task WriteFailureAsync(HttpContext context, ControllerActionDescriptor action, Exception exception, int statusCode) =>
-        _fileLogger.WriteAsync(action.ControllerTypeInfo.Name, new
+    public static void WriteFailure(HttpContext context, ControllerActionDescriptor action, Exception exception, int statusCode)
+    {
+        var message = JsonSerializer.Serialize(new
         {
             timestampUtc = DateTimeOffset.UtcNow,
             eventType = "method_failed",
@@ -94,7 +99,10 @@ public sealed class ControllerLoggingFilter : IAsyncActionFilter, IAsyncResultFi
             outcome = "failed",
             reason = exception.Message,
             exceptionType = exception.GetType().Name
-        }, context.RequestAborted);
+        });
+
+        LogManager.GetLogger(action.ControllerTypeInfo.Name).Error(exception, message);
+    }
 
     private static object BuildPayload(IDictionary<string, object?> actionArguments) =>
         actionArguments.ToDictionary(pair => pair.Key, pair => SanitizeValue(pair.Key, pair.Value));

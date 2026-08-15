@@ -1,9 +1,9 @@
 using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Controllers;
+using NLog;
 using StoreManagement.Api.Filters;
 using StoreManagement.Api.Helpers;
-using StoreManagement.Api.Logging;
 
 namespace StoreManagement.Api.Middleware
 {
@@ -11,13 +11,11 @@ namespace StoreManagement.Api.Middleware
     {
         private readonly RequestDelegate _next;
         private readonly ILogger<GlobalExceptionMiddleware> _logger;
-        private readonly IControllerFileLogger _controllerFileLogger;
 
-        public GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger, IControllerFileLogger controllerFileLogger)
+        public GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger)
         {
             _next = next;
             _logger = logger;
-            _controllerFileLogger = controllerFileLogger;
         }
 
         public async Task InvokeAsync(HttpContext context)
@@ -34,7 +32,7 @@ namespace StoreManagement.Api.Middleware
                 if (context.Items[ControllerLoggingFilter.FailureLoggedItemKey] is not true &&
                     context.GetEndpoint()?.Metadata.GetMetadata<ControllerActionDescriptor>() is { } action)
                 {
-                    await _controllerFileLogger.WriteAsync(action.ControllerTypeInfo.Name, new
+                    var message = JsonSerializer.Serialize(new
                     {
                         timestampUtc = DateTimeOffset.UtcNow,
                         eventType = "method_failed",
@@ -45,7 +43,8 @@ namespace StoreManagement.Api.Middleware
                         outcome = "failed",
                         reason = ex.Message,
                         exceptionType = ex.GetType().Name
-                    }, context.RequestAborted);
+                    });
+                    LogManager.GetLogger(action.ControllerTypeInfo.Name).Error(ex, message);
                 }
 
                 await HandleExceptionAsync(context, response);

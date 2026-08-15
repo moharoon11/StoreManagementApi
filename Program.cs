@@ -6,7 +6,6 @@ using MySqlConnector;
 using NLog.Web;
 using StoreManagement.Api.Data;
 using StoreManagement.Api.Filters;
-using StoreManagement.Api.Logging;
 using StoreManagement.Api.Middleware;
 using StoreManagement.Api.Repositories;
 using StoreManagement.Api.Services;
@@ -22,7 +21,6 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 var dataSource = new MySqlDataSource(connectionString);
 builder.Services.AddSingleton(dataSource);
 builder.Services.AddScoped<IDbConnectionFactory, DbConnectionFactory>();
-builder.Services.AddSingleton<IControllerFileLogger, NLogControllerLogger>();
 builder.Services.AddScoped<ControllerLoggingFilter>();
 
 // 2. Services Registration
