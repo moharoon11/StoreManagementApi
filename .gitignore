@@ -1,4 +1,26 @@
-bin/
-obj/
+# Build results
+[Bb]in/
+[Oo]bj/
+[Ll]ogs/
 Logs/
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Environment / App settings overrides
 appsettings.Development.json
+appsettings.Local.json
+*.env
+
+# VS Code & IDEs
+.vscode/
+.idea/
+*.user
+
+# Operating System files
+.DS_Store
+Thumbs.db
