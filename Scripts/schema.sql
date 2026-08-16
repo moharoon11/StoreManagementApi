@@ -82,6 +82,8 @@ CREATE TABLE IF NOT EXISTS `Invoices` (
     `Id` INT AUTO_INCREMENT PRIMARY KEY,
     `UserId` INT NOT NULL,
     `InvoiceNumber` VARCHAR(50) NOT NULL UNIQUE,
+    `CustomerName` VARCHAR(150) NOT NULL,
+    `CustomerMobileNumber` VARCHAR(20) NOT NULL,
     `Subtotal` DECIMAL(18,2) NOT NULL,
     `GrandTotal` DECIMAL(18,2) NOT NULL,
     `CreatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP,

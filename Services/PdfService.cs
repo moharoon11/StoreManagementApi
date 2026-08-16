@@ -28,7 +28,7 @@ namespace StoreManagement.Api.Services
 
                     page.Header().Element(headerContainer => ComposeHeader(headerContainer, invoice));
                     page.Content().Element(contentContainer => ComposeContent(contentContainer, invoice));
-                    page.Footer().Element(ComposeFooter);
+                    page.Footer().Element(footerContainer => ComposeFooter(footerContainer, invoice));
                 });
             });
 
@@ -63,6 +63,13 @@ namespace StoreManagement.Api.Services
                     column.Item().Text("TAX INVOICE").FontSize(22).Bold().FontColor(Colors.Grey.Darken2);
                     column.Item().Text($"Invoice No: {invoice.InvoiceNumber}").FontSize(11).Bold();
                     column.Item().Text($"Date: {invoice.CreatedAt:yyyy-MM-dd HH:mm}").FontSize(10);
+                    if (!string.IsNullOrWhiteSpace(invoice.CustomerName))
+                    {
+                        column.Item().PaddingTop(6).Text("Bill To").FontSize(10).Bold();
+                        column.Item().Text(invoice.CustomerName).FontSize(10);
+                    }
+                    if (!string.IsNullOrWhiteSpace(invoice.CustomerMobileNumber))
+                        column.Item().Text($"Mobile: {invoice.CustomerMobileNumber}").FontSize(9);
                 });
             });
         }
@@ -130,12 +137,15 @@ namespace StoreManagement.Api.Services
             });
         }
 
-        private static void ComposeFooter(IContainer container)
+        private static void ComposeFooter(IContainer container, Invoice invoice)
         {
             container.Column(col =>
             {
                 col.Item().LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
-                col.Item().PaddingTop(8).AlignCenter().Text("Thank you for your business!").FontSize(11).Italic().FontColor(Colors.Grey.Darken1);
+                var storeName = string.IsNullOrWhiteSpace(invoice.Store?.StoreName)
+                    ? "our store"
+                    : invoice.Store.StoreName;
+                col.Item().PaddingTop(8).AlignCenter().Text($"Thank you for shopping with {storeName}!").FontSize(11).Italic().FontColor(Colors.Grey.Darken1);
             });
         }
 

@@ -67,14 +67,16 @@ namespace StoreManagement.Api.Repositories
 
                 // 4. Create Invoice Header
                 const string insertInvoiceSql = @"
-                    INSERT INTO Invoices (UserId, InvoiceNumber, Subtotal, GrandTotal, CreatedAt)
-                    VALUES (@UserId, @InvoiceNumber, @Subtotal, @GrandTotal, NOW());
+                    INSERT INTO Invoices (UserId, InvoiceNumber, CustomerName, CustomerMobileNumber, Subtotal, GrandTotal, CreatedAt)
+                    VALUES (@UserId, @InvoiceNumber, @CustomerName, @CustomerMobileNumber, @Subtotal, @GrandTotal, NOW());
                     SELECT LAST_INSERT_ID();";
 
                 var invoiceId = await connection.ExecuteScalarAsync<int>(insertInvoiceSql, new
                 {
                     UserId = userId,
                     InvoiceNumber = invoiceNumber,
+                    CustomerName = request.CustomerName.Trim(),
+                    CustomerMobileNumber = request.CustomerMobileNumber.Trim(),
                     Subtotal = subtotal,
                     GrandTotal = grandTotal
                 }, transaction);
@@ -132,6 +134,8 @@ namespace StoreManagement.Api.Repositories
                     Id = invoiceId,
                     UserId = userId,
                     InvoiceNumber = invoiceNumber,
+                    CustomerName = request.CustomerName.Trim(),
+                    CustomerMobileNumber = request.CustomerMobileNumber.Trim(),
                     Subtotal = subtotal,
                     GrandTotal = grandTotal,
                     CreatedAt = DateTime.UtcNow,

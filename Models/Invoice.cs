@@ -5,6 +5,8 @@ namespace StoreManagement.Api.Models
         public int Id { get; set; }
         public int UserId { get; set; }
         public string InvoiceNumber { get; set; } = string.Empty;
+        public string CustomerName { get; set; } = string.Empty;
+        public string CustomerMobileNumber { get; set; } = string.Empty;
         public decimal Subtotal { get; set; }
         public decimal GrandTotal { get; set; }
         public DateTime CreatedAt { get; set; }
