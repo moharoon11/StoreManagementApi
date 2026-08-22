@@ -36,5 +36,22 @@ namespace StoreManagement.Api.Controllers
             var invoice = await _billingRepository.ProcessCheckoutAsync(CurrentUserId, request);
             return Ok(ApiResponse<Invoice>.SuccessResult(invoice, "Checkout completed and invoice generated successfully."));
         }
+
+        [HttpPost("manual-checkout")]
+        public async Task<IActionResult> ManualCheckout([FromBody] ManualCheckoutRequestDto request)
+        {
+            Logger.Debug("Manual Checkout started.");
+            if (!ModelState.IsValid ||
+                string.IsNullOrWhiteSpace(request.CustomerMobileNumber) ||
+                request.Items == null ||
+                !request.Items.Any())
+            {
+                return BadRequest(ApiResponse.ErrorResult(
+                    "Provide a customer mobile number and at least one item."));
+            }
+
+            var invoice = await _billingRepository.ProcessManualCheckoutAsync(CurrentUserId, request);
+            return Ok(ApiResponse<Invoice>.SuccessResult(invoice, "Manual checkout completed and invoice generated successfully."));
+        }
     }
 }

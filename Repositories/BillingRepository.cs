@@ -102,7 +102,7 @@ namespace StoreManagement.Api.Repositories
                     item.InvoiceId = invoiceId;
                     await connection.ExecuteAsync(insertItemSql, item, transaction);
 
-                    var product = dbProducts[item.ProductId];
+                    var product = dbProducts[item.Id];
                     int previousQty = product.StockQuantity;
                     int newQty = previousQty - item.Quantity;
 
@@ -135,6 +135,87 @@ namespace StoreManagement.Api.Repositories
                     UserId = userId,
                     InvoiceNumber = invoiceNumber,
                     CustomerName = request.CustomerName.Trim(),
+                    CustomerMobileNumber = request.CustomerMobileNumber.Trim(),
+                    Subtotal = subtotal,
+                    GrandTotal = grandTotal,
+                    CreatedAt = DateTime.UtcNow,
+                    Store = store,
+                    Items = invoiceItems
+                };
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+
+        public async Task<Invoice> ProcessManualCheckoutAsync(int userId, ManualCheckoutRequestDto request)
+        {
+            using var connection = await _dbConnectionFactory.CreateConnectionAsync();
+            using var transaction = await connection.BeginTransactionAsync();
+
+            try
+            {
+                decimal subtotal = 0;
+                var invoiceItems = new List<InvoiceItem>();
+
+                foreach (var item in request.Items)
+                {
+                    var itemTotal = item.Rate * item.Quantity;
+                    subtotal += itemTotal;
+
+                    invoiceItems.Add(new InvoiceItem
+                    {
+                        ProductId = null,
+                        ProductName = "Manual Item",
+                        Quantity = item.Quantity,
+                        SellingPrice = item.Rate,
+                        Total = itemTotal
+                    });
+                }
+
+                decimal grandTotal = subtotal;
+
+                var random = new Random();
+                var invoiceNumber = $"INV-{DateTime.UtcNow:yyyyMMdd}-{random.Next(1000, 9999)}";
+
+                const string insertInvoiceSql = @"
+                    INSERT INTO Invoices (UserId, InvoiceNumber, CustomerName, CustomerMobileNumber, Subtotal, GrandTotal, CreatedAt)
+                    VALUES (@UserId, @InvoiceNumber, @CustomerName, @CustomerMobileNumber, @Subtotal, @GrandTotal, NOW());
+                    SELECT LAST_INSERT_ID();";
+
+                var invoiceId = await connection.ExecuteScalarAsync<int>(insertInvoiceSql, new
+                {
+                    UserId = userId,
+                    InvoiceNumber = invoiceNumber,
+                    CustomerName = request.CustomerName?.Trim() ?? "NO_NAME",
+                    CustomerMobileNumber = request.CustomerMobileNumber.Trim(),
+                    Subtotal = subtotal,
+                    GrandTotal = grandTotal
+                }, transaction);
+
+                const string insertItemSql = @"
+                    INSERT INTO InvoiceItems (InvoiceId, ProductId, ProductName, Quantity, SellingPrice, Total)
+                    VALUES (@InvoiceId, @ProductId, @ProductName, @Quantity, @SellingPrice, @Total);";
+
+                foreach (var item in invoiceItems)
+                {
+                    item.InvoiceId = invoiceId;
+                    await connection.ExecuteAsync(insertItemSql, item, transaction);
+                }
+
+                const string getStoreSql = "SELECT * FROM StoreProfiles WHERE UserId = @UserId LIMIT 1;";
+                var store = await connection.QuerySingleOrDefaultAsync<StoreProfile>(getStoreSql, new { UserId = userId }, transaction);
+
+                await transaction.CommitAsync();
+
+                return new Invoice
+                {
+                    Id = invoiceId,
+                    UserId = userId,
+                    InvoiceNumber = invoiceNumber,
+                    CustomerName = request.CustomerName?.Trim() ?? "",
                     CustomerMobileNumber = request.CustomerMobileNumber.Trim(),
                     Subtotal = subtotal,
                     GrandTotal = grandTotal,

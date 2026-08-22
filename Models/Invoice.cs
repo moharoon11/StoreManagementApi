@@ -19,8 +19,8 @@ namespace StoreManagement.Api.Models
     {
         public int Id { get; set; }
         public int InvoiceId { get; set; }
-        public int ProductId { get; set; }
-        public string ProductName { get; set; } = string.Empty;
+        public int? ProductId { get; set; }
+        public string? ProductName { get; set; }
         public int Quantity { get; set; }
         public decimal SellingPrice { get; set; }
         public decimal Total { get; set; }

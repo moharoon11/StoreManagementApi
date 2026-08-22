@@ -95,13 +95,13 @@ CREATE TABLE IF NOT EXISTS `Invoices` (
 CREATE TABLE IF NOT EXISTS `InvoiceItems` (
     `Id` INT AUTO_INCREMENT PRIMARY KEY,
     `InvoiceId` INT NOT NULL,
-    `ProductId` INT NOT NULL,
-    `ProductName` VARCHAR(150) NOT NULL,
+    `ProductId` INT NULL,
+    `ProductName` VARCHAR(150) NULL,
     `Quantity` INT NOT NULL,
     `SellingPrice` DECIMAL(18,2) NOT NULL,
     `Total` DECIMAL(18,2) NOT NULL,
     CONSTRAINT `fk_invoiceitems_invoice` FOREIGN KEY (`InvoiceId`) REFERENCES `Invoices` (`Id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_invoiceitems_product` FOREIGN KEY (`ProductId`) REFERENCES `Products` (`Id`) ON DELETE RESTRICT
+    CONSTRAINT `fk_invoiceitems_product` FOREIGN KEY (`ProductId`) REFERENCES `Products` (`Id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 8. StockMovements Table

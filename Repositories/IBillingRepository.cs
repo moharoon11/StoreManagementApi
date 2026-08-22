@@ -6,5 +6,6 @@ namespace StoreManagement.Api.Repositories
     public interface IBillingRepository
     {
         Task<Invoice> ProcessCheckoutAsync(int userId, CheckoutRequestDto request);
+        Task<Invoice> ProcessManualCheckoutAsync(int userId, ManualCheckoutRequestDto request);
     }
 }
