@@ -76,6 +76,8 @@ namespace StoreManagement.Api.Services
 
         private static void ComposeContent(IContainer container, Invoice invoice)
         {
+            bool isManualInvoice = invoice.Items.All(i => i.ProductId == null);
+
             container.PaddingVertical(15).Column(column =>
             {
                 column.Item().LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
@@ -87,7 +89,8 @@ namespace StoreManagement.Api.Services
                     table.ColumnsDefinition(columns =>
                     {
                         columns.ConstantColumn(35);
-                        columns.RelativeColumn(3);
+                        if (!isManualInvoice)
+                            columns.RelativeColumn(3);
                         columns.RelativeColumn(1);
                         columns.RelativeColumn(1);
                         columns.RelativeColumn(1);
@@ -97,7 +100,8 @@ namespace StoreManagement.Api.Services
                     table.Header(header =>
                     {
                         header.Cell().Element(HeaderCellStyle).Text("#");
-                        header.Cell().Element(HeaderCellStyle).Text("Product");
+                        if (!isManualInvoice)
+                            header.Cell().Element(HeaderCellStyle).Text("Product");
                         header.Cell().Element(HeaderCellStyle).AlignRight().Text("Price");
                         header.Cell().Element(HeaderCellStyle).AlignRight().Text("Qty");
                         header.Cell().Element(HeaderCellStyle).AlignRight().Text("Total");
@@ -110,7 +114,8 @@ namespace StoreManagement.Api.Services
                         var backgroundColor = i % 2 == 0 ? Colors.White : Colors.Grey.Lighten4;
 
                         table.Cell().Element(c => CellStyle(c, backgroundColor)).Text((i + 1).ToString());
-                        table.Cell().Element(c => CellStyle(c, backgroundColor)).Text(item.ProductName).Bold();
+                        if (!isManualInvoice)
+                            table.Cell().Element(c => CellStyle(c, backgroundColor)).Text(item.ProductName).Bold();
                         table.Cell().Element(c => CellStyle(c, backgroundColor)).AlignRight().Text($"₹{item.SellingPrice:N2}");
                         table.Cell().Element(c => CellStyle(c, backgroundColor)).AlignRight().Text(item.Quantity.ToString());
                         table.Cell().Element(c => CellStyle(c, backgroundColor)).AlignRight().Text($"₹{item.Total:N2}");

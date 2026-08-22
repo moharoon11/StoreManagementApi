@@ -102,7 +102,7 @@ namespace StoreManagement.Api.Repositories
                     item.InvoiceId = invoiceId;
                     await connection.ExecuteAsync(insertItemSql, item, transaction);
 
-                    var product = dbProducts[item.Id];
+                    var product = dbProducts[item.ProductId.Value];
                     int previousQty = product.StockQuantity;
                     int newQty = previousQty - item.Quantity;
 
