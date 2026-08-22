@@ -25,13 +25,12 @@ namespace StoreManagement.Api.Controllers
         {
             Logger.Debug("Checkout started.");
             if (!ModelState.IsValid ||
-                string.IsNullOrWhiteSpace(request.CustomerName) ||
                 string.IsNullOrWhiteSpace(request.CustomerMobileNumber) ||
                 request.Items == null ||
                 !request.Items.Any())
             {
                 return BadRequest(ApiResponse.ErrorResult(
-                    "Provide a valid customer name, customer mobile number, and at least one product."));
+                    "Provide a customer mobile number and at least one product."));
             }
 
             var invoice = await _billingRepository.ProcessCheckoutAsync(CurrentUserId, request);

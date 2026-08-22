@@ -13,8 +13,7 @@ namespace StoreManagement.Api.Dtos
 
     public class CheckoutRequestDto
     {
-        [Required(ErrorMessage = "Customer name is required")]
-        [StringLength(150, ErrorMessage = "Customer name cannot exceed 150 characters")]
+
         public string CustomerName { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Customer mobile number is required")]
