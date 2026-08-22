@@ -75,7 +75,7 @@ namespace StoreManagement.Api.Repositories
                 {
                     UserId = userId,
                     InvoiceNumber = invoiceNumber,
-                    CustomerName = request.CustomerName.Trim(),
+                    CustomerName = request.CustomerName?.Trim() ?? "NO_NAME",
                     CustomerMobileNumber = request.CustomerMobileNumber.Trim(),
                     Subtotal = subtotal,
                     GrandTotal = grandTotal
