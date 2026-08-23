@@ -87,6 +87,32 @@ namespace StoreManagement.Api.Repositories
 
             var stockOverview = await connection.QuerySingleAsync<StockOverviewDto>(stockOverviewSql, parameters);
 
+            // 7. Sales Trend (Last 7 Days)
+            var trendStartDate = todayStart.AddDays(-6);
+            const string salesTrendSql = @"
+                SELECT 
+                    DATE(CreatedAt) AS DateGroup,
+                    COALESCE(SUM(GrandTotal), 0) AS TotalSales
+                FROM Invoices
+                WHERE UserId = @UserId AND CreatedAt >= @TrendStartDate
+                GROUP BY DATE(CreatedAt)
+                ORDER BY DATE(CreatedAt);";
+
+            var salesData = (await connection.QueryAsync<(DateTime DateGroup, decimal TotalSales)>(
+                salesTrendSql, new { UserId = userId, TrendStartDate = trendStartDate })).ToList();
+
+            var salesTrend = new List<SalesTrendDto>();
+            for (int i = 0; i < 7; i++)
+            {
+                var targetDate = trendStartDate.AddDays(i);
+                var saleItem = salesData.FirstOrDefault(d => d.DateGroup.Date == targetDate.Date);
+                salesTrend.Add(new SalesTrendDto
+                {
+                    DateLabel = targetDate.ToString("ddd"),
+                    TotalSales = saleItem != default ? saleItem.TotalSales : 0
+                });
+            }
+
             return new DashboardSummaryDto
             {
                 TodaySales = todayStats.TodaySales,
@@ -96,7 +122,8 @@ namespace StoreManagement.Api.Repositories
                 LowStockProducts = lowStockProducts,
                 MostSoldProducts = mostSoldProducts,
                 RecentInvoices = recentInvoices,
-                StockOverview = stockOverview
+                StockOverview = stockOverview,
+                SalesTrend = salesTrend
             };
         }
     }

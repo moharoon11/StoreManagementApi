@@ -42,6 +42,13 @@ namespace StoreManagement.Api.Dtos
         public List<TopSoldProductDto> MostSoldProducts { get; set; } = new();
         public List<RecentInvoiceDto> RecentInvoices { get; set; } = new();
         public StockOverviewDto StockOverview { get; set; } = new();
+        public List<SalesTrendDto> SalesTrend { get; set; } = new();
+    }
+
+    public class SalesTrendDto
+    {
+        public string DateLabel { get; set; } = string.Empty;
+        public decimal TotalSales { get; set; }
     }
 
     public class ProductSummaryDto
