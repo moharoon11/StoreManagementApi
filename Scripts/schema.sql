@@ -86,6 +86,9 @@ CREATE TABLE IF NOT EXISTS `Invoices` (
     `CustomerMobileNumber` VARCHAR(20) NOT NULL,
     `Subtotal` DECIMAL(18,2) NOT NULL,
     `GrandTotal` DECIMAL(18,2) NOT NULL,
+    `IsReceived` TINYINT(1) NOT NULL DEFAULT 1,
+    `AmountReceived` DECIMAL(18,2) NOT NULL DEFAULT 0.00,
+    `BalanceDue` DECIMAL(18,2) NOT NULL DEFAULT 0.00,
     `CreatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT `fk_invoices_user` FOREIGN KEY (`UserId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
     INDEX `idx_invoices_user_date` (`UserId`, `CreatedAt`)
@@ -118,3 +121,12 @@ CREATE TABLE IF NOT EXISTS `StockMovements` (
     CONSTRAINT `fk_stockmovements_product` FOREIGN KEY (`ProductId`) REFERENCES `Products` (`Id`) ON DELETE CASCADE,
     INDEX `idx_stockmovements_user` (`UserId`, `ProductId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ============================================================================
+-- MIGRATION SCRIPT FOR EXISTING DATABASES
+-- Run the following statements if deploying to an existing database:
+-- ============================================================================
+-- ALTER TABLE `Invoices` ADD COLUMN `IsReceived` TINYINT(1) NOT NULL DEFAULT 1;
+-- ALTER TABLE `Invoices` ADD COLUMN `AmountReceived` DECIMAL(18,2) NOT NULL DEFAULT 0.00;
+-- ALTER TABLE `Invoices` ADD COLUMN `BalanceDue` DECIMAL(18,2) NOT NULL DEFAULT 0.00;
+

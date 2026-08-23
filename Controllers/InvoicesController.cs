@@ -47,6 +47,45 @@ namespace StoreManagement.Api.Controllers
             return Ok(ApiResponse<Invoice>.SuccessResult(invoice, "Invoice details retrieved."));
         }
 
+        [HttpGet("summary")]
+        public async Task<IActionResult> GetSummary([FromQuery] DateTime? fromDate = null, [FromQuery] DateTime? toDate = null)
+        {
+            Logger.Debug("GetSummary started.");
+            var summary = await _invoiceRepository.GetInvoiceSummaryAsync(CurrentUserId, fromDate, toDate);
+            return Ok(ApiResponse<InvoiceSummaryDto>.SuccessResult(summary, "Invoice summary retrieved."));
+        }
+
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> Update(int id, [FromBody] Dtos.UpdateInvoiceDto dto)
+        {
+            Logger.Debug("Update invoice started. InvoiceId: {0}", id);
+            if (!ModelState.IsValid || dto == null)
+            {
+                return BadRequest(ApiResponse.ErrorResult("Invalid invoice update data."));
+            }
+
+            var updated = await _invoiceRepository.UpdateInvoiceAsync(id, CurrentUserId, dto);
+            if (!updated)
+            {
+                return NotFound(ApiResponse.ErrorResult("Invoice not found or update failed."));
+            }
+
+            return Ok(ApiResponse.SuccessResult("Invoice updated successfully."));
+        }
+
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            Logger.Debug("Delete invoice started. InvoiceId: {0}", id);
+            var deleted = await _invoiceRepository.DeleteInvoiceAsync(id, CurrentUserId);
+            if (!deleted)
+            {
+                return NotFound(ApiResponse.ErrorResult("Invoice not found or delete failed."));
+            }
+
+            return Ok(ApiResponse.SuccessResult("Invoice deleted successfully."));
+        }
+
         [AllowAnonymous]
         [HttpGet("{id:int}/pdf")]
         public async Task<IActionResult> DownloadPdf(int id)

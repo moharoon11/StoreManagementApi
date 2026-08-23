@@ -24,6 +24,9 @@ namespace StoreManagement.Api.Dtos
         [Required(ErrorMessage = "Checkout items cannot be empty")]
         [MinLength(1, ErrorMessage = "At least one item is required for checkout")]
         public List<CheckoutItemDto> Items { get; set; } = new();
+
+        public bool IsReceived { get; set; } = true;
+        public decimal? AmountReceived { get; set; }
     }
 
     public class ManualCheckoutItemDto
@@ -47,5 +50,16 @@ namespace StoreManagement.Api.Dtos
         [Required(ErrorMessage = "Checkout items cannot be empty")]
         [MinLength(1, ErrorMessage = "At least one item is required for checkout")]
         public List<ManualCheckoutItemDto> Items { get; set; } = new();
+
+        public bool IsReceived { get; set; } = true;
+        public decimal? AmountReceived { get; set; }
+    }
+
+    public class UpdateInvoiceDto
+    {
+        public string CustomerName { get; set; } = string.Empty;
+        public string CustomerMobileNumber { get; set; } = string.Empty;
+        public bool IsReceived { get; set; }
+        public decimal AmountReceived { get; set; }
     }
 }

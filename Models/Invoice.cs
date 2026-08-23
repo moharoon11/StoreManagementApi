@@ -9,6 +9,9 @@ namespace StoreManagement.Api.Models
         public string CustomerMobileNumber { get; set; } = string.Empty;
         public decimal Subtotal { get; set; }
         public decimal GrandTotal { get; set; }
+        public bool IsReceived { get; set; } = true;
+        public decimal AmountReceived { get; set; }
+        public decimal BalanceDue { get; set; }
         public DateTime CreatedAt { get; set; }
         
         public StoreProfile? Store { get; set; }
