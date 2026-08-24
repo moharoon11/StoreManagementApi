@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS `StockMovements` (
     `PreviousQuantity` INT NOT NULL,
     `QuantityChanged` INT NOT NULL,
     `NewQuantity` INT NOT NULL,
-    `Reason` ENUM('SALE', 'STOCK_ADDED', 'MANUAL_ADJUSTMENT', 'RETURN') NOT NULL,
+    `Reason` ENUM('SALE', 'STOCK_ADDED', 'MANUAL_ADJUSTMENT', 'RETURN', 'BILL_UPLOAD') NOT NULL,
     `CreatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT `fk_stockmovements_user` FOREIGN KEY (`UserId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
     CONSTRAINT `fk_stockmovements_product` FOREIGN KEY (`ProductId`) REFERENCES `Products` (`Id`) ON DELETE CASCADE,

@@ -8,6 +8,7 @@ namespace StoreManagement.Api.Repositories
     {
         Task<PagedResponse<Product>> GetFilteredProductsAsync(int userId, ProductFilterDto filter);
         Task<Product?> GetByIdAsync(int id, int userId);
+        Task<Product?> GetByNameAsync(string name, int userId);
         Task<int> CreateProductAsync(Product product);
         Task<bool> UpdateProductAsync(Product product);
         Task<bool> DeleteProductAsync(int id, int userId);

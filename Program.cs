@@ -11,6 +11,7 @@ using StoreManagement.Api.Repositories;
 using StoreManagement.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
 builder.Logging.ClearProviders();
 builder.Host.UseNLog();
 
@@ -24,9 +25,11 @@ builder.Services.AddScoped<IDbConnectionFactory, DbConnectionFactory>();
 builder.Services.AddScoped<ControllerLoggingFilter>();
 
 // 2. Services Registration
+builder.Services.AddHttpClient();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IPdfService, PdfService>();
+builder.Services.AddScoped<IGeminiVisionService, GeminiVisionService>();
 
 // 3. Repositories Registration
 builder.Services.AddScoped<IUserRepository, UserRepository>();

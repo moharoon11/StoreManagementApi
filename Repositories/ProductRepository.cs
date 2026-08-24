@@ -111,6 +111,22 @@ namespace StoreManagement.Api.Repositories
             return await connection.QuerySingleOrDefaultAsync<Product>(sql, new { Id = id, UserId = userId });
         }
 
+        public async Task<Product?> GetByNameAsync(string name, int userId)
+        {
+            using var connection = await _dbConnectionFactory.CreateConnectionAsync();
+            const string sql = @"
+                SELECT 
+                    p.Id, p.UserId, p.CategoryId, c.Name AS CategoryName, p.Name, p.ImageUrl, 
+                    p.CostPrice, p.SellingPrice, p.StockQuantity, p.SoldsCount, p.CreatedAt, p.UpdatedAt,
+                    CASE WHEN f.UserId IS NOT NULL THEN 1 ELSE 0 END AS IsFavourite
+                FROM Products p
+                INNER JOIN Categories c ON p.CategoryId = c.Id
+                LEFT JOIN Favourites f ON p.Id = f.ProductId AND f.UserId = p.UserId
+                WHERE LOWER(p.Name) = LOWER(@Name) AND p.UserId = @UserId 
+                LIMIT 1;";
+            return await connection.QuerySingleOrDefaultAsync<Product>(sql, new { Name = name, UserId = userId });
+        }
+
         public async Task<int> CreateProductAsync(Product product)
         {
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
