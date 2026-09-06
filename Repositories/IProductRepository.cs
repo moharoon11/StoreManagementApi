@@ -12,6 +12,6 @@ namespace StoreManagement.Api.Repositories
         Task<int> CreateProductAsync(Product product);
         Task<bool> UpdateProductAsync(Product product);
         Task<bool> DeleteProductAsync(int id, int userId);
-        Task<bool> UpdateStockAsync(int id, int userId, int newQuantity);
+        Task<bool> UpdateStockAsync(int id, int userId, decimal newQuantity);
     }
 }

@@ -11,7 +11,7 @@ namespace StoreManagement.Api.Dtos
     {
         public decimal TotalSales { get; set; }
         public int TotalInvoices { get; set; }
-        public int TotalProductsSold { get; set; }
+        public decimal TotalProductsSold { get; set; }
         public List<TopSoldProductDto> TopSoldProducts { get; set; } = new();
         public List<CategorySalesDto> SalesByCategory { get; set; } = new();
     }
@@ -20,7 +20,8 @@ namespace StoreManagement.Api.Dtos
     {
         public int ProductId { get; set; }
         public string ProductName { get; set; } = string.Empty;
-        public int TotalQuantitySold { get; set; }
+        public decimal TotalQuantitySold { get; set; }
+        public string Unit { get; set; } = "Piece";
         public decimal TotalRevenue { get; set; }
     }
 
@@ -28,7 +29,7 @@ namespace StoreManagement.Api.Dtos
     {
         public int CategoryId { get; set; }
         public string CategoryName { get; set; } = string.Empty;
-        public int TotalQuantitySold { get; set; }
+        public decimal TotalQuantitySold { get; set; }
         public decimal TotalRevenue { get; set; }
     }
 
@@ -55,7 +56,8 @@ namespace StoreManagement.Api.Dtos
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
-        public int StockQuantity { get; set; }
+        public decimal StockQuantity { get; set; }
+        public string Unit { get; set; } = "Piece";
         public decimal SellingPrice { get; set; }
         public string? ImageUrl { get; set; }
     }
@@ -70,7 +72,7 @@ namespace StoreManagement.Api.Dtos
 
     public class StockOverviewDto
     {
-        public int TotalItemsInStock { get; set; }
+        public decimal TotalItemsInStock { get; set; }
         public int LowStockCount { get; set; }
         public int OutOfStockCount { get; set; }
         public decimal TotalStockValueCost { get; set; }

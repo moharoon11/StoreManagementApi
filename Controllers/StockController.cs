@@ -55,7 +55,7 @@ namespace StoreManagement.Api.Controllers
     public class ManualStockAdjustmentDto
     {
         public int ProductId { get; set; }
-        public int QuantityChanged { get; set; }
+        public decimal QuantityChanged { get; set; }
         public string Reason { get; set; } = "MANUAL_ADJUSTMENT";
     }
 }

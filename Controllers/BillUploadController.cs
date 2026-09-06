@@ -83,6 +83,7 @@ namespace StoreManagement.Api.Controllers
                         item.ProductId = existingProduct.Id;
                         item.IsNewProduct = false;
                         item.SellingPrice = existingProduct.SellingPrice; // Pre-fill with existing if any
+                        item.Unit = existingProduct.Unit;
                     }
                     else
                     {
@@ -123,8 +124,6 @@ namespace StoreManagement.Api.Controllers
                         // Update stock and prices
                         existingProduct.CostPrice = item.CostPrice;
                         existingProduct.SellingPrice = item.SellingPrice;
-                        existingProduct.StockQuantity += item.Quantity; // We add the quantity
-                        
                         await _productRepository.UpdateProductAsync(existingProduct);
                         await _stockRepository.AdjustStockAsync(CurrentUserId, existingProduct.Id, item.Quantity, "BILL_UPLOAD");
                         successCount++;
@@ -168,7 +167,9 @@ namespace StoreManagement.Api.Controllers
                         Name = item.ProductName,
                         CostPrice = item.CostPrice,
                         SellingPrice = item.SellingPrice,
-                        StockQuantity = item.Quantity
+                        // AdjustStockAsync below applies and logs the opening stock.
+                        StockQuantity = 0,
+                        Unit = string.IsNullOrWhiteSpace(item.Unit) ? "Piece" : item.Unit.Trim()
                     };
 
                     var newId = await _productRepository.CreateProductAsync(newProduct);

@@ -55,8 +55,9 @@ CREATE TABLE IF NOT EXISTS `Products` (
     `ImageUrl` VARCHAR(500) DEFAULT NULL,
     `CostPrice` DECIMAL(18,2) NOT NULL DEFAULT 0.00,
     `SellingPrice` DECIMAL(18,2) NOT NULL DEFAULT 0.00,
-    `StockQuantity` INT NOT NULL DEFAULT 0,
-    `SoldsCount` INT NOT NULL DEFAULT 0,
+    `StockQuantity` DECIMAL(18,3) NOT NULL DEFAULT 0.000,
+    `SoldsCount` DECIMAL(18,3) NOT NULL DEFAULT 0.000,
+    `Unit` VARCHAR(20) NOT NULL DEFAULT 'Piece',
     `CreatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `UpdatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT `fk_products_user` FOREIGN KEY (`UserId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
@@ -100,7 +101,8 @@ CREATE TABLE IF NOT EXISTS `InvoiceItems` (
     `InvoiceId` INT NOT NULL,
     `ProductId` INT NULL,
     `ProductName` VARCHAR(150) NULL,
-    `Quantity` INT NOT NULL,
+    `Quantity` DECIMAL(18,3) NOT NULL,
+    `Unit` VARCHAR(20) NOT NULL DEFAULT 'Piece',
     `SellingPrice` DECIMAL(18,2) NOT NULL,
     `Total` DECIMAL(18,2) NOT NULL,
     CONSTRAINT `fk_invoiceitems_invoice` FOREIGN KEY (`InvoiceId`) REFERENCES `Invoices` (`Id`) ON DELETE CASCADE,
@@ -112,9 +114,9 @@ CREATE TABLE IF NOT EXISTS `StockMovements` (
     `Id` INT AUTO_INCREMENT PRIMARY KEY,
     `UserId` INT NOT NULL,
     `ProductId` INT NOT NULL,
-    `PreviousQuantity` INT NOT NULL,
-    `QuantityChanged` INT NOT NULL,
-    `NewQuantity` INT NOT NULL,
+    `PreviousQuantity` DECIMAL(18,3) NOT NULL,
+    `QuantityChanged` DECIMAL(18,3) NOT NULL,
+    `NewQuantity` DECIMAL(18,3) NOT NULL,
     `Reason` ENUM('SALE', 'STOCK_ADDED', 'MANUAL_ADJUSTMENT', 'RETURN', 'BILL_UPLOAD') NOT NULL,
     `CreatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT `fk_stockmovements_user` FOREIGN KEY (`UserId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
@@ -129,4 +131,3 @@ CREATE TABLE IF NOT EXISTS `StockMovements` (
 -- ALTER TABLE `Invoices` ADD COLUMN `IsReceived` TINYINT(1) NOT NULL DEFAULT 1;
 -- ALTER TABLE `Invoices` ADD COLUMN `AmountReceived` DECIMAL(18,2) NOT NULL DEFAULT 0.00;
 -- ALTER TABLE `Invoices` ADD COLUMN `BalanceDue` DECIMAL(18,2) NOT NULL DEFAULT 0.00;
-

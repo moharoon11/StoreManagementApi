@@ -54,6 +54,7 @@ namespace StoreManagement.Api.Repositories
                         ProductId = product.Id,
                         ProductName = product.Name,
                         Quantity = item.Quantity,
+                        Unit = product.Unit,
                         SellingPrice = product.SellingPrice,
                         Total = itemTotal
                     });
@@ -90,8 +91,8 @@ namespace StoreManagement.Api.Repositories
 
                 // 5. Insert Invoice Items, update Product stock & log Stock Movements
                 const string insertItemSql = @"
-                    INSERT INTO InvoiceItems (InvoiceId, ProductId, ProductName, Quantity, SellingPrice, Total)
-                    VALUES (@InvoiceId, @ProductId, @ProductName, @Quantity, @SellingPrice, @Total);";
+                    INSERT INTO InvoiceItems (InvoiceId, ProductId, ProductName, Quantity, Unit, SellingPrice, Total)
+                    VALUES (@InvoiceId, @ProductId, @ProductName, @Quantity, @Unit, @SellingPrice, @Total);";
 
                 const string updateStockSql = @"
                     UPDATE Products 
@@ -110,8 +111,8 @@ namespace StoreManagement.Api.Repositories
                     await connection.ExecuteAsync(insertItemSql, item, transaction);
 
                     var product = dbProducts[item.ProductId.Value];
-                    int previousQty = product.StockQuantity;
-                    int newQty = previousQty - item.Quantity;
+                    decimal previousQty = product.StockQuantity;
+                    decimal newQty = previousQty - item.Quantity;
 
                     await connection.ExecuteAsync(updateStockSql, new
                     {
@@ -212,8 +213,8 @@ namespace StoreManagement.Api.Repositories
                 }, transaction);
 
                 const string insertItemSql = @"
-                    INSERT INTO InvoiceItems (InvoiceId, ProductId, ProductName, Quantity, SellingPrice, Total)
-                    VALUES (@InvoiceId, @ProductId, @ProductName, @Quantity, @SellingPrice, @Total);";
+                    INSERT INTO InvoiceItems (InvoiceId, ProductId, ProductName, Quantity, Unit, SellingPrice, Total)
+                    VALUES (@InvoiceId, @ProductId, @ProductName, @Quantity, @Unit, @SellingPrice, @Total);";
 
                 foreach (var item in invoiceItems)
                 {

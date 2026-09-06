@@ -70,7 +70,8 @@ namespace StoreManagement.Api.Services
                                 properties = new
                                 {
                                     ProductName = new { type = "string", description = "The name of the product. If no name is explicitly written, use 'Item' followed by its Serial Number or row index (e.g., 'Item 1')." },
-                                    Quantity = new { type = "integer", description = "Quantity of the product purchased" },
+                                    Quantity = new { type = "number", description = "Quantity of the product purchased; may be decimal for weighed or measured goods" },
+                                    Unit = new { type = "string", description = "Unit shown on the bill, such as KG, Litre, Piece, Packet, or Bottle; use Piece if missing" },
                                     CostPrice = new { type = "number", description = "The cost price or unit rate per item" },
                                     TotalAmount = new { type = "number", description = "Total amount for this product item" }
                                 },

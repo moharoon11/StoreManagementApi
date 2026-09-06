@@ -42,7 +42,7 @@ namespace StoreManagement.Api.Repositories
 
             // 3. Low Stock Products (Stock <= 5)
             const string lowStockSql = @"
-                SELECT Id, Name, StockQuantity, SellingPrice, ImageUrl
+                SELECT Id, Name, StockQuantity, Unit, SellingPrice, ImageUrl
                 FROM Products
                 WHERE UserId = @UserId AND StockQuantity <= 5
                 ORDER BY StockQuantity ASC
@@ -55,6 +55,7 @@ namespace StoreManagement.Api.Repositories
                 SELECT 
                     Id AS ProductId,
                     Name AS ProductName,
+                    Unit,
                     SoldsCount AS TotalQuantitySold,
                     (SoldsCount * SellingPrice) AS TotalRevenue
                 FROM Products

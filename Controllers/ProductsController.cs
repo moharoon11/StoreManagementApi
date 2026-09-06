@@ -60,6 +60,10 @@ namespace StoreManagement.Api.Controllers
             {
                 return BadRequest(ApiResponse.ErrorResult("Invalid product data."));
             }
+            if (string.IsNullOrWhiteSpace(dto.Unit))
+            {
+                return BadRequest(ApiResponse.ErrorResult("A product unit is required."));
+            }
 
             int categoryId;
 
@@ -110,7 +114,10 @@ namespace StoreManagement.Api.Controllers
                 ImageUrl = imageUrl,
                 CostPrice = dto.CostPrice,
                 SellingPrice = dto.SellingPrice,
-                StockQuantity = dto.StockQuantity
+                // Start at zero so AdjustStockAsync both applies the initial
+                // amount and records one accurate stock movement.
+                StockQuantity = 0,
+                Unit = dto.Unit.Trim()
             };
 
             var id = await _productRepository.CreateProductAsync(product);
@@ -132,6 +139,10 @@ namespace StoreManagement.Api.Controllers
             if (!ModelState.IsValid)
             {
                 return BadRequest(ApiResponse.ErrorResult("Invalid product data."));
+            }
+            if (string.IsNullOrWhiteSpace(dto.Unit))
+            {
+                return BadRequest(ApiResponse.ErrorResult("A product unit is required."));
             }
 
             var existingProduct = await _productRepository.GetByIdAsync(id, CurrentUserId);
@@ -157,20 +168,23 @@ namespace StoreManagement.Api.Controllers
             existingProduct.ImageUrl = imageUrl;
             existingProduct.CostPrice = dto.CostPrice;
             existingProduct.SellingPrice = dto.SellingPrice;
+            existingProduct.Unit = dto.Unit.Trim();
             
             // Note: If stock quantity changed, log stock adjustment
-            int quantityDifference = dto.StockQuantity - existingProduct.StockQuantity;
-            existingProduct.StockQuantity = dto.StockQuantity;
-
-            var updated = await _productRepository.UpdateProductAsync(existingProduct);
-            if (!updated)
-            {
-                return BadRequest(ApiResponse.ErrorResult("Failed to update product."));
-            }
+            decimal quantityDifference = dto.StockQuantity - existingProduct.StockQuantity;
 
             if (quantityDifference != 0)
             {
                 await _stockRepository.AdjustStockAsync(CurrentUserId, id, quantityDifference, "MANUAL_ADJUSTMENT");
+            }
+
+            // Persist the final amount after the adjustment is accepted, so
+            // negative stock cannot partially save an edit.
+            existingProduct.StockQuantity = dto.StockQuantity;
+            var updated = await _productRepository.UpdateProductAsync(existingProduct);
+            if (!updated)
+            {
+                return BadRequest(ApiResponse.ErrorResult("Failed to update product."));
             }
 
             var result = await _productRepository.GetByIdAsync(id, CurrentUserId);

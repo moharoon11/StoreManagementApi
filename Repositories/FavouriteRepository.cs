@@ -38,7 +38,7 @@ namespace StoreManagement.Api.Repositories
             const string sql = @"
                 SELECT 
                     p.Id, p.UserId, p.CategoryId, c.Name AS CategoryName, p.Name, p.ImageUrl, 
-                    p.CostPrice, p.SellingPrice, p.StockQuantity, p.SoldsCount, p.CreatedAt, p.UpdatedAt,
+                    p.CostPrice, p.SellingPrice, p.StockQuantity, p.SoldsCount, p.Unit, p.CreatedAt, p.UpdatedAt,
                     1 AS IsFavourite
                 FROM Favourites f
                 INNER JOIN Products p ON f.ProductId = p.Id

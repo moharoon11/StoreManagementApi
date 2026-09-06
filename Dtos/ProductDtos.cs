@@ -15,8 +15,11 @@ namespace StoreManagement.Api.Dtos
         [Range(0.01, double.MaxValue, ErrorMessage = "Selling price must be greater than zero")]
         public decimal SellingPrice { get; set; }
 
-        [Range(0, int.MaxValue, ErrorMessage = "Stock quantity cannot be negative")]
-        public int StockQuantity { get; set; }
+        [Range(0, double.MaxValue, ErrorMessage = "Stock quantity cannot be negative")]
+        public decimal StockQuantity { get; set; }
+
+        [Required, StringLength(20)]
+        public string Unit { get; set; } = "Piece";
 
         public IFormFile? ImageFile { get; set; }
         public string? ImageUrl { get; set; }
@@ -32,7 +35,11 @@ namespace StoreManagement.Api.Dtos
 
         public decimal CostPrice { get; set; }
         public decimal SellingPrice { get; set; }
-        public int StockQuantity { get; set; }
+        [Range(0, double.MaxValue, ErrorMessage = "Stock quantity cannot be negative")]
+        public decimal StockQuantity { get; set; }
+
+        [Required, StringLength(20)]
+        public string Unit { get; set; } = "Piece";
 
         public IFormFile? ImageFile { get; set; }
         public string? ImageUrl { get; set; }
@@ -41,7 +48,7 @@ namespace StoreManagement.Api.Dtos
     public class UpdateStockDto
     {
         [Required]
-        public int QuantityChanged { get; set; }
+        public decimal QuantityChanged { get; set; }
 
         [Required]
         public string Reason { get; set; } = "MANUAL_ADJUSTMENT"; // STOCK_ADDED, MANUAL_ADJUSTMENT, RETURN

@@ -117,7 +117,7 @@ namespace StoreManagement.Api.Services
                         if (!isManualInvoice)
                             table.Cell().Element(c => CellStyle(c, backgroundColor)).Text(item.ProductName).Bold();
                         table.Cell().Element(c => CellStyle(c, backgroundColor)).AlignRight().Text($"₹{item.SellingPrice:N2}");
-                        table.Cell().Element(c => CellStyle(c, backgroundColor)).AlignRight().Text(item.Quantity.ToString());
+                        table.Cell().Element(c => CellStyle(c, backgroundColor)).AlignRight().Text($"{item.Quantity:0.###} {item.Unit}");
                         table.Cell().Element(c => CellStyle(c, backgroundColor)).AlignRight().Text($"₹{item.Total:N2}");
                     }
                 });

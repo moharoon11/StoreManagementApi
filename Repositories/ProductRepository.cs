@@ -81,7 +81,7 @@ namespace StoreManagement.Api.Repositories
             var itemsSql = $@"
                 SELECT 
                     p.Id, p.UserId, p.CategoryId, c.Name AS CategoryName, p.Name, p.ImageUrl, 
-                    p.CostPrice, p.SellingPrice, p.StockQuantity, p.SoldsCount, p.CreatedAt, p.UpdatedAt,
+                    p.CostPrice, p.SellingPrice, p.StockQuantity, p.SoldsCount, p.Unit, p.CreatedAt, p.UpdatedAt,
                     CASE WHEN f.UserId IS NOT NULL THEN 1 ELSE 0 END AS IsFavourite
                 FROM Products p
                 INNER JOIN Categories c ON p.CategoryId = c.Id
@@ -101,7 +101,7 @@ namespace StoreManagement.Api.Repositories
             const string sql = @"
                 SELECT 
                     p.Id, p.UserId, p.CategoryId, c.Name AS CategoryName, p.Name, p.ImageUrl, 
-                    p.CostPrice, p.SellingPrice, p.StockQuantity, p.SoldsCount, p.CreatedAt, p.UpdatedAt,
+                    p.CostPrice, p.SellingPrice, p.StockQuantity, p.SoldsCount, p.Unit, p.CreatedAt, p.UpdatedAt,
                     CASE WHEN f.UserId IS NOT NULL THEN 1 ELSE 0 END AS IsFavourite
                 FROM Products p
                 INNER JOIN Categories c ON p.CategoryId = c.Id
@@ -117,7 +117,7 @@ namespace StoreManagement.Api.Repositories
             const string sql = @"
                 SELECT 
                     p.Id, p.UserId, p.CategoryId, c.Name AS CategoryName, p.Name, p.ImageUrl, 
-                    p.CostPrice, p.SellingPrice, p.StockQuantity, p.SoldsCount, p.CreatedAt, p.UpdatedAt,
+                    p.CostPrice, p.SellingPrice, p.StockQuantity, p.SoldsCount, p.Unit, p.CreatedAt, p.UpdatedAt,
                     CASE WHEN f.UserId IS NOT NULL THEN 1 ELSE 0 END AS IsFavourite
                 FROM Products p
                 INNER JOIN Categories c ON p.CategoryId = c.Id
@@ -132,9 +132,9 @@ namespace StoreManagement.Api.Repositories
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
             const string sql = @"
                 INSERT INTO Products 
-                    (UserId, CategoryId, Name, ImageUrl, CostPrice, SellingPrice, StockQuantity, SoldsCount, CreatedAt, UpdatedAt)
+                    (UserId, CategoryId, Name, ImageUrl, CostPrice, SellingPrice, StockQuantity, SoldsCount, Unit, CreatedAt, UpdatedAt)
                 VALUES 
-                    (@UserId, @CategoryId, @Name, @ImageUrl, @CostPrice, @SellingPrice, @StockQuantity, 0, NOW(), NOW());
+                    (@UserId, @CategoryId, @Name, @ImageUrl, @CostPrice, @SellingPrice, @StockQuantity, 0, @Unit, NOW(), NOW());
                 SELECT LAST_INSERT_ID();";
             return await connection.ExecuteScalarAsync<int>(sql, product);
         }
@@ -150,6 +150,7 @@ namespace StoreManagement.Api.Repositories
                     CostPrice = @CostPrice,
                     SellingPrice = @SellingPrice,
                     StockQuantity = @StockQuantity,
+                    Unit = @Unit,
                     UpdatedAt = NOW()
                 WHERE Id = @Id AND UserId = @UserId;";
             var affected = await connection.ExecuteAsync(sql, product);
@@ -164,7 +165,7 @@ namespace StoreManagement.Api.Repositories
             return affected > 0;
         }
 
-        public async Task<bool> UpdateStockAsync(int id, int userId, int newQuantity)
+        public async Task<bool> UpdateStockAsync(int id, int userId, decimal newQuantity)
         {
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
             const string sql = "UPDATE Products SET StockQuantity = @NewQuantity, UpdatedAt = NOW() WHERE Id = @Id AND UserId = @UserId;";

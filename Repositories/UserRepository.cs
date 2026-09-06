@@ -17,7 +17,8 @@ namespace StoreManagement.Api.Repositories
         {
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
             const string sql = "SELECT * FROM Users WHERE Username = @Username LIMIT 1;";
-            return await connection.QuerySingleOrDefaultAsync<User>(sql, new { Username = username });
+            User user =  await connection.QuerySingleOrDefaultAsync<User>(sql, new { Username = username });
+            return user;
         }
 
         public async Task<User?> GetByIdAsync(int id)

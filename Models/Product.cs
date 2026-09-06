@@ -10,8 +10,9 @@ namespace StoreManagement.Api.Models
         public string? ImageUrl { get; set; }
         public decimal CostPrice { get; set; }
         public decimal SellingPrice { get; set; }
-        public int StockQuantity { get; set; }
-        public int SoldsCount { get; set; }
+        public decimal StockQuantity { get; set; }
+        public decimal SoldsCount { get; set; }
+        public string Unit { get; set; } = "Piece";
         public bool IsFavourite { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }

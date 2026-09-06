@@ -63,19 +63,20 @@ namespace StoreManagement.Api.Repositories
                 INNER JOIN Invoices i ON ii.InvoiceId = i.Id
                 WHERE i.UserId = @UserId AND i.CreatedAt BETWEEN @StartDate AND @EndDate;";
 
-            var totalProductsSold = await connection.ExecuteScalarAsync<int>(totalItemsSql, parameters);
+            var totalProductsSold = await connection.ExecuteScalarAsync<decimal>(totalItemsSql, parameters);
 
             // 3. Top Sold Products
             const string topProductsSql = @"
                 SELECT 
                     ii.ProductId,
                     ii.ProductName,
+                    ii.Unit,
                     SUM(ii.Quantity) AS TotalQuantitySold,
                     SUM(ii.Total) AS TotalRevenue
                 FROM InvoiceItems ii
                 INNER JOIN Invoices i ON ii.InvoiceId = i.Id
                 WHERE i.UserId = @UserId AND i.CreatedAt BETWEEN @StartDate AND @EndDate
-                GROUP BY ii.ProductId, ii.ProductName
+                GROUP BY ii.ProductId, ii.ProductName, ii.Unit
                 ORDER BY TotalQuantitySold DESC
                 LIMIT 10;";
 

@@ -26,7 +26,7 @@ namespace StoreManagement.Api.Repositories
             var sql = $@"
                 SELECT 
                     sm.Id, sm.UserId, sm.ProductId, p.Name AS ProductName,
-                    sm.PreviousQuantity, sm.QuantityChanged, sm.NewQuantity, sm.Reason, sm.CreatedAt
+                    sm.PreviousQuantity, sm.QuantityChanged, sm.NewQuantity, p.Unit, sm.Reason, sm.CreatedAt
                 FROM StockMovements sm
                 INNER JOIN Products p ON sm.ProductId = p.Id
                 WHERE {whereClause}
@@ -36,7 +36,7 @@ namespace StoreManagement.Api.Repositories
             return await connection.QueryAsync<StockMovement>(sql, new { UserId = userId, ProductId = productId, Limit = limit });
         }
 
-        public async Task<bool> AdjustStockAsync(int userId, int productId, int quantityChanged, string reason)
+        public async Task<bool> AdjustStockAsync(int userId, int productId, decimal quantityChanged, string reason)
         {
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
             using var transaction = await connection.BeginTransactionAsync();
@@ -52,8 +52,8 @@ namespace StoreManagement.Api.Repositories
                     throw new KeyNotFoundException("Product not found.");
                 }
 
-                int previousQty = product.StockQuantity;
-                int newQty = previousQty + quantityChanged;
+                decimal previousQty = product.StockQuantity;
+                decimal newQty = previousQty + quantityChanged;
 
                 if (newQty < 0)
                 {

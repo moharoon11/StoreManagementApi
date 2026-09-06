@@ -6,9 +6,10 @@ namespace StoreManagement.Api.Models
         public int UserId { get; set; }
         public int ProductId { get; set; }
         public string ProductName { get; set; } = string.Empty;
-        public int PreviousQuantity { get; set; }
-        public int QuantityChanged { get; set; }
-        public int NewQuantity { get; set; }
+        public decimal PreviousQuantity { get; set; }
+        public decimal QuantityChanged { get; set; }
+        public decimal NewQuantity { get; set; }
+        public string Unit { get; set; } = "Piece";
         public string Reason { get; set; } = string.Empty; // SALE, STOCK_ADDED, MANUAL_ADJUSTMENT, RETURN
         public DateTime CreatedAt { get; set; }
     }
