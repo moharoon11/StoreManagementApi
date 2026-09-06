@@ -27,6 +27,13 @@ namespace StoreManagement.Api.Dtos
 
         public bool IsReceived { get; set; } = true;
         public decimal? AmountReceived { get; set; }
+
+        /// <summary>
+        /// Optional calendar date of the sale. When omitted, checkout uses the
+        /// server's current UTC date so existing clients retain their behavior.
+        /// </summary>
+        [DataType(DataType.Date)]
+        public DateTime? InvoiceDate { get; set; }
     }
 
     public class ManualCheckoutItemDto
@@ -53,6 +60,9 @@ namespace StoreManagement.Api.Dtos
 
         public bool IsReceived { get; set; } = true;
         public decimal? AmountReceived { get; set; }
+
+        [DataType(DataType.Date)]
+        public DateTime? InvoiceDate { get; set; }
     }
 
     public class UpdateInvoiceDto

@@ -62,7 +62,10 @@ namespace StoreManagement.Api.Services
                 {
                     column.Item().Text("TAX INVOICE").FontSize(22).Bold().FontColor(Colors.Grey.Darken2);
                     column.Item().Text($"Invoice No: {invoice.InvoiceNumber}").FontSize(11).Bold();
-                    column.Item().Text($"Date: {invoice.CreatedAt:yyyy-MM-dd HH:mm}").FontSize(10);
+                    var displayedDate = invoice.InvoiceDate.HasValue
+                        ? invoice.InvoiceDate.Value.ToString("yyyy-MM-dd")
+                        : invoice.CreatedAt.ToString("yyyy-MM-dd HH:mm");
+                    column.Item().Text($"Date: {displayedDate}").FontSize(10);
                     if (!string.IsNullOrWhiteSpace(invoice.CustomerName))
                     {
                         column.Item().PaddingTop(6).Text("Bill To").FontSize(10).Bold();

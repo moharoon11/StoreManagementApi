@@ -12,6 +12,7 @@ namespace StoreManagement.Api.Models
         public bool IsReceived { get; set; } = true;
         public decimal AmountReceived { get; set; }
         public decimal BalanceDue { get; set; }
+        public DateTime? InvoiceDate { get; set; }
         public DateTime CreatedAt { get; set; }
         
         public StoreProfile? Store { get; set; }

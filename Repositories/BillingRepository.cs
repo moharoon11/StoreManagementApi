@@ -65,6 +65,7 @@ namespace StoreManagement.Api.Repositories
                 decimal amountReceived = request.AmountReceived.HasValue ? request.AmountReceived.Value : (isReceived ? grandTotal : 0m);
                 decimal balanceDue = isReceived && !request.AmountReceived.HasValue ? 0m : Math.Max(0m, grandTotal - amountReceived);
                 if (balanceDue > 0 && isReceived && !request.AmountReceived.HasValue) isReceived = false;
+                var invoiceDate = (request.InvoiceDate ?? DateTime.UtcNow).Date;
 
                 // 3. Generate unique invoice number
                 var random = new Random();
@@ -72,8 +73,8 @@ namespace StoreManagement.Api.Repositories
 
                 // 4. Create Invoice Header
                 const string insertInvoiceSql = @"
-                    INSERT INTO Invoices (UserId, InvoiceNumber, CustomerName, CustomerMobileNumber, Subtotal, GrandTotal, IsReceived, AmountReceived, BalanceDue, CreatedAt)
-                    VALUES (@UserId, @InvoiceNumber, @CustomerName, @CustomerMobileNumber, @Subtotal, @GrandTotal, @IsReceived, @AmountReceived, @BalanceDue, NOW());
+                    INSERT INTO Invoices (UserId, InvoiceNumber, CustomerName, CustomerMobileNumber, Subtotal, GrandTotal, IsReceived, AmountReceived, BalanceDue, InvoiceDate, CreatedAt)
+                    VALUES (@UserId, @InvoiceNumber, @CustomerName, @CustomerMobileNumber, @Subtotal, @GrandTotal, @IsReceived, @AmountReceived, @BalanceDue, @InvoiceDate, NOW());
                     SELECT LAST_INSERT_ID();";
 
                 var invoiceId = await connection.ExecuteScalarAsync<int>(insertInvoiceSql, new
@@ -86,7 +87,8 @@ namespace StoreManagement.Api.Repositories
                     GrandTotal = grandTotal,
                     IsReceived = isReceived,
                     AmountReceived = amountReceived,
-                    BalanceDue = balanceDue
+                    BalanceDue = balanceDue,
+                    InvoiceDate = invoiceDate
                 }, transaction);
 
                 // 5. Insert Invoice Items, update Product stock & log Stock Movements
@@ -149,6 +151,7 @@ namespace StoreManagement.Api.Repositories
                     IsReceived = isReceived,
                     AmountReceived = amountReceived,
                     BalanceDue = balanceDue,
+                    InvoiceDate = invoiceDate,
                     CreatedAt = DateTime.UtcNow,
                     Store = store,
                     Items = invoiceItems
@@ -190,13 +193,14 @@ namespace StoreManagement.Api.Repositories
                 bool isReceived = request.IsReceived;
                 decimal amountReceived = request.AmountReceived.HasValue ? request.AmountReceived.Value : (isReceived ? grandTotal : 0m);
                 decimal balanceDue = isReceived && !request.AmountReceived.HasValue ? 0m : Math.Max(0m, grandTotal - amountReceived);
+                var invoiceDate = (request.InvoiceDate ?? DateTime.UtcNow).Date;
 
                 var random = new Random();
                 var invoiceNumber = $"INV-{DateTime.UtcNow:yyyyMMdd}-{random.Next(1000, 9999)}";
 
                 const string insertInvoiceSql = @"
-                    INSERT INTO Invoices (UserId, InvoiceNumber, CustomerName, CustomerMobileNumber, Subtotal, GrandTotal, IsReceived, AmountReceived, BalanceDue, CreatedAt)
-                    VALUES (@UserId, @InvoiceNumber, @CustomerName, @CustomerMobileNumber, @Subtotal, @GrandTotal, @IsReceived, @AmountReceived, @BalanceDue, NOW());
+                    INSERT INTO Invoices (UserId, InvoiceNumber, CustomerName, CustomerMobileNumber, Subtotal, GrandTotal, IsReceived, AmountReceived, BalanceDue, InvoiceDate, CreatedAt)
+                    VALUES (@UserId, @InvoiceNumber, @CustomerName, @CustomerMobileNumber, @Subtotal, @GrandTotal, @IsReceived, @AmountReceived, @BalanceDue, @InvoiceDate, NOW());
                     SELECT LAST_INSERT_ID();";
 
                 var invoiceId = await connection.ExecuteScalarAsync<int>(insertInvoiceSql, new
@@ -209,7 +213,8 @@ namespace StoreManagement.Api.Repositories
                     GrandTotal = grandTotal,
                     IsReceived = isReceived,
                     AmountReceived = amountReceived,
-                    BalanceDue = balanceDue
+                    BalanceDue = balanceDue,
+                    InvoiceDate = invoiceDate
                 }, transaction);
 
                 const string insertItemSql = @"
@@ -239,6 +244,7 @@ namespace StoreManagement.Api.Repositories
                     IsReceived = isReceived,
                     AmountReceived = amountReceived,
                     BalanceDue = balanceDue,
+                    InvoiceDate = invoiceDate,
                     CreatedAt = DateTime.UtcNow,
                     Store = store,
                     Items = invoiceItems

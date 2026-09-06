@@ -90,9 +90,11 @@ CREATE TABLE IF NOT EXISTS `Invoices` (
     `IsReceived` TINYINT(1) NOT NULL DEFAULT 1,
     `AmountReceived` DECIMAL(18,2) NOT NULL DEFAULT 0.00,
     `BalanceDue` DECIMAL(18,2) NOT NULL DEFAULT 0.00,
+    `InvoiceDate` DATE DEFAULT NULL,
     `CreatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT `fk_invoices_user` FOREIGN KEY (`UserId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
-    INDEX `idx_invoices_user_date` (`UserId`, `CreatedAt`)
+    INDEX `idx_invoices_user_date` (`UserId`, `InvoiceDate`),
+    INDEX `idx_invoices_created_at` (`UserId`, `CreatedAt`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 7. InvoiceItems Table
