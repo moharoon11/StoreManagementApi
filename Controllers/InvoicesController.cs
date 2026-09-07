@@ -14,12 +14,10 @@ namespace StoreManagement.Api.Controllers
     {
         private static readonly Logger Logger = LogManager.GetLogger("InvoicesController");
         private readonly IInvoiceRepository _invoiceRepository;
-        private readonly IPdfService _pdfService;
 
-        public InvoicesController(IInvoiceRepository invoiceRepository, IPdfService pdfService)
+        public InvoicesController(IInvoiceRepository invoiceRepository)
         {
             _invoiceRepository = invoiceRepository;
-            _pdfService = pdfService;
         }
 
         [HttpGet]
@@ -88,7 +86,7 @@ namespace StoreManagement.Api.Controllers
 
         [AllowAnonymous]
         [HttpGet("{id:int}/pdf")]
-        public async Task<IActionResult> DownloadPdf(int id)
+        public async Task<IActionResult> DownloadPdf(int id, [FromServices] IPdfService pdfService)
         {
             Logger.Debug("DownloadPdf api started. InvoiceId: {0}", id);
             var invoice = await _invoiceRepository.GetByIdAsync(id, 0);
@@ -98,7 +96,7 @@ namespace StoreManagement.Api.Controllers
                 return NotFound(ApiResponse.ErrorResult("Invoice not found."));
             }
 
-            var pdfBytes = _pdfService.GenerateInvoicePdf(invoice);
+            var pdfBytes = pdfService.GenerateInvoicePdf(invoice);
             var fileName = $"Invoice_{invoice.InvoiceNumber}.pdf";
 
             return File(pdfBytes, "application/pdf", fileName);
