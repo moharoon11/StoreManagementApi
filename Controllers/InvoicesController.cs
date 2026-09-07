@@ -90,10 +90,11 @@ namespace StoreManagement.Api.Controllers
         [HttpGet("{id:int}/pdf")]
         public async Task<IActionResult> DownloadPdf(int id)
         {
-            Logger.Debug("DownloadPdf started. InvoiceId: {0}", id);
+            Logger.Debug("DownloadPdf api started. InvoiceId: {0}", id);
             var invoice = await _invoiceRepository.GetByIdAsync(id, 0);
             if (invoice == null)
             {
+                Logger.Debug($"{nameof(DownloadPdf)} |  Pdf not found for downloading | pdf is null for id = {id}");
                 return NotFound(ApiResponse.ErrorResult("Invoice not found."));
             }
 
