@@ -22,7 +22,7 @@ namespace StoreManagement.Api.Services
             var secretKey = _configuration["JwtSettings:SecretKey"] ?? "DefaultSecretKeyThatIsAtLeast32BytesLongForSecurity!";
             var issuer = _configuration["JwtSettings:Issuer"] ?? "StoreManagementApi";
             var audience = _configuration["JwtSettings:Audience"] ?? "StoreManagementFlutterApp";
-            var expiryDays = int.TryParse(_configuration["JwtSettings:ExpiryInDays"], out var days) ? days : 7;
+            var expiryMinutes = int.TryParse(_configuration["JwtSettings:AccessTokenExpiryInMinutes"], out var minutes) ? minutes : 30;
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -38,7 +38,7 @@ namespace StoreManagement.Api.Services
                 issuer: issuer,
                 audience: audience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddDays(expiryDays),
+                expires: DateTime.UtcNow.AddMinutes(expiryMinutes),
                 signingCredentials: credentials);
 
             var generatedToken = new JwtSecurityTokenHandler().WriteToken(token);
