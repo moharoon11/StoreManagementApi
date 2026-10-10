@@ -27,4 +27,6 @@ public class CustomerCreditTransaction
     public decimal? Price { get; set; }
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
+    public bool IsReceived { get; set; }
+    public DateTime? ReceivedAt { get; set; }
 }

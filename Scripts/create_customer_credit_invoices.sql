@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS `CustomerCreditTransactions` (
     `Price` DECIMAL(18,2) NULL,
     `Notes` VARCHAR(500) NULL,
     `CreatedAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `IsReceived` TINYINT(1) NOT NULL DEFAULT 0,
+    `ReceivedAt` DATETIME NULL,
     CONSTRAINT `fk_customercredittransactions_invoice` FOREIGN KEY (`CustomerCreditInvoiceId`) REFERENCES `CustomerCreditInvoices` (`Id`) ON DELETE CASCADE,
     INDEX `idx_customercredittransactions_invoice_date` (`CustomerCreditInvoiceId`, `TransactionDate`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

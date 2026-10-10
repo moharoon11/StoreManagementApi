@@ -13,6 +13,7 @@ public class CreateCustomerCreditInvoiceDto
     public decimal? Quantity { get; set; }
     public decimal? Price { get; set; }
     [StringLength(500)] public string? Notes { get; set; }
+    public List<CreditLineDto>? Items { get; set; }
 }
 
 public class AddCustomerCreditTransactionDto
@@ -23,4 +24,12 @@ public class AddCustomerCreditTransactionDto
     public decimal? Quantity { get; set; }
     public decimal? Price { get; set; }
     [StringLength(500)] public string? Notes { get; set; }
+    public List<CreditLineDto>? Items { get; set; }
+}
+
+public class CreditLineDto
+{
+    [Required, StringLength(150)] public string ProductName { get; set; } = string.Empty;
+    [Range(typeof(decimal), "0.001", "999999999999999.999")] public decimal Quantity { get; set; }
+    [Range(typeof(decimal), "0.01", "999999999999999.99")] public decimal Price { get; set; }
 }

@@ -10,4 +10,5 @@ public interface ICustomerCreditInvoiceRepository
     Task<CustomerCreditInvoice?> GetByIdAsync(int id, int userId);
     Task<CustomerCreditInvoice?> AddTransactionAsync(int id, int userId, AddCustomerCreditTransactionDto dto);
     Task<bool> MarkReceivedAsync(int id, int userId);
+    Task<bool> MarkTransactionReceivedAsync(int invoiceId, int transactionId, int userId);
 }

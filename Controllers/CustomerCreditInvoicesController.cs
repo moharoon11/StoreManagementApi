@@ -25,7 +25,7 @@ public class CustomerCreditInvoicesController(ICustomerCreditInvoiceRepository r
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCustomerCreditInvoiceDto dto)
     {
-        if (!ModelState.IsValid || !OptionalProductIsValid(dto.ProductName, dto.Quantity, dto.Price))
+        if (!ModelState.IsValid || !OptionalProductIsValid(dto.ProductName, dto.Quantity, dto.Price) || !ItemsAreValid(dto.Items))
             return BadRequest(ApiResponse.ErrorResult("Provide product name, quantity, and price together, with positive quantity and price."));
         var invoice = await repository.CreateAsync(CurrentUserId, dto);
         return CreatedAtAction(nameof(GetById), new { id = invoice.Id }, ApiResponse<CustomerCreditInvoice>.SuccessResult(invoice, "Customer credit invoice created."));
@@ -34,7 +34,7 @@ public class CustomerCreditInvoicesController(ICustomerCreditInvoiceRepository r
     [HttpPost("{id:int}/transactions")]
     public async Task<IActionResult> AddTransaction(int id, [FromBody] AddCustomerCreditTransactionDto dto)
     {
-        if (!ModelState.IsValid || !OptionalProductIsValid(dto.ProductName, dto.Quantity, dto.Price))
+        if (!ModelState.IsValid || !OptionalProductIsValid(dto.ProductName, dto.Quantity, dto.Price) || !ItemsAreValid(dto.Items))
             return BadRequest(ApiResponse.ErrorResult("Provide product name, quantity, and price together, with positive quantity and price."));
         var invoice = await repository.AddTransactionAsync(id, CurrentUserId, dto);
         return invoice is null ? NotFound(ApiResponse.ErrorResult("Pending customer credit invoice not found.")) : Ok(ApiResponse<CustomerCreditInvoice>.SuccessResult(invoice, "Transaction added."));
@@ -47,9 +47,19 @@ public class CustomerCreditInvoicesController(ICustomerCreditInvoiceRepository r
         return updated ? Ok(ApiResponse.SuccessResult("Invoice marked as received.")) : NotFound(ApiResponse.ErrorResult("Pending customer credit invoice not found."));
     }
 
+    [HttpPut("{id:int}/transactions/{transactionId:int}/received")]
+    public async Task<IActionResult> MarkTransactionReceived(int id, int transactionId)
+    {
+        var updated = await repository.MarkTransactionReceivedAsync(id, transactionId, CurrentUserId);
+        return updated ? Ok(ApiResponse.SuccessResult("Credit entry marked as received.")) : NotFound(ApiResponse.ErrorResult("Pending credit entry not found."));
+    }
+
     private static bool OptionalProductIsValid(string? name, decimal? quantity, decimal? price)
     {
         var hasAny = !string.IsNullOrWhiteSpace(name) || quantity.HasValue || price.HasValue;
         return !hasAny || (!string.IsNullOrWhiteSpace(name) && quantity > 0 && price > 0);
     }
+
+    private static bool ItemsAreValid(IReadOnlyCollection<CreditLineDto>? items) =>
+        items is null || items.All(item => !string.IsNullOrWhiteSpace(item.ProductName) && item.Quantity > 0 && item.Price > 0);
 }
