@@ -72,7 +72,7 @@ namespace StoreManagement.Api.Repositories
                     ii.ProductName,
                     ii.Unit,
                     SUM(ii.Quantity) AS TotalQuantitySold,
-                    SUM(ii.Total) AS TotalRevenue
+                    SUM(ii.Total * (1 - COALESCE(i.DiscountAmount / NULLIF(i.Subtotal, 0), 0))) AS TotalRevenue
                 FROM InvoiceItems ii
                 INNER JOIN Invoices i ON ii.InvoiceId = i.Id
                 WHERE i.UserId = @UserId AND i.CreatedAt BETWEEN @StartDate AND @EndDate
@@ -88,7 +88,7 @@ namespace StoreManagement.Api.Repositories
                     c.Id AS CategoryId,
                     c.Name AS CategoryName,
                     SUM(ii.Quantity) AS TotalQuantitySold,
-                    SUM(ii.Total) AS TotalRevenue
+                    SUM(ii.Total * (1 - COALESCE(i.DiscountAmount / NULLIF(i.Subtotal, 0), 0))) AS TotalRevenue
                 FROM InvoiceItems ii
                 INNER JOIN Invoices i ON ii.InvoiceId = i.Id
                 INNER JOIN Products p ON ii.ProductId = p.Id

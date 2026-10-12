@@ -97,6 +97,7 @@ namespace StoreManagement.Api.Services
                         columns.RelativeColumn(1);
                         columns.RelativeColumn(1);
                         columns.RelativeColumn(1);
+                        columns.RelativeColumn(1);
                     });
 
                     // Table Header
@@ -105,9 +106,10 @@ namespace StoreManagement.Api.Services
                         header.Cell().Element(HeaderCellStyle).Text("#");
                         if (!isManualInvoice)
                             header.Cell().Element(HeaderCellStyle).Text("Product");
-                        header.Cell().Element(HeaderCellStyle).AlignRight().Text("Price");
+                        header.Cell().Element(HeaderCellStyle).AlignRight().Text("Product price");
+                        header.Cell().Element(HeaderCellStyle).AlignRight().Text("Sold price");
                         header.Cell().Element(HeaderCellStyle).AlignRight().Text("Qty");
-                        header.Cell().Element(HeaderCellStyle).AlignRight().Text("Total");
+                        header.Cell().Element(HeaderCellStyle).AlignRight().Text("After discount");
                     });
 
                     // Table Rows
@@ -120,8 +122,12 @@ namespace StoreManagement.Api.Services
                         if (!isManualInvoice)
                             table.Cell().Element(c => CellStyle(c, backgroundColor)).Text(item.ProductName).Bold();
                         table.Cell().Element(c => CellStyle(c, backgroundColor)).AlignRight().Text($"₹{item.SellingPrice:N2}");
+                        table.Cell().Element(c => CellStyle(c, backgroundColor)).AlignRight().Text($"₹{item.SellingPrice:N2}");
                         table.Cell().Element(c => CellStyle(c, backgroundColor)).AlignRight().Text($"{item.Quantity:0.###} {item.Unit}");
-                        table.Cell().Element(c => CellStyle(c, backgroundColor)).AlignRight().Text($"₹{item.Total:N2}");
+                        var discountedLineTotal = invoice.Subtotal > 0
+                            ? item.Total * (1 - invoice.DiscountAmount / invoice.Subtotal)
+                            : item.Total;
+                        table.Cell().Element(c => CellStyle(c, backgroundColor)).AlignRight().Text($"₹{discountedLineTotal:N2}");
                     }
                 });
 
@@ -134,6 +140,16 @@ namespace StoreManagement.Api.Services
                     {
                         r.ConstantItem(150).Text("Subtotal:").FontSize(11);
                         r.ConstantItem(100).AlignRight().Text($"₹{invoice.Subtotal:N2}").FontSize(11);
+                    });
+
+                    summary.Item().PaddingTop(4).Row(r =>
+                    {
+                        if (invoice.DiscountAmount <= 0) return;
+                        var label = invoice.DiscountType == "PERCENTAGE"
+                            ? $"Discount ({invoice.DiscountValue:N2}%):"
+                            : "Discount:";
+                        r.ConstantItem(150).Text(label).FontSize(11);
+                        r.ConstantItem(100).AlignRight().Text($"-₹{invoice.DiscountAmount:N2}").FontSize(11);
                     });
 
                     summary.Item().PaddingTop(4).Row(r =>

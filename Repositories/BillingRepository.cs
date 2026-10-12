@@ -60,11 +60,14 @@ namespace StoreManagement.Api.Repositories
                     });
                 }
 
-                decimal grandTotal = subtotal; // Can add tax logic if needed, default subtotal = grandtotal
-                bool isReceived = request.IsReceived;
-                decimal amountReceived = request.AmountReceived.HasValue ? request.AmountReceived.Value : (isReceived ? grandTotal : 0m);
-                decimal balanceDue = isReceived && !request.AmountReceived.HasValue ? 0m : Math.Max(0m, grandTotal - amountReceived);
-                if (balanceDue > 0 && isReceived && !request.AmountReceived.HasValue) isReceived = false;
+                var (discountType, discountValue, discountAmount) = CalculateDiscount(
+                    subtotal, request.DiscountType, request.DiscountValue);
+                decimal grandTotal = subtotal - discountAmount;
+                decimal amountReceived = request.AmountReceived ?? (request.IsReceived ? grandTotal : 0m);
+                if (amountReceived < 0m || amountReceived > grandTotal)
+                    throw new InvalidOperationException("Amount received must be between zero and the discounted total.");
+                bool isReceived = amountReceived >= grandTotal;
+                decimal balanceDue = Math.Max(0m, grandTotal - amountReceived);
                 var invoiceDate = (request.InvoiceDate ?? DateTime.UtcNow).Date;
 
                 // 3. Generate unique invoice number
@@ -73,8 +76,8 @@ namespace StoreManagement.Api.Repositories
 
                 // 4. Create Invoice Header
                 const string insertInvoiceSql = @"
-                    INSERT INTO Invoices (UserId, InvoiceNumber, CustomerName, CustomerMobileNumber, Subtotal, GrandTotal, IsReceived, AmountReceived, BalanceDue, InvoiceDate, CreatedAt)
-                    VALUES (@UserId, @InvoiceNumber, @CustomerName, @CustomerMobileNumber, @Subtotal, @GrandTotal, @IsReceived, @AmountReceived, @BalanceDue, @InvoiceDate, NOW());
+                    INSERT INTO Invoices (UserId, InvoiceNumber, CustomerName, CustomerMobileNumber, Subtotal, DiscountType, DiscountValue, DiscountAmount, GrandTotal, IsReceived, AmountReceived, BalanceDue, InvoiceDate, CreatedAt)
+                    VALUES (@UserId, @InvoiceNumber, @CustomerName, @CustomerMobileNumber, @Subtotal, @DiscountType, @DiscountValue, @DiscountAmount, @GrandTotal, @IsReceived, @AmountReceived, @BalanceDue, @InvoiceDate, NOW());
                     SELECT LAST_INSERT_ID();";
 
                 var invoiceId = await connection.ExecuteScalarAsync<int>(insertInvoiceSql, new
@@ -84,6 +87,9 @@ namespace StoreManagement.Api.Repositories
                     CustomerName = request.CustomerName?.Trim() ?? "NO_NAME",
                     CustomerMobileNumber = request.CustomerMobileNumber.Trim(),
                     Subtotal = subtotal,
+                    DiscountType = discountType,
+                    DiscountValue = discountValue,
+                    DiscountAmount = discountAmount,
                     GrandTotal = grandTotal,
                     IsReceived = isReceived,
                     AmountReceived = amountReceived,
@@ -147,6 +153,9 @@ namespace StoreManagement.Api.Repositories
                     CustomerName = request.CustomerName.Trim(),
                     CustomerMobileNumber = request.CustomerMobileNumber.Trim(),
                     Subtotal = subtotal,
+                    DiscountType = discountType,
+                    DiscountValue = discountValue,
+                    DiscountAmount = discountAmount,
                     GrandTotal = grandTotal,
                     IsReceived = isReceived,
                     AmountReceived = amountReceived,
@@ -189,18 +198,22 @@ namespace StoreManagement.Api.Repositories
                     });
                 }
 
-                decimal grandTotal = subtotal;
-                bool isReceived = request.IsReceived;
-                decimal amountReceived = request.AmountReceived.HasValue ? request.AmountReceived.Value : (isReceived ? grandTotal : 0m);
-                decimal balanceDue = isReceived && !request.AmountReceived.HasValue ? 0m : Math.Max(0m, grandTotal - amountReceived);
+                var (discountType, discountValue, discountAmount) = CalculateDiscount(
+                    subtotal, request.DiscountType, request.DiscountValue);
+                decimal grandTotal = subtotal - discountAmount;
+                decimal amountReceived = request.AmountReceived ?? (request.IsReceived ? grandTotal : 0m);
+                if (amountReceived < 0m || amountReceived > grandTotal)
+                    throw new InvalidOperationException("Amount received must be between zero and the discounted total.");
+                bool isReceived = amountReceived >= grandTotal;
+                decimal balanceDue = Math.Max(0m, grandTotal - amountReceived);
                 var invoiceDate = (request.InvoiceDate ?? DateTime.UtcNow).Date;
 
                 var random = new Random();
                 var invoiceNumber = $"INV-{DateTime.UtcNow:yyyyMMdd}-{random.Next(1000, 9999)}";
 
                 const string insertInvoiceSql = @"
-                    INSERT INTO Invoices (UserId, InvoiceNumber, CustomerName, CustomerMobileNumber, Subtotal, GrandTotal, IsReceived, AmountReceived, BalanceDue, InvoiceDate, CreatedAt)
-                    VALUES (@UserId, @InvoiceNumber, @CustomerName, @CustomerMobileNumber, @Subtotal, @GrandTotal, @IsReceived, @AmountReceived, @BalanceDue, @InvoiceDate, NOW());
+                    INSERT INTO Invoices (UserId, InvoiceNumber, CustomerName, CustomerMobileNumber, Subtotal, DiscountType, DiscountValue, DiscountAmount, GrandTotal, IsReceived, AmountReceived, BalanceDue, InvoiceDate, CreatedAt)
+                    VALUES (@UserId, @InvoiceNumber, @CustomerName, @CustomerMobileNumber, @Subtotal, @DiscountType, @DiscountValue, @DiscountAmount, @GrandTotal, @IsReceived, @AmountReceived, @BalanceDue, @InvoiceDate, NOW());
                     SELECT LAST_INSERT_ID();";
 
                 var invoiceId = await connection.ExecuteScalarAsync<int>(insertInvoiceSql, new
@@ -210,6 +223,9 @@ namespace StoreManagement.Api.Repositories
                     CustomerName = request.CustomerName?.Trim() ?? "NO_NAME",
                     CustomerMobileNumber = request.CustomerMobileNumber.Trim(),
                     Subtotal = subtotal,
+                    DiscountType = discountType,
+                    DiscountValue = discountValue,
+                    DiscountAmount = discountAmount,
                     GrandTotal = grandTotal,
                     IsReceived = isReceived,
                     AmountReceived = amountReceived,
@@ -240,6 +256,9 @@ namespace StoreManagement.Api.Repositories
                     CustomerName = request.CustomerName?.Trim() ?? "",
                     CustomerMobileNumber = request.CustomerMobileNumber.Trim(),
                     Subtotal = subtotal,
+                    DiscountType = discountType,
+                    DiscountValue = discountValue,
+                    DiscountAmount = discountAmount,
                     GrandTotal = grandTotal,
                     IsReceived = isReceived,
                     AmountReceived = amountReceived,
@@ -255,6 +274,24 @@ namespace StoreManagement.Api.Repositories
                 await transaction.RollbackAsync();
                 throw;
             }
+        }
+
+        private static (string? Type, decimal Value, decimal Amount) CalculateDiscount(
+            decimal subtotal, string? requestedType, decimal? requestedValue)
+        {
+            var value = requestedValue ?? 0m;
+            var type = requestedType?.Trim().ToUpperInvariant();
+            if (value == 0m && string.IsNullOrEmpty(type)) return (null, 0m, 0m);
+            if (type is not ("AMOUNT" or "PERCENTAGE"))
+                throw new InvalidOperationException("Select a valid discount type.");
+            if (value < 0m) throw new InvalidOperationException("Discount cannot be negative.");
+
+            var amount = type == "PERCENTAGE"
+                ? subtotal * value / 100m
+                : value;
+            if ((type == "PERCENTAGE" && value > 100m) || amount > subtotal)
+                throw new InvalidOperationException("Discount cannot exceed the subtotal.");
+            return (type, value, decimal.Round(amount, 2, MidpointRounding.AwayFromZero));
         }
     }
 }

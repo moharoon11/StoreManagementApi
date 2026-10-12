@@ -28,6 +28,12 @@ namespace StoreManagement.Api.Dtos
         public bool IsReceived { get; set; } = true;
         public decimal? AmountReceived { get; set; }
 
+        [RegularExpression("^(AMOUNT|PERCENTAGE)$", ErrorMessage = "Discount type must be AMOUNT or PERCENTAGE")]
+        public string? DiscountType { get; set; }
+
+        [Range(typeof(decimal), "0", "999999999999999.99", ErrorMessage = "Discount value must not be negative")]
+        public decimal? DiscountValue { get; set; }
+
         /// <summary>
         /// Optional calendar date of the sale. When omitted, checkout uses the
         /// server's current UTC date so existing clients retain their behavior.
@@ -60,6 +66,12 @@ namespace StoreManagement.Api.Dtos
 
         public bool IsReceived { get; set; } = true;
         public decimal? AmountReceived { get; set; }
+
+        [RegularExpression("^(AMOUNT|PERCENTAGE)$", ErrorMessage = "Discount type must be AMOUNT or PERCENTAGE")]
+        public string? DiscountType { get; set; }
+
+        [Range(typeof(decimal), "0", "999999999999999.99", ErrorMessage = "Discount value must not be negative")]
+        public decimal? DiscountValue { get; set; }
 
         [DataType(DataType.Date)]
         public DateTime? InvoiceDate { get; set; }

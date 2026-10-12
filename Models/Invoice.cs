@@ -8,6 +8,9 @@ namespace StoreManagement.Api.Models
         public string CustomerName { get; set; } = string.Empty;
         public string CustomerMobileNumber { get; set; } = string.Empty;
         public decimal Subtotal { get; set; }
+        public string? DiscountType { get; set; }
+        public decimal DiscountValue { get; set; }
+        public decimal DiscountAmount { get; set; }
         public decimal GrandTotal { get; set; }
         public bool IsReceived { get; set; } = true;
         public decimal AmountReceived { get; set; }
