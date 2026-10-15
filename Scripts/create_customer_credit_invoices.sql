@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS `CustomerCreditTransactions` (
     `CustomerCreditInvoiceId` INT NOT NULL,
     `TransactionType` ENUM('CREDIT', 'SETTLEMENT') NOT NULL DEFAULT 'CREDIT',
     `Amount` DECIMAL(18,2) NOT NULL,
+    `ReceivedAmount` DECIMAL(18,2) NOT NULL DEFAULT 0.00,
     `TransactionDate` DATE NOT NULL,
     `ProductName` VARCHAR(150) NULL,
     `Quantity` DECIMAL(18,3) NULL,

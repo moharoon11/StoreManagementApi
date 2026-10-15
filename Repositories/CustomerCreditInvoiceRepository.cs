@@ -97,11 +97,58 @@ public class CustomerCreditInvoiceRepository(IDbConnectionFactory dbConnectionFa
             WHERE Id = @TransactionId AND CustomerCreditInvoiceId = @InvoiceId AND TransactionType = 'CREDIT' AND IsReceived = 0 FOR UPDATE;";
         var credit = await connection.QuerySingleOrDefaultAsync<CustomerCreditTransaction>(creditSql, new { TransactionId = transactionId, InvoiceId = invoiceId }, transaction);
         if (credit is null) return false;
-        await connection.ExecuteAsync("UPDATE CustomerCreditTransactions SET IsReceived = 1, ReceivedAt = UTC_TIMESTAMP() WHERE Id = @TransactionId;", new { TransactionId = transactionId }, transaction);
-        await InsertTransactionAsync(connection, transaction, invoiceId, "SETTLEMENT", credit.Amount, DateTime.UtcNow.Date, null, null, null, $"Received for credit entry #{transactionId}");
-        await connection.ExecuteAsync("UPDATE CustomerCreditInvoices SET OutstandingBalance = GREATEST(0, OutstandingBalance - @Amount) WHERE Id = @InvoiceId;", new { Amount = credit.Amount, InvoiceId = invoiceId }, transaction);
+        var remaining = Math.Max(0m, credit.Amount - credit.ReceivedAmount);
+        if (remaining <= 0m) return false;
+        await ApplyTransactionPaymentAsync(connection, transaction, invoice, credit, remaining);
         await transaction.CommitAsync();
         return true;
+    }
+
+    public async Task<bool> RecordTransactionPaymentAsync(int invoiceId, int transactionId, int userId, decimal amount)
+    {
+        await using var connection = await dbConnectionFactory.CreateConnectionAsync();
+        await using var transaction = await connection.BeginTransactionAsync();
+        const string invoiceSql = "SELECT * FROM CustomerCreditInvoices WHERE Id = @InvoiceId AND UserId = @UserId AND IsReceived = 0 FOR UPDATE;";
+        var invoice = await connection.QuerySingleOrDefaultAsync<CustomerCreditInvoice>(invoiceSql, new { InvoiceId = invoiceId, UserId = userId }, transaction);
+        if (invoice is null) return false;
+        const string creditSql = @"SELECT * FROM CustomerCreditTransactions
+            WHERE Id = @TransactionId AND CustomerCreditInvoiceId = @InvoiceId AND TransactionType = 'CREDIT' AND IsReceived = 0 FOR UPDATE;";
+        var credit = await connection.QuerySingleOrDefaultAsync<CustomerCreditTransaction>(creditSql, new { TransactionId = transactionId, InvoiceId = invoiceId }, transaction);
+        if (credit is null || amount <= 0m || amount > credit.Amount - credit.ReceivedAmount) return false;
+
+        await ApplyTransactionPaymentAsync(connection, transaction, invoice, credit, amount);
+        await transaction.CommitAsync();
+        return true;
+    }
+
+    private static async Task ApplyTransactionPaymentAsync(
+        System.Data.IDbConnection connection,
+        System.Data.IDbTransaction transaction,
+        CustomerCreditInvoice invoice,
+        CustomerCreditTransaction credit,
+        decimal payment)
+    {
+        var newReceived = credit.ReceivedAmount + payment;
+        var settled = newReceived >= credit.Amount;
+        await connection.ExecuteAsync(@"UPDATE CustomerCreditTransactions
+            SET ReceivedAmount = @ReceivedAmount,
+                IsReceived = @IsReceived,
+                ReceivedAt = CASE WHEN @IsReceived = 1 THEN UTC_TIMESTAMP() ELSE NULL END
+            WHERE Id = @Id;",
+            new { ReceivedAmount = newReceived, IsReceived = settled, Id = credit.Id }, transaction);
+        await InsertTransactionAsync(connection, transaction, invoice.Id, "SETTLEMENT", payment,
+            DateTime.UtcNow.Date, null, null, null, $"Payment for credit entry #{credit.Id}");
+
+        var balance = Math.Max(0m, invoice.OutstandingBalance - payment);
+        var allCreditsSettled = await connection.ExecuteScalarAsync<int>(@"SELECT COUNT(*) FROM CustomerCreditTransactions
+            WHERE CustomerCreditInvoiceId = @InvoiceId AND TransactionType = 'CREDIT' AND IsReceived = 0;",
+            new { InvoiceId = invoice.Id }, transaction) == 0;
+        await connection.ExecuteAsync(@"UPDATE CustomerCreditInvoices
+            SET OutstandingBalance = @Balance,
+                IsReceived = @IsReceived,
+                ReceivedAt = CASE WHEN @IsReceived = 1 THEN UTC_TIMESTAMP() ELSE NULL END
+            WHERE Id = @Id;",
+            new { Balance = balance, IsReceived = allCreditsSettled || balance <= 0m, Id = invoice.Id }, transaction);
     }
 
     private static async Task InsertCreditLinesAsync(System.Data.IDbConnection connection, System.Data.IDbTransaction transaction,

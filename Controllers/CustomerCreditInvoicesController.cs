@@ -54,6 +54,22 @@ public class CustomerCreditInvoicesController(ICustomerCreditInvoiceRepository r
         return updated ? Ok(ApiResponse.SuccessResult("Credit entry marked as received.")) : NotFound(ApiResponse.ErrorResult("Pending credit entry not found."));
     }
 
+    [HttpPost("{id:int}/transactions/{transactionId:int}/payments")]
+    public async Task<IActionResult> RecordTransactionPayment(
+        int id,
+        int transactionId,
+        [FromBody] RecordCustomerCreditPaymentDto dto)
+    {
+        if (!ModelState.IsValid || dto is null)
+            return BadRequest(ApiResponse.ErrorResult("Enter a valid payment amount."));
+
+        var updated = await repository.RecordTransactionPaymentAsync(
+            id, transactionId, CurrentUserId, dto.Amount);
+        return updated
+            ? Ok(ApiResponse.SuccessResult("Partial payment recorded."))
+            : BadRequest(ApiResponse.ErrorResult("Payment exceeds the remaining credit amount, or this entry is already settled."));
+    }
+
     private static bool OptionalProductIsValid(string? name, decimal? quantity, decimal? price)
     {
         var hasAny = !string.IsNullOrWhiteSpace(name) || quantity.HasValue || price.HasValue;

@@ -21,6 +21,7 @@ public class CustomerCreditTransaction
     public int CustomerCreditInvoiceId { get; set; }
     public string TransactionType { get; set; } = "CREDIT";
     public decimal Amount { get; set; }
+    public decimal ReceivedAmount { get; set; }
     public DateTime TransactionDate { get; set; }
     public string? ProductName { get; set; }
     public decimal? Quantity { get; set; }

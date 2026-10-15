@@ -33,3 +33,9 @@ public class CreditLineDto
     [Range(typeof(decimal), "0.001", "999999999999999.999")] public decimal Quantity { get; set; }
     [Range(typeof(decimal), "0.01", "999999999999999.99")] public decimal Price { get; set; }
 }
+
+public class RecordCustomerCreditPaymentDto
+{
+    [Range(typeof(decimal), "0.01", "999999999999999.99", ErrorMessage = "Payment amount must be greater than zero")]
+    public decimal Amount { get; set; }
+}
