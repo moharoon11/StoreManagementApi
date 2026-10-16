@@ -8,4 +8,5 @@ public interface IRefreshTokenRepository
     Task<RefreshToken?> GetByTokenHashAsync(string tokenHash);
     Task<bool> RotateAsync(string currentTokenHash, RefreshToken replacement);
     Task RevokeAsync(string tokenHash);
+    Task RevokeAllForUserAsync(int userId);
 }

@@ -18,15 +18,22 @@ public class AuthController : ControllerBase
     private readonly IUserRepository _userRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IJwtService _jwtService;
+    private readonly IPasswordResetRepository _passwordResetRepository;
+    private readonly IEmailQueue _emailQueue;
+    private readonly IGeoLocationService _geoLocationService;
     private readonly IConfiguration _configuration;
     private static readonly Logger Logger = LogManager.GetLogger("AuthController");
 
     public AuthController(IUserRepository userRepository, IRefreshTokenRepository refreshTokenRepository,
-        IJwtService jwtService, IConfiguration configuration)
+        IJwtService jwtService, IPasswordResetRepository passwordResetRepository,
+        IEmailQueue emailQueue, IGeoLocationService geoLocationService, IConfiguration configuration)
     {
         _userRepository = userRepository;
         _refreshTokenRepository = refreshTokenRepository;
         _jwtService = jwtService;
+        _passwordResetRepository = passwordResetRepository;
+        _emailQueue = emailQueue;
+        _geoLocationService = geoLocationService;
         _configuration = configuration;
     }
 
@@ -96,6 +103,61 @@ public class AuthController : ControllerBase
         return Ok(ApiResponse.SuccessResult("Logged out."));
     }
 
+    [AllowAnonymous]
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto, CancellationToken cancellationToken)
+    {
+        // This response deliberately does not reveal whether a store email exists,
+        // whether it is rate-limited, or whether mail delivery failed.
+        const string genericMessage = "If that email is registered, a password reset link will be sent shortly.";
+        if (!ModelState.IsValid) return Ok(ApiResponse.SuccessResult(genericMessage));
+
+        var publicIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+        // Do this best-effort work before the account lookup too, so an existing
+        // address does not have a distinctive response time.
+        var (city, region) = await _geoLocationService.LookupAsync(publicIp, cancellationToken);
+        var account = await _passwordResetRepository.FindUserByStoreEmailAsync(dto.Email.Trim().ToLowerInvariant());
+        if (!account.HasValue) return Ok(ApiResponse.SuccessResult(genericMessage));
+
+        var rawToken = GenerateResetToken();
+        var request = new PasswordResetRequest
+        {
+            UserId = account.Value.UserId,
+            TokenHash = HashToken(rawToken),
+            RequestedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddHours(1),
+            DeviceType = Clean(dto.DeviceType, 60),
+            OperatingSystem = Clean(dto.OperatingSystem, 100),
+            Browser = Clean(dto.Browser ?? Request.Headers.UserAgent.ToString(), 200),
+            DeviceId = Clean(dto.DeviceId, 128),
+            PublicIp = Clean(publicIp, 45), City = Clean(city, 100), Region = Clean(region, 100),
+            GpsLatitude = dto.GpsLatitude, GpsLongitude = dto.GpsLongitude
+        };
+        if (await _passwordResetRepository.TryCreateAsync(request) != PasswordResetCreateResult.Created)
+            return Ok(ApiResponse.SuccessResult(genericMessage));
+
+        try
+        {
+            var resetUrl = BuildResetUrl(rawToken);
+            _emailQueue.Queue((email, ct) => email.SendPasswordResetAsync(account.Value.Email, resetUrl, request, ct));
+        }
+        catch (Exception ex) { Logger.Error(ex, "Password reset email could not be queued for user {0}.", account.Value.UserId); }
+        return Ok(ApiResponse.SuccessResult(genericMessage));
+    }
+
+    [AllowAnonymous]
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid || string.IsNullOrWhiteSpace(dto.NewPassword))
+            return BadRequest(ApiResponse.ErrorResult("Invalid password reset request."));
+        var passwordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+        var result = await _passwordResetRepository.UseTokenAndResetPasswordAsync(HashToken(dto.Token), passwordHash);
+        if (!result.Success) return BadRequest(ApiResponse.ErrorResult("This password reset link is invalid, expired, or has already been used."));
+        _emailQueue.Queue((email, ct) => email.SendPasswordChangedConfirmationAsync(result.Email, ct));
+        return Ok(ApiResponse.SuccessResult("Password changed. Please sign in with your new password."));
+    }
+
     private async Task<AuthResponseDto?> IssueTokensAsync(User user, string deviceId, string? deviceName)
     {
         var rawRefreshToken = GenerateRefreshToken();
@@ -132,6 +194,20 @@ public class AuthController : ControllerBase
         var bytes = RandomNumberGenerator.GetBytes(64);
         return Convert.ToBase64String(bytes).Replace("+", "-").Replace("/", "_").TrimEnd((char)61);
     }
+
+    private string BuildResetUrl(string rawToken)
+    {
+        var baseUrl = _configuration["Email:PasswordResetUrl"]?.Trim();
+        if (string.IsNullOrWhiteSpace(baseUrl))
+            throw new InvalidOperationException("Email:PasswordResetUrl must be configured before password reset can be used.");
+        // The fragment is not transmitted to the web host, reducing accidental
+        // token exposure in web-server logs and Referer headers.
+        return $"{baseUrl.TrimEnd('#')}#token={Uri.EscapeDataString(rawToken)}";
+    }
+
+    private static string GenerateResetToken() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(48))
+        .Replace("+", "-").Replace("/", "_").TrimEnd('=');
+    private static string? Clean(string? value, int maxLength) => string.IsNullOrWhiteSpace(value) ? null : value.Trim()[..Math.Min(value.Trim().Length, maxLength)];
 
     private static string HashToken(string token) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
 }

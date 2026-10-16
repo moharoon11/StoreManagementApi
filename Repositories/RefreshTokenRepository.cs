@@ -86,6 +86,14 @@ public class RefreshTokenRepository : IRefreshTokenRepository
             WHERE TokenHash = @tokenHash;", new { tokenHash });
     }
 
+    public async Task RevokeAllForUserAsync(int userId)
+    {
+        await using var connection = await _dbConnectionFactory.CreateConnectionAsync();
+        await connection.ExecuteAsync(@"
+            UPDATE RefreshTokens SET RevokedAt = COALESCE(RevokedAt, UTC_TIMESTAMP())
+            WHERE UserId = @userId;", new { userId });
+    }
+
     private const string InsertSql = @"
         INSERT INTO RefreshTokens (UserId, DeviceId, DeviceName, TokenHash, ExpiresAt, CreatedAt)
         VALUES (@UserId, @DeviceId, @DeviceName, @TokenHash, @ExpiresAt, @CreatedAt);";

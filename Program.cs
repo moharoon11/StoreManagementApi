@@ -26,7 +26,13 @@ builder.Services.AddScoped<ControllerLoggingFilter>();
 
 // 2. Services Registration
 builder.Services.AddHttpClient();
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
 builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+builder.Services.AddSingleton<EmailQueueService>();
+builder.Services.AddSingleton<IEmailQueue>(sp => sp.GetRequiredService<EmailQueueService>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<EmailQueueService>());
+builder.Services.AddScoped<IGeoLocationService, GeoLocationService>();
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IPdfService, PdfService>();
 builder.Services.AddScoped<IGeminiVisionService, GeminiVisionService>();
@@ -34,6 +40,7 @@ builder.Services.AddScoped<IGeminiVisionService, GeminiVisionService>();
 // 3. Repositories Registration
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+builder.Services.AddScoped<IPasswordResetRepository, PasswordResetRepository>();
 builder.Services.AddScoped<IStoreProfileRepository, StoreProfileRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
