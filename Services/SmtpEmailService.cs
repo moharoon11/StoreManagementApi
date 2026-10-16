@@ -59,17 +59,38 @@ public sealed class SmtpEmailService : IEmailService
         {
             throw new InvalidOperationException("Email is not configured. Set Email:SmtpHost, Email:SmtpUsername, Email:SmtpPassword, and Email:FromAddress in the deployment environment.");
         }
-        var message = new MimeMessage();
-        message.From.Add(new MailboxAddress(_options.FromName, _options.FromAddress));
-        message.To.Add(MailboxAddress.Parse(recipient));
-        message.Subject = subject;
-        message.Body = new BodyBuilder { HtmlBody = html }.ToMessageBody();
-        using var client = new SmtpClient();
-        await client.ConnectAsync(_options.SmtpHost, _options.SmtpPort, SecureSocketOptions.SslOnConnect, cancellationToken);
-        await client.AuthenticateAsync(_options.SmtpUsername, _options.SmtpPassword, cancellationToken);
-        await client.SendAsync(message, cancellationToken);
-        await client.DisconnectAsync(true, cancellationToken);
-        _logger.LogInformation("Security email accepted by the configured SMTP server.");
+        try
+        {
+            var message = new MimeMessage();
+            message.From.Add(new MailboxAddress(_options.FromName, _options.FromAddress));
+            message.To.Add(MailboxAddress.Parse(recipient));
+            message.Subject = subject;
+            message.Body = new BodyBuilder { HtmlBody = html }.ToMessageBody();
+
+            using var client = new SmtpClient();
+            _logger.LogInformation("Connecting to SMTP server {SmtpHost}:{SmtpPort} to send {Subject} to recipient domain {RecipientDomain}.",
+                _options.SmtpHost, _options.SmtpPort, subject, RecipientDomain(recipient));
+            await client.ConnectAsync(_options.SmtpHost, _options.SmtpPort, SecureSocketOptions.SslOnConnect, cancellationToken);
+            _logger.LogDebug("SMTP connection established. Authenticating SMTP user {SmtpUsername}.", _options.SmtpUsername);
+            await client.AuthenticateAsync(_options.SmtpUsername, _options.SmtpPassword, cancellationToken);
+            await client.SendAsync(message, cancellationToken);
+            await client.DisconnectAsync(true, cancellationToken);
+            _logger.LogInformation("Security email accepted by the configured SMTP server for recipient domain {RecipientDomain}.", RecipientDomain(recipient));
+        }
+        catch (Exception ex)
+        {
+            // Passing the exception as the first argument preserves its complete
+            // type, stack trace, and inner-exception chain in NLog.
+            _logger.LogError(ex, "SMTP delivery failed for {Subject} to recipient domain {RecipientDomain} via {SmtpHost}:{SmtpPort}.",
+                subject, RecipientDomain(recipient), _options.SmtpHost, _options.SmtpPort);
+            throw;
+        }
+    }
+
+    private static string RecipientDomain(string recipient)
+    {
+        var atIndex = recipient.LastIndexOf('@');
+        return atIndex >= 0 && atIndex < recipient.Length - 1 ? recipient[(atIndex + 1)..] : "invalid-address";
     }
     private static string Unknown(string? value) => string.IsNullOrWhiteSpace(value) ? "Unavailable" : value;
     private static string Location(PasswordResetRequest request) =>
