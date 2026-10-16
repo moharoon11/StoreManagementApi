@@ -40,7 +40,10 @@ public class AuthController : ControllerBase
 
         var user = new User { Username = dto.Username, PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password) };
         user.Id = await _userRepository.CreateUserAsync(user);
-        return Ok(ApiResponse<AuthResponseDto>.SuccessResult(await IssueTokensAsync(user), "User registered successfully."));
+        var auth = await IssueTokensAsync(user, dto.DeviceId, dto.DeviceName);
+        return auth is null
+            ? Conflict(ApiResponse.ErrorResult("This account is already active on two devices. Sign out from another device to continue."))
+            : Ok(ApiResponse<AuthResponseDto>.SuccessResult(auth, "User registered successfully."));
     }
 
     [AllowAnonymous]
@@ -52,7 +55,10 @@ public class AuthController : ControllerBase
         if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
             return Unauthorized(ApiResponse.ErrorResult("Invalid username or password."));
 
-        return Ok(ApiResponse<AuthResponseDto>.SuccessResult(await IssueTokensAsync(user), "Login successful."));
+        var auth = await IssueTokensAsync(user, dto.DeviceId, dto.DeviceName);
+        return auth is null
+            ? Conflict(ApiResponse.ErrorResult("This account is already active on two devices. Sign out from another device to continue."))
+            : Ok(ApiResponse<AuthResponseDto>.SuccessResult(auth, "Login successful."));
     }
 
     [AllowAnonymous]
@@ -70,7 +76,7 @@ public class AuthController : ControllerBase
         if (user == null) return Unauthorized(ApiResponse.ErrorResult("Session expired. Please log in again."));
 
         var rawReplacement = GenerateRefreshToken();
-        var replacement = CreateRefreshToken(user.Id, rawReplacement);
+        var replacement = CreateRefreshToken(user.Id, rawReplacement, existing.DeviceId, existing.DeviceName);
         if (!await _refreshTokenRepository.RotateAsync(tokenHash, replacement))
         {
             // A refresh token is single-use. A concurrent/replayed use is rejected.
@@ -90,10 +96,12 @@ public class AuthController : ControllerBase
         return Ok(ApiResponse.SuccessResult("Logged out."));
     }
 
-    private async Task<AuthResponseDto> IssueTokensAsync(User user)
+    private async Task<AuthResponseDto?> IssueTokensAsync(User user, string deviceId, string? deviceName)
     {
         var rawRefreshToken = GenerateRefreshToken();
-        await _refreshTokenRepository.CreateAsync(CreateRefreshToken(user.Id, rawRefreshToken));
+        var refreshToken = CreateRefreshToken(user.Id, rawRefreshToken, deviceId, deviceName);
+        if (!await _refreshTokenRepository.TryCreateForDeviceAsync(refreshToken, maximumDevices: 2))
+            return null;
         return CreateAuthResponse(user, _jwtService.GenerateToken(user.Id, user.Username), rawRefreshToken);
     }
 
@@ -105,12 +113,14 @@ public class AuthController : ControllerBase
         RefreshToken = refreshToken
     };
 
-    private RefreshToken CreateRefreshToken(int userId, string rawToken)
+    private RefreshToken CreateRefreshToken(int userId, string rawToken, string deviceId, string? deviceName)
     {
         var lifetimeDays = int.TryParse(_configuration["JwtSettings:RefreshTokenExpiryInDays"], out var days) ? days : 30;
         return new RefreshToken
         {
             UserId = userId,
+            DeviceId = deviceId.Trim(),
+            DeviceName = string.IsNullOrWhiteSpace(deviceName) ? null : deviceName.Trim(),
             TokenHash = HashToken(rawToken),
             CreatedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddDays(lifetimeDays)

@@ -11,6 +11,12 @@ namespace StoreManagement.Api.Dtos
         [Required(ErrorMessage = "Password is required")]
         [StringLength(100, MinimumLength = 6, ErrorMessage = "Password must be at least 6 characters")]
         public string Password { get; set; } = string.Empty;
+
+        [Required, StringLength(128)]
+        public string DeviceId { get; set; } = string.Empty;
+
+        [StringLength(120)]
+        public string? DeviceName { get; set; }
     }
 
     public class LoginDto
@@ -20,6 +26,12 @@ namespace StoreManagement.Api.Dtos
 
         [Required(ErrorMessage = "Password is required")]
         public string Password { get; set; } = string.Empty;
+
+        [Required, StringLength(128)]
+        public string DeviceId { get; set; } = string.Empty;
+
+        [StringLength(120)]
+        public string? DeviceName { get; set; }
     }
 
     public class AuthResponseDto

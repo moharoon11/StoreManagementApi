@@ -2,6 +2,8 @@
 CREATE TABLE IF NOT EXISTS `RefreshTokens` (
     `Id` BIGINT AUTO_INCREMENT PRIMARY KEY,
     `UserId` INT NOT NULL,
+    `DeviceId` VARCHAR(128) NOT NULL,
+    `DeviceName` VARCHAR(120) NULL,
     `TokenHash` CHAR(64) NOT NULL,
     `ExpiresAt` DATETIME NOT NULL,
     `CreatedAt` DATETIME NOT NULL,
@@ -10,5 +12,6 @@ CREATE TABLE IF NOT EXISTS `RefreshTokens` (
     CONSTRAINT `fk_refreshtokens_user` FOREIGN KEY (`UserId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
     UNIQUE KEY `uq_refreshtokens_hash` (`TokenHash`),
     INDEX `idx_refreshtokens_user` (`UserId`),
+    INDEX `idx_refresh_tokens_active_device` (`UserId`, `DeviceId`, `RevokedAt`, `ExpiresAt`),
     INDEX `idx_refreshtokens_expiry` (`ExpiresAt`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
