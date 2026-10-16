@@ -57,8 +57,7 @@ public sealed class SmtpEmailService : IEmailService
         if (string.IsNullOrWhiteSpace(_options.SmtpHost) || string.IsNullOrWhiteSpace(_options.SmtpUsername) ||
             string.IsNullOrWhiteSpace(_options.SmtpPassword) || string.IsNullOrWhiteSpace(_options.FromAddress))
         {
-            _logger.LogError("Email is not configured; an account-security email could not be sent.");
-            return;
+            throw new InvalidOperationException("Email is not configured. Set Email:SmtpHost, Email:SmtpUsername, Email:SmtpPassword, and Email:FromAddress in the deployment environment.");
         }
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(_options.FromName, _options.FromAddress));
@@ -70,6 +69,7 @@ public sealed class SmtpEmailService : IEmailService
         await client.AuthenticateAsync(_options.SmtpUsername, _options.SmtpPassword, cancellationToken);
         await client.SendAsync(message, cancellationToken);
         await client.DisconnectAsync(true, cancellationToken);
+        _logger.LogInformation("Security email accepted by the configured SMTP server.");
     }
     private static string Unknown(string? value) => string.IsNullOrWhiteSpace(value) ? "Unavailable" : value;
     private static string Location(PasswordResetRequest request) =>

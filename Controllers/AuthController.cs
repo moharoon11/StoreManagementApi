@@ -139,7 +139,8 @@ public class AuthController : ControllerBase
         try
         {
             var resetUrl = BuildResetUrl(rawToken);
-            _emailQueue.Queue((email, ct) => email.SendPasswordResetAsync(account.Value.Email, resetUrl, request, ct));
+            if (!_emailQueue.Queue((email, ct) => email.SendPasswordResetAsync(account.Value.Email, resetUrl, request, ct)))
+                Logger.Error("Password reset email queue is full for user {0}.", account.Value.UserId);
         }
         catch (Exception ex) { Logger.Error(ex, "Password reset email could not be queued for user {0}.", account.Value.UserId); }
         return Ok(ApiResponse.SuccessResult(genericMessage));
@@ -154,7 +155,8 @@ public class AuthController : ControllerBase
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
         var result = await _passwordResetRepository.UseTokenAndResetPasswordAsync(HashToken(dto.Token), passwordHash);
         if (!result.Success) return BadRequest(ApiResponse.ErrorResult("This password reset link is invalid, expired, or has already been used."));
-        _emailQueue.Queue((email, ct) => email.SendPasswordChangedConfirmationAsync(result.Email, ct));
+        if (!_emailQueue.Queue((email, ct) => email.SendPasswordChangedConfirmationAsync(result.Email, ct)))
+            Logger.Error("Password-changed email queue is full for user {0}.", result.UserId);
         return Ok(ApiResponse.SuccessResult("Password changed. Please sign in with your new password."));
     }
 
