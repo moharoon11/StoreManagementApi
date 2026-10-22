@@ -3,7 +3,6 @@ using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Options;
 using MimeKit;
-using StoreManagement.Api.Models;
 
 namespace StoreManagement.Api.Services;
 
@@ -16,7 +15,6 @@ public sealed class EmailOptions
     public string SmtpPassword { get; init; } = string.Empty;
     public string FromAddress { get; init; } = string.Empty;
     public string FromName { get; init; } = "BillMate Security";
-    public string PasswordResetUrl { get; init; } = string.Empty;
 }
 
 public sealed class SmtpEmailService : IEmailService
@@ -29,23 +27,12 @@ public sealed class SmtpEmailService : IEmailService
         _logger = logger;
     }
 
-    public Task SendPasswordResetAsync(string recipient, string resetUrl, PasswordResetRequest request, CancellationToken cancellationToken = default)
+    public Task SendPasswordResetOtpAsync(string recipient, string otp, CancellationToken cancellationToken = default)
     {
-        var gps = request.GpsLatitude.HasValue && request.GpsLongitude.HasValue
-            ? $"{request.GpsLatitude.Value}, {request.GpsLongitude.Value} (shared with permission)" : "Not shared";
         var body = $@"<p>A password reset was requested for your BillMate account.</p>
-<p><a href=""{WebUtility.HtmlEncode(resetUrl)}"">Reset your password</a></p>
-<p>This single-use link expires in one hour. If you did not request it, ignore this email.</p>
-<h3>Request details</h3><ul>
-<li>Server time (UTC): {request.RequestedAt:yyyy-MM-dd HH:mm:ss}</li>
-<li>Device type: {WebUtility.HtmlEncode(Unknown(request.DeviceType))}</li>
-<li>Operating system: {WebUtility.HtmlEncode(Unknown(request.OperatingSystem))}</li>
-<li>Browser: {WebUtility.HtmlEncode(Unknown(request.Browser))}</li>
-<li>Device/app installation ID: {WebUtility.HtmlEncode(Unknown(request.DeviceId))}</li>
-<li>Public IP: {WebUtility.HtmlEncode(Unknown(request.PublicIp))}</li>
-<li>Approximate city/region: {WebUtility.HtmlEncode(Location(request))}</li>
-<li>GPS location: {WebUtility.HtmlEncode(gps)}</li></ul>";
-        return SendAsync(recipient, "Reset your BillMate password", body, cancellationToken);
+<p>Your verification code is <strong style=""font-size: 24px; letter-spacing: 4px;"">{WebUtility.HtmlEncode(otp)}</strong></p>
+<p>This code expires in 5 minutes and can be used once. If you did not request it, ignore this email.</p>";
+        return SendAsync(recipient, "Your BillMate password reset code", body, cancellationToken);
     }
 
     public Task SendPasswordChangedConfirmationAsync(string recipient, CancellationToken cancellationToken = default) =>
@@ -92,7 +79,4 @@ public sealed class SmtpEmailService : IEmailService
         var atIndex = recipient.LastIndexOf('@');
         return atIndex >= 0 && atIndex < recipient.Length - 1 ? recipient[(atIndex + 1)..] : "invalid-address";
     }
-    private static string Unknown(string? value) => string.IsNullOrWhiteSpace(value) ? "Unavailable" : value;
-    private static string Location(PasswordResetRequest request) =>
-        string.Join(", ", new[] { request.City, request.Region }.Where(x => !string.IsNullOrWhiteSpace(x))) is { Length: > 0 } location ? location : "Unavailable";
 }

@@ -20,20 +20,18 @@ public class AuthController : ControllerBase
     private readonly IJwtService _jwtService;
     private readonly IPasswordResetRepository _passwordResetRepository;
     private readonly IEmailQueue _emailQueue;
-    private readonly IGeoLocationService _geoLocationService;
     private readonly IConfiguration _configuration;
     private static readonly Logger Logger = LogManager.GetLogger("AuthController");
 
     public AuthController(IUserRepository userRepository, IRefreshTokenRepository refreshTokenRepository,
         IJwtService jwtService, IPasswordResetRepository passwordResetRepository,
-        IEmailQueue emailQueue, IGeoLocationService geoLocationService, IConfiguration configuration)
+        IEmailQueue emailQueue, IConfiguration configuration)
     {
         _userRepository = userRepository;
         _refreshTokenRepository = refreshTokenRepository;
         _jwtService = jwtService;
         _passwordResetRepository = passwordResetRepository;
         _emailQueue = emailQueue;
-        _geoLocationService = geoLocationService;
         _configuration = configuration;
     }
 
@@ -105,58 +103,70 @@ public class AuthController : ControllerBase
 
     [AllowAnonymous]
     [HttpPost("forgot-password")]
-    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto, CancellationToken cancellationToken)
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
     {
-        // This response deliberately does not reveal whether a store email exists,
-        // whether it is rate-limited, or whether mail delivery failed.
-        const string genericMessage = "If that email is registered, a password reset link will be sent shortly.";
+        // Deliberately identical for unknown accounts, mismatched details, cooldowns,
+        // hourly limits, and mail-delivery failures.
+        const string genericMessage = "If those details match an account, a verification code will be sent shortly.";
         if (!ModelState.IsValid) return Ok(ApiResponse.SuccessResult(genericMessage));
 
-        var publicIp = HttpContext.Connection.RemoteIpAddress?.ToString();
-        // Do this best-effort work before the account lookup too, so an existing
-        // address does not have a distinctive response time.
-        var (city, region) = await _geoLocationService.LookupAsync(publicIp, cancellationToken);
-        var account = await _passwordResetRepository.FindUserByStoreEmailAsync(dto.Email.Trim().ToLowerInvariant());
+        var username = dto.Username.Trim().ToLowerInvariant();
+        var email = dto.Email.Trim().ToLowerInvariant();
+        var account = await _passwordResetRepository.FindUserByUsernameAndStoreEmailAsync(username, email);
         if (!account.HasValue) return Ok(ApiResponse.SuccessResult(genericMessage));
 
-        var rawToken = GenerateResetToken();
-        var request = new PasswordResetRequest
+        var hmacKey = GetOtpHmacKey();
+        if (hmacKey is null)
         {
-            UserId = account.Value.UserId,
-            TokenHash = HashToken(rawToken),
-            RequestedAt = DateTime.UtcNow,
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            DeviceType = Clean(dto.DeviceType, 60),
-            OperatingSystem = Clean(dto.OperatingSystem, 100),
-            Browser = Clean(dto.Browser ?? Request.Headers.UserAgent.ToString(), 200),
-            DeviceId = Clean(dto.DeviceId, 128),
-            PublicIp = Clean(publicIp, 45), City = Clean(city, 100), Region = Clean(region, 100),
-            GpsLatitude = dto.GpsLatitude, GpsLongitude = dto.GpsLongitude
-        };
-        if (await _passwordResetRepository.TryCreateAsync(request) != PasswordResetCreateResult.Created)
+            Logger.Error("Password reset OTP is unavailable because PasswordReset:OtpHmacKey is not configured.");
             return Ok(ApiResponse.SuccessResult(genericMessage));
-
-        try
-        {
-            var resetUrl = BuildResetUrl(rawToken);
-            if (!_emailQueue.Queue((email, ct) => email.SendPasswordResetAsync(account.Value.Email, resetUrl, request, ct)))
-                Logger.Error("Password reset email queue is full for user {0}.", account.Value.UserId);
         }
-        catch (Exception ex) { Logger.Error(ex, "Password reset email could not be queued for user {0}.", account.Value.UserId); }
+
+        var otp = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+        var issueResult = await _passwordResetRepository.IssueOtpAsync(
+            account.Value.UserId, account.Value.Username, account.Value.Email,
+            ComputeHmac(hmacKey, $"otp|{username}|{email}|{otp}"));
+        if (issueResult != PasswordResetOtpIssueResult.Issued) return Ok(ApiResponse.SuccessResult(genericMessage));
+
+        if (!_emailQueue.Queue((service, ct) => service.SendPasswordResetOtpAsync(account.Value.Email, otp, ct)))
+            Logger.Error("Password reset OTP email queue is full for user {0}.", account.Value.UserId);
         return Ok(ApiResponse.SuccessResult(genericMessage));
     }
 
     [AllowAnonymous]
+    [HttpPost("verify-password-reset-otp")]
+    public async Task<IActionResult> VerifyPasswordResetOtp([FromBody] VerifyPasswordResetOtpDto dto)
+    {
+        const string invalidMessage = "The verification code is invalid, expired, or can no longer be used.";
+        if (!ModelState.IsValid) return BadRequest(ApiResponse.ErrorResult(invalidMessage));
+        var hmacKey = GetOtpHmacKey();
+        if (hmacKey is null) return BadRequest(ApiResponse.ErrorResult(invalidMessage));
+
+        var username = dto.Username.Trim().ToLowerInvariant();
+        var email = dto.Email.Trim().ToLowerInvariant();
+        var resetToken = GenerateResetToken();
+        var verified = await _passwordResetRepository.VerifyOtpAsync(
+            username, email, ComputeHmac(hmacKey, $"otp|{username}|{email}|{dto.Otp}"),
+            ComputeHmac(hmacKey, $"reset|{resetToken}"));
+        return verified
+            ? Ok(ApiResponse<VerifyPasswordResetOtpResponseDto>.SuccessResult(new() { ResetToken = resetToken }, "Code verified."))
+            : BadRequest(ApiResponse.ErrorResult(invalidMessage));
+    }
+
+    [AllowAnonymous]
     [HttpPost("reset-password")]
-    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto, CancellationToken cancellationToken)
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
     {
         if (!ModelState.IsValid || string.IsNullOrWhiteSpace(dto.NewPassword))
             return BadRequest(ApiResponse.ErrorResult("Invalid password reset request."));
+        var hmacKey = GetOtpHmacKey();
+        if (hmacKey is null) return BadRequest(ApiResponse.ErrorResult("This password reset request is invalid, expired, or has already been used."));
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
-        var result = await _passwordResetRepository.UseTokenAndResetPasswordAsync(HashToken(dto.Token), passwordHash);
-        if (!result.Success) return BadRequest(ApiResponse.ErrorResult("This password reset link is invalid, expired, or has already been used."));
+        var result = await _passwordResetRepository.UseVerifiedOtpAndResetPasswordAsync(
+            ComputeHmac(hmacKey, $"reset|{dto.ResetToken}"), passwordHash);
+        if (!result.Success) return BadRequest(ApiResponse.ErrorResult("This password reset request is invalid, expired, or has already been used."));
         if (!_emailQueue.Queue((email, ct) => email.SendPasswordChangedConfirmationAsync(result.Email, ct)))
-            Logger.Error("Password-changed email queue is full for user {0}.", result.UserId);
+            Logger.Error("Password-changed confirmation email queue is full.");
         return Ok(ApiResponse.SuccessResult("Password changed. Please sign in with your new password."));
     }
 
@@ -197,19 +207,19 @@ public class AuthController : ControllerBase
         return Convert.ToBase64String(bytes).Replace("+", "-").Replace("/", "_").TrimEnd((char)61);
     }
 
-    private string BuildResetUrl(string rawToken)
-    {
-        var baseUrl = _configuration["Email:PasswordResetUrl"]?.Trim();
-        if (string.IsNullOrWhiteSpace(baseUrl))
-            throw new InvalidOperationException("Email:PasswordResetUrl must be configured before password reset can be used.");
-        // The fragment is not transmitted to the web host, reducing accidental
-        // token exposure in web-server logs and Referer headers.
-        return $"{baseUrl.TrimEnd('#')}#token={Uri.EscapeDataString(rawToken)}";
-    }
-
     private static string GenerateResetToken() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(48))
         .Replace("+", "-").Replace("/", "_").TrimEnd('=');
-    private static string? Clean(string? value, int maxLength) => string.IsNullOrWhiteSpace(value) ? null : value.Trim()[..Math.Min(value.Trim().Length, maxLength)];
+
+    private byte[]? GetOtpHmacKey()
+    {
+        var configuredKey = _configuration["PasswordReset:OtpHmacKey"];
+        if (string.IsNullOrWhiteSpace(configuredKey)) return null;
+        var key = Encoding.UTF8.GetBytes(configuredKey);
+        return key.Length >= 32 ? key : null;
+    }
+
+    private static string ComputeHmac(byte[] key, string value) =>
+        Convert.ToHexString(HMACSHA256.HashData(key, Encoding.UTF8.GetBytes(value)));
 
     private static string HashToken(string token) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
 }

@@ -129,28 +129,24 @@ CREATE TABLE IF NOT EXISTS `StockMovements` (
     INDEX `idx_stockmovements_user` (`UserId`, `ProductId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 9. Password reset requests. Only SHA-256 token hashes are stored.
-CREATE TABLE IF NOT EXISTS `PasswordResetRequests` (
+-- 9. Password-reset OTPs. OTPs and reset authorizations are HMAC-SHA-256 hashes only.
+CREATE TABLE IF NOT EXISTS `PasswordResetOtps` (
     `Id` BIGINT AUTO_INCREMENT PRIMARY KEY,
     `UserId` INT NOT NULL,
-    `TokenHash` CHAR(64) NOT NULL,
-    `RequestedAt` DATETIME NOT NULL,
+    `Username` VARCHAR(100) NOT NULL,
+    `Email` VARCHAR(150) NOT NULL,
+    `OtpHmacHash` CHAR(64) NOT NULL,
+    `ResetTokenHmacHash` CHAR(64) NULL,
+    `CreatedAt` DATETIME NOT NULL,
     `ExpiresAt` DATETIME NOT NULL,
+    `FailedAttempts` TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    `VerifiedAt` DATETIME NULL,
     `UsedAt` DATETIME NULL,
     `InvalidatedAt` DATETIME NULL,
-    `DeviceType` VARCHAR(60) NULL,
-    `OperatingSystem` VARCHAR(100) NULL,
-    `Browser` VARCHAR(200) NULL,
-    `DeviceId` VARCHAR(128) NULL,
-    `PublicIp` VARCHAR(45) NULL,
-    `City` VARCHAR(100) NULL,
-    `Region` VARCHAR(100) NULL,
-    `GpsLatitude` DECIMAL(9,6) NULL,
-    `GpsLongitude` DECIMAL(9,6) NULL,
-    CONSTRAINT `fk_passwordresetrequests_user` FOREIGN KEY (`UserId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
-    UNIQUE KEY `uq_passwordresetrequests_token_hash` (`TokenHash`),
-    INDEX `idx_passwordresetrequests_user_requested` (`UserId`, `RequestedAt`),
-    INDEX `idx_passwordresetrequests_expiry` (`ExpiresAt`)
+    CONSTRAINT `fk_passwordresetotps_user` FOREIGN KEY (`UserId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
+    UNIQUE KEY `uq_passwordresetotps_reset_token_hmac_hash` (`ResetTokenHmacHash`),
+    INDEX `idx_passwordresetotps_user_created` (`UserId`, `CreatedAt`),
+    INDEX `idx_passwordresetotps_expiry` (`ExpiresAt`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================================================
