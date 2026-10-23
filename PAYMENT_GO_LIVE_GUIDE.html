@@ -152,8 +152,8 @@
       <p>For a fresh StoreManagement database, the separate tables not created by the base schema include the customer-credit tables and refresh-token table. Apply <code>create_customer_credit_invoices.sql</code> and <code>add_refresh_tokens.sql</code> after the base schema. The other numbered/alter scripts are upgrades for older database versions; apply only when the relevant columns or changes are missing. Keep a record of every SQL file applied.</p>
       <h3>Subscription database</h3>
       <p>From the <code>StoreManagementApi</code> solution root, create the subscription tables by applying the initial migration:</p>
-      <pre><code>mysql -u &lt;migration-user&gt; -p &lt; ../SubscriptionPlatform.Api/Migrations/001_initial.sql</code></pre>
-      <p>If the database already exists from the older initial schema, back it up and apply <code>../SubscriptionPlatform.Api/Migrations/002_fixed_term_prices.sql</code> once. Do not apply migration 002 after the current migration 001, because the fixed-term columns are already present. The application does not apply SQL migrations automatically.</p>
+      <pre><code>mysql -u &lt;migration-user&gt; -p &lt; SubscriptionPlatform.Core/Migrations/001_initial.sql</code></pre>
+      <p>If the database already exists from the older initial schema, back it up and apply <code>SubscriptionPlatform.Core/Migrations/002_fixed_term_prices.sql</code> once. Do not apply migration 002 after the current migration 001, because the fixed-term columns are already present. The application does not apply SQL migrations automatically.</p>
       <div class="callout"><strong>Database access</strong>Use a privileged account for schema changes and separate restricted runtime users for the API. Do not expose MySQL directly to the internet.</div>
     </section>
 
@@ -168,7 +168,7 @@
         <li>Get an application bearer token via <code>POST /api/v1/auth/token</code> with <code>{ "applicationKey": "&lt;application-key&gt;" }</code>. Create the plan using <code>POST /api/v1/plans</code>.</li>
       </ol>
       <p>Enter your approved prices in integer minor units. For INR, <code>10000</code> means ₹100.00. Set the 3-month, 6-month, and yearly prices, currency, and trial days (0–90). Copy the returned application ID and plan ID for Step 5.</p>
-      <p>Stop the administrative host after provisioning. Do not run it alongside StoreManagement API on the same database unless you intentionally coordinate both background maintenance workers. See the <a href="../SubscriptionPlatform.Api/Migrations/INTEGRATION_AND_LIVE_GUIDE.md">administrative API endpoint guide</a> for request examples.</p>
+      <p>Stop the administrative host after provisioning. Do not run it alongside StoreManagement API on the same database unless you intentionally coordinate both background maintenance workers. See the <a href="SubscriptionPlatform.Core/Migrations/INTEGRATION_AND_LIVE_GUIDE.md">administrative API endpoint guide</a> for request examples.</p>
     </section>
 
     <section class="step" id="secrets">

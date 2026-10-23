@@ -120,8 +120,8 @@ mysql -u root -p store_management_db &lt; StoreManagement.Api/Scripts/add_refres
       <p>முதல் file database மற்றும் முக்கிய அட்டவணைகளை உருவாக்கும். அடுத்த இரண்டு file-கள் customer credit மற்றும் refresh token அட்டவணைகளை உருவாக்கும்.</p>
       <div class="warning"><strong>எல்லா SQL file-களையும் யோசிக்காமல் இயக்க வேண்டாம்.</strong><code>StoreManagement.Api/Scripts</code> உள்ள சில file-கள் பழைய database-ஐ upgrade செய்ய மட்டும். தற்போதைய <code>schema.sql</code>-ல் அவற்றில் பல columns ஏற்கனவே உள்ளன. பழைய <code>ALTER TABLE</code>-ஐ மீண்டும் இயக்கினால் “column already exists” பிழை வரலாம். ஏற்கனவே data இருந்தால் முதலில் backup எடுத்து, எந்த மாற்றம் தேவையென்று database நிர்வாகியிடம் சரிபாருங்கள். Production data-வின் ஒரே பிரதியில் migration சோதனை செய்ய வேண்டாம்.</div>
       <h3>3B. Subscription database உருவாக்குங்கள்</h3>
-      <pre><code>mysql -u root -p &lt; ../SubscriptionPlatform.Api/Migrations/001_initial.sql</code></pre>
-      <p>இது <code>SubscriptionDatabase</code> என்ற தனி database மற்றும் plan, subscription, payment, webhook அட்டவணைகளை உருவாக்கும். பழைய initial schema-வில் உருவாக்கிய database-ல் 3 மாதம் மற்றும் 6 மாத price columns இல்லாவிட்டால் மட்டும், backup எடுத்த பிறகு <code>002_fixed_term_prices.sql</code>-ஐ ஒரு முறை இயக்குங்கள். தற்போதைய 001 schema-க்கு பிறகு 002-ஐ இயக்க வேண்டாம்.</p>
+      <pre><code>mysql -u root -p &lt; SubscriptionPlatform.Core/Migrations/001_initial.sql</code></pre>
+      <p>இது <code>SubscriptionDatabase</code> என்ற தனி database மற்றும் plan, subscription, payment, webhook அட்டவணைகளை உருவாக்கும். பழைய initial schema-வில் உருவாக்கிய database-ல் 3 மாதம் மற்றும் 6 மாத price columns இல்லாவிட்டால் மட்டும், backup எடுத்த பிறகு <code>SubscriptionPlatform.Core/Migrations/002_fixed_term_prices.sql</code>-ஐ ஒரு முறை இயக்குங்கள். தற்போதைய 001 schema-க்கு பிறகு 002-ஐ இயக்க வேண்டாம்.</p>
       <h3>3C. API-க்காக தனி database login உருவாக்குங்கள்</h3>
       <p>API-ஐ MySQL <code>root</code> கணக்கில் இணைக்க வேண்டாம். Database நிர்வாகியிடம் இரண்டு database-களையும் படிக்கவும் மாற்றவும் மட்டும் அனுமதிக்கும் தனி user உருவாக்கச் சொல்லுங்கள். கீழே ஒரு உதாரணம்; username, network வரம்பு, password ஆகியவற்றை உங்கள் நிர்வாகி சரியான மதிப்புகளால் மாற்ற வேண்டும்:</p>
       <pre><code>CREATE USER 'store_api'@'10.%' IDENTIFIED BY '&lt;unique-long-password&gt;';
@@ -177,7 +177,7 @@ dotnet run --project ../SubscriptionPlatform.Api/SubscriptionPlatform.Api.csproj
   }'</code></pre>
       <p>இந்த sample விலைகளை உங்கள் வணிகம் முடிவு செய்த விலைகளால் மாற்றுங்கள். பதிலில் வரும் plan <code>id</code>-ஐயும் application <code>id</code>-ஐயும் சேமியுங்கள். Step 5-ல் அவற்றை அமைப்பீர்கள்.</p>
       <div class="expect"><strong>அடுத்த படிக்குத் தயாராக இருக்கும் போது</strong>Application ID மற்றும் Plan ID பாதுகாப்பாக சேமிக்கப்பட்டிருக்கும். Admin tool இயங்கும் முதல் terminal-க்கு திரும்பி Ctrl+C அழுத்தி அதை நிறுத்துங்கள். வாடிக்கையாளர்கள் payment செய்யும்போது அந்த admin tool இயங்க வேண்டியதில்லை.</div>
-      <p>Endpoint request பற்றிய முழு விளக்கத்திற்கு <a href="../SubscriptionPlatform.Api/Migrations/INTEGRATION_AND_LIVE_GUIDE.md">admin API வழிகாட்டியை</a> பார்க்கவும்.</p>
+      <p>Endpoint request பற்றிய முழு விளக்கத்திற்கு <a href="SubscriptionPlatform.Core/Migrations/INTEGRATION_AND_LIVE_GUIDE.md">admin API வழிகாட்டியை</a> பார்க்கவும்.</p>
     </section>
 
     <section class="step" id="config">
