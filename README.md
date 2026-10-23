@@ -17,3 +17,5 @@ dotnet publish StoreManagement.Api/StoreManagement.Api.csproj -c Release
 The published API output includes the class library assembly. The server only needs that publish output and the configured runtime secrets and database connection values; it does not need the source project folders.
 
 For the end-to-end payment, Razorpay dashboard, database, deployment, and Flutter release steps, open [PAYMENT_GO_LIVE_GUIDE.html](PAYMENT_GO_LIVE_GUIDE.html) in a browser.
+
+For a slower first-time walkthrough with example commands and expected results, open [PAYMENT_GO_LIVE_FIRST_TIME.html](PAYMENT_GO_LIVE_FIRST_TIME.html) in a browser.

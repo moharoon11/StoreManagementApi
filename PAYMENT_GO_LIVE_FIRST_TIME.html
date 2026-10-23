@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102a43">
+  <title>First-time setup | StoreManagement payments</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #183247; --muted: #5d7182; --line: #dce6ed; --paper: #fff;
+      --wash: #f3f7fa; --navy: #102a43; --blue: #176b87; --teal: #087e72;
+      --warn: #85490b; --warn-bg: #fff5e6; --good: #135f54; --good-bg: #eaf7f3;
+      --code: #10202d;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--wash); color: var(--ink); font: 16px/1.7 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    a { color: var(--blue); } a:hover { color: var(--teal); }
+    header { padding: 48px 20px 40px; background: linear-gradient(125deg, #102a43, #176b87 70%, #087e72); color: white; }
+    .hero, main { width: min(100% - 32px, 960px); margin-inline: auto; }
+    .eyebrow { margin: 0 0 8px; color: #b9e9e2; font-size: .78rem; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { max-width: 750px; margin: 0; font-size: clamp(2rem, 6vw, 3.4rem); line-height: 1.12; letter-spacing: -.035em; }
+    .subtitle { max-width: 750px; margin: 16px 0 0; color: #e0edf3; font-size: 1.08rem; }
+    main { padding: 24px 0 60px; }
+    .banner, .step, .toc, .end { border: 1px solid var(--line); border-radius: 14px; background: var(--paper); box-shadow: 0 5px 20px rgb(16 42 67 / 4%); }
+    .banner { margin-bottom: 20px; padding: 18px 21px; border-left: 5px solid var(--teal); }
+    .banner h2 { margin: 0 0 4px; font-size: 1.1rem; }
+    .banner p { margin: 0; color: var(--muted); }
+    .toc { margin-bottom: 24px; padding: 18px 22px; }
+    .toc h2 { margin: 0 0 8px; font-size: 1rem; }
+    .toc ol { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 4px 20px; margin: 0; padding-left: 22px; }
+    .toc a { text-decoration: none; }
+    .step { margin: 17px 0; padding: 23px clamp(17px, 4vw, 30px); scroll-margin-top: 16px; }
+    .heading { display: flex; align-items: flex-start; gap: 13px; margin-bottom: 13px; }
+    .number { display: grid; flex: 0 0 36px; width: 36px; height: 36px; place-items: center; border-radius: 50%; background: #e5f2f5; color: var(--blue); font-weight: 800; }
+    h2 { margin: 1px 0 0; font-size: clamp(1.18rem, 3vw, 1.48rem); line-height: 1.35; }
+    h3 { margin: 22px 0 6px; font-size: 1.04rem; }
+    p { margin: 9px 0; } ul, ol { padding-left: 23px; } li { margin: 6px 0; }
+    .muted { color: var(--muted); }
+    .do, .expect, .warning { margin: 14px 0; padding: 13px 16px; border-radius: 9px; }
+    .do { background: #eef5f9; }
+    .expect { background: var(--good-bg); color: var(--good); }
+    .warning { background: var(--warn-bg); color: var(--warn); }
+    .do strong, .expect strong, .warning strong { display: block; margin-bottom: 3px; }
+    pre { overflow-x: auto; margin: 12px 0; padding: 15px 16px; border-radius: 9px; background: var(--code); color: #e4f1f7; font: .86rem/1.55 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    code { overflow-wrap: anywhere; font: .9em ui-monospace, SFMono-Regular, Consolas, monospace; }
+    p code, li code { padding: .12em .35em; border-radius: 4px; background: #edf2f5; color: #183247; }
+    .term { display: inline-block; margin: 3px 4px 3px 0; padding: 3px 9px; border: 1px solid var(--line); border-radius: 99px; background: #fff; color: var(--muted); font-size: .85rem; }
+    .end { margin-top: 22px; padding: 20px 22px; }
+    .end h2 { margin-bottom: 7px; }
+    footer { padding: 22px 15px; border-top: 1px solid var(--line); color: var(--muted); text-align: center; font-size: .9rem; }
+    @media (max-width: 600px) { header { padding: 36px 0 30px; } .toc ol { display: block; } .step { padding: 18px 16px; } }
+    @media print { body { background: #fff; } header { padding: 24px 0; background: var(--navy) !important; print-color-adjust: exact; } main { width: 100%; } .step, .banner, .toc, .end { box-shadow: none; break-inside: avoid; } pre { white-space: pre-wrap; } a { color: inherit; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="hero">
+      <p class="eyebrow">A first-time setup guide</p>
+      <h1>Connect payments from database to Flutter</h1>
+      <p class="subtitle">This page explains what to do, where to do it, and what you should see after each step. Start in test mode. Do not accept real payments until the test steps work.</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="banner">
+      <h2>There is only one API to deploy for customers</h2>
+      <p><code>StoreManagement.Api</code> is the website/server your Flutter app talks to. <code>SubscriptionPlatform.Core</code> is a code library used inside it. It is not a separate website or server. The separate <code>SubscriptionPlatform.Api</code> is only a temporary admin tool for creating the application and plan IDs.</p>
+    </section>
+
+    <nav class="toc" aria-label="Guide contents">
+      <h2>Follow these steps in order</h2>
+      <ol>
+        <li><a href="#map">Understand the parts</a></li>
+        <li><a href="#accounts">Prepare accounts and hosting</a></li>
+        <li><a href="#databases">Create the databases</a></li>
+        <li><a href="#ids">Create the plan IDs</a></li>
+        <li><a href="#config">Enter server settings</a></li>
+        <li><a href="#test-dashboard">Set up Razorpay Test Mode</a></li>
+        <li><a href="#publish-api">Publish the API</a></li>
+        <li><a href="#flutter-app">Point Flutter to the API</a></li>
+        <li><a href="#test-everything">Try every step as a customer</a></li>
+        <li><a href="#live">Switch to real payments</a></li>
+      </ol>
+    </nav>
+
+    <section class="step" id="map">
+      <div class="heading"><span class="number">1</span><h2>Understand the parts before changing settings</h2></div>
+      <ul>
+        <li><strong>Flutter app:</strong> screens customers use on their phone. It asks the API to show plans and open Razorpay Checkout.</li>
+        <li><strong>StoreManagement API:</strong> the server. It creates orders, checks payment results, and controls access.</li>
+        <li><strong>SubscriptionPlatform.Core:</strong> a separate project folder with payment/subscription code. It is compiled into the StoreManagement API.</li>
+        <li><strong>MySQL:</strong> stores store data and subscription/payment records. These are two databases, even if they are on one MySQL server.</li>
+        <li><strong>Razorpay:</strong> takes the customer's payment and sends a signed message to the API when payment status changes.</li>
+      </ul>
+      <p>The customer flow is: choose a plan in Flutter → API creates an order → Razorpay Checkout collects payment → Flutter sends the result to the API → API verifies it → the app gets subscription access.</p>
+      <div class="warning"><strong>What the current options mean</strong>Free trial does not charge the customer. Paid 3-month, 6-month, and 1-year options are one-time prepaid purchases. They do not renew automatically. The app does not create an automatic monthly/yearly Razorpay mandate.</div>
+    </section>
+
+    <section class="step" id="accounts">
+      <div class="heading"><span class="number">2</span><h2>Prepare the accounts and website address</h2></div>
+      <div class="do"><strong>Do this</strong><ol>
+        <li>Sign in to Razorpay and finish the business/account activation steps it asks you to complete.</li>
+        <li>Choose the public address customers will use for the API, such as <code>https://api.example.com</code>. It must have a working HTTPS certificate.</li>
+        <li>Choose a MySQL host that your API server can reach privately. Do not make the database open to everyone on the internet.</li>
+        <li>Make two environments: <strong>staging</strong> for safe practice and <strong>production</strong> for real customers. Each environment needs its own database credentials and Razorpay keys.</li>
+      </ol></div>
+      <div class="expect"><strong>Ready to continue when</strong>You have the Razorpay account, an HTTPS staging API address, an HTTPS production API address, and a MySQL server for each environment (or clearly separated databases).</div>
+      <p class="muted">Razorpay may require business, bank, website, or other checks before it allows Live Mode. Follow the tasks shown for your account.</p>
+    </section>
+
+    <section class="step" id="databases">
+      <div class="heading"><span class="number">3</span><h2>Create the two databases and tables</h2></div>
+      <p>These commands are for a new installation. Run them from the <code>StoreManagementApi</code> solution folder. You need the MySQL command-line program installed, and the MySQL server must be running. When it asks for a password, type the MySQL administrator password.</p>
+      <h3>3A. Create the StoreManagement database</h3>
+      <pre><code>mysql -u root -p &lt; StoreManagement.Api/Scripts/schema.sql
+mysql -u root -p store_management_db &lt; StoreManagement.Api/Scripts/create_customer_credit_invoices.sql
+mysql -u root -p store_management_db &lt; StoreManagement.Api/Scripts/add_refresh_tokens.sql</code></pre>
+      <p>The first file creates the database and main tables. The next two create the customer-credit and refresh-token tables used by the API.</p>
+      <div class="warning"><strong>Do not run every SQL file without checking first.</strong>Several files in <code>StoreManagement.Api/Scripts</code> are upgrades for older databases. The current <code>schema.sql</code> already has many of those columns. Running an old <code>ALTER TABLE</code> again can fail because the column already exists. If you already have data, back it up and ask your database administrator to check which upgrades are still needed. Never test migrations on the only copy of production data.</div>
+      <h3>3B. Create the subscription database</h3>
+      <pre><code>mysql -u root -p &lt; ../SubscriptionPlatform.Api/Migrations/001_initial.sql</code></pre>
+      <p>This creates a separate database called <code>SubscriptionDatabase</code> and its plan, subscription, payment, and webhook tables. For an old existing subscription database, make a backup and apply <code>002_fixed_term_prices.sql</code> only if the 3-month and 6-month price columns are missing. Do not apply it after the current 001 schema.</p>
+      <h3>3C. Create a runtime database login</h3>
+      <p>The API should not connect as MySQL's root user. Ask your database administrator to create a restricted user with read/write access to both databases. Example only; replace the username, host range, and password with values approved for your server:</p>
+      <pre><code>CREATE USER 'store_api'@'10.%' IDENTIFIED BY '&lt;unique-long-password&gt;';
+GRANT SELECT, INSERT, UPDATE, DELETE ON store_management_db.* TO 'store_api'@'10.%';
+GRANT SELECT, INSERT, UPDATE, DELETE ON SubscriptionDatabase.* TO 'store_api'@'10.%';
+FLUSH PRIVILEGES;</code></pre>
+      <p><code>10.%</code> is only an example network range. Your database administrator must limit access to the API server's actual network.</p>
+      <div class="expect"><strong>Ready to continue when</strong>Both databases and tables exist, and the API runtime user can connect to both without using the root account.</div>
+    </section>
+
+    <section class="step" id="ids">
+      <div class="heading"><span class="number">4</span><h2>Create the application ID and plan ID</h2></div>
+      <p>These two IDs tell StoreManagement which subscription plan belongs to it. Usually you do this once. The app key is only needed to administer the plan; customers never use it.</p>
+      <h3>4A. Start the admin tool on your development computer</h3>
+      <p>Open a terminal in the <code>StoreManagementApi</code> solution folder. Point it at the <code>SubscriptionDatabase</code> you created in Step 3. Create temporary, strong secrets for this local admin session. Do not use your production keys here.</p>
+      <pre><code>export ConnectionStrings__SubscriptionDatabase='Server=&lt;mysql-host&gt;;Port=3306;Database=SubscriptionDatabase;User ID=store_api;Password=&lt;password&gt;;GuidFormat=Char36;'
+export Authentication__SigningKey='&lt;random-secret-at-least-32-bytes&gt;'
+export Authentication__BootstrapAdminKey='&lt;random-admin-secret-at-least-32-characters&gt;'
+dotnet run --project ../SubscriptionPlatform.Api/SubscriptionPlatform.Api.csproj</code></pre>
+      <p>Leave that terminal running. It prints a local address such as <code>http://localhost:12345</code>. Use the address it prints in the next commands. If you are using Windows PowerShell, set values with <code>$env:ConnectionStrings__SubscriptionDatabase = "..."</code> instead of <code>export</code>.</p>
+      <h3>4B. Get the admin token</h3>
+      <p>Open a second terminal. Replace the URL and secret with the values from the first terminal. This request proves that you are allowed to create an application.</p>
+      <pre><code>curl -X POST 'http://localhost:&lt;port&gt;/api/v1/auth/token' \
+  -H 'Content-Type: application/json' \
+  -d '{"adminKey":"&lt;your-bootstrap-admin-secret&gt;"}'</code></pre>
+      <p>The response contains <code>access_token</code>. Copy it temporarily; it is the admin bearer token used in the next request.</p>
+      <h3>4C. Register StoreManagement</h3>
+      <p>Replace <code>&lt;admin-token&gt;</code> with the token you just received:</p>
+      <pre><code>curl -X POST 'http://localhost:&lt;port&gt;/api/v1/admin/applications' \
+  -H 'Authorization: Bearer &lt;admin-token&gt;' \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"StoreManagement"}'</code></pre>
+      <p>Copy the returned <code>id</code> and <code>application_key</code> into a secure temporary note. You need both for the next action. The key is only shown once; do not put it in the Flutter app.</p>
+      <h3>4D. Get an application token and create your plan</h3>
+      <p>Request a token using the application key:</p>
+      <pre><code>curl -X POST 'http://localhost:&lt;port&gt;/api/v1/auth/token' \
+  -H 'Content-Type: application/json' \
+  -d '{"applicationKey":"&lt;application-key&gt;"}'</code></pre>
+      <p>Use its <code>access_token</code> to create the plan. Replace the sample amounts with the prices you have decided to charge. Amounts use the smallest currency unit: <code>10000</code> is ₹100.00 for INR.</p>
+      <pre><code>curl -X POST 'http://localhost:&lt;port&gt;/api/v1/plans' \
+  -H 'Authorization: Bearer &lt;application-token&gt;' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name":"StoreManagement Plan",
+    "currency":"INR",
+    "monthlyAmountMinor":0,
+    "threeMonthAmountMinor":149700,
+    "sixMonthAmountMinor":269700,
+    "yearlyAmountMinor":479400,
+    "trialDays":7,
+    "featuresJson":"{}",
+    "limitsJson":"{}"
+  }'</code></pre>
+      <p>The prices above are examples only. Change them to your real prices before using this plan. The response contains the plan <code>id</code>. Save that and the application <code>id</code>. These become the settings named <code>SubscriptionPlatform__ApplicationId</code> and <code>SubscriptionPlatform__PlanId</code>.</p>
+      <div class="expect"><strong>Ready to continue when</strong>You have saved the application ID and plan ID. Stop the admin tool by returning to its terminal and pressing Ctrl+C. It does not need to run while StoreManagement customers pay.</div>
+    </section>
+
+    <section class="step" id="config">
+      <div class="heading"><span class="number">5</span><h2>Enter the settings on the StoreManagement API server</h2></div>
+      <p>Open your hosting provider's environment-variable or secrets page for the StoreManagement API. Add these names exactly. Put your own real values on the right-hand side.</p>
+      <pre><code>ConnectionStrings__DefaultConnection=&lt;connection to store_management_db&gt;
+ConnectionStrings__SubscriptionDatabase=&lt;connection to SubscriptionDatabase&gt;
+SubscriptionPlatform__ApplicationId=&lt;application ID from Step 4&gt;
+SubscriptionPlatform__PlanId=&lt;plan ID from Step 4&gt;
+JwtSettings__SecretKey=&lt;new random secret, at least 32 bytes&gt;
+Razorpay__KeyId=&lt;test key ID for now&gt;
+Razorpay__KeySecret=&lt;test key secret for now&gt;
+Razorpay__WebhookSecret=&lt;test webhook secret for now&gt;</code></pre>
+      <p>A connection string is a one-line address plus login for one database. Example shape (do not copy the sample password):</p>
+      <pre><code>Server=db.example.com;Port=3306;Database=store_management_db;User ID=store_api;Password=&lt;password&gt;;GuidFormat=Char36;SslMode=Required;</code></pre>
+      <p>Use <code>Database=SubscriptionDatabase</code> in the second connection string. Set the same database host, account, and password if both databases share a server. Make sure the hosting provider saves variables for the correct app/environment, then restart the API after entering them.</p>
+      <div class="warning"><strong>Do not paste secret values in Flutter or this HTML file.</strong>Never commit database passwords, JWT secret, Razorpay Key Secret, Webhook Secret, or application key to Git. The Flutter app receives only the public Key ID and the order information needed to open checkout.</div>
+      <div class="expect"><strong>What a successful start looks like</strong>The API starts without a configuration error and can connect to both databases. If it says an ID is not a GUID, copy the full ID from Step 4. If it says a connection is missing, check the exact environment-variable spelling above.</div>
+    </section>
+
+    <section class="step" id="test-dashboard">
+      <div class="heading"><span class="number">6</span><h2>Set up Razorpay Test Mode</h2></div>
+      <p>Test Mode is a safe practice area. It does not take real money. Create test keys and a test webhook while still on the Razorpay dashboard's Test Mode.</p>
+      <ol>
+        <li>In the Razorpay dashboard, switch to <strong>Test Mode</strong> and open the API Keys area. Generate a Key ID and Key Secret.</li>
+        <li>Put those values into the staging API's <code>Razorpay__KeyId</code> and <code>Razorpay__KeySecret</code> settings.</li>
+        <li>Open the dashboard's Webhooks settings and add this URL, replacing the host with your staging API address:<br><code>https://&lt;staging-api-host&gt;/api/subscription/webhook/razorpay</code></li>
+        <li>Select the events <code>payment.captured</code> and <code>payment.failed</code>.</li>
+        <li>Enter a webhook secret in Razorpay and save the webhook. Put that exact secret into the staging API's <code>Razorpay__WebhookSecret</code> setting, then restart the API.</li>
+      </ol>
+      <p>The Key Secret and Webhook Secret are two different secrets. Razorpay uses the first for server API calls and the second to sign webhook messages. Check the official <a href="https://razorpay.com/docs/payments/payments/dashboard/">Razorpay dashboard/webhook instructions</a> if the menu names have changed.</p>
+      <div class="expect"><strong>Ready to continue when</strong>The webhook is enabled and its URL is the StoreManagement API URL. Razorpay should show successful delivery after a test payment. Do not point it to the standalone admin API.</div>
+    </section>
+
+    <section class="step" id="publish-api">
+      <div class="heading"><span class="number">7</span><h2>Build and publish the one API</h2></div>
+      <p>On your development computer, open a terminal in the <code>StoreManagementApi</code> solution folder. Run:</p>
+      <pre><code>dotnet restore StoreManagement.sln
+dotnet build StoreManagement.sln --configuration Release
+dotnet publish StoreManagement.Api/StoreManagement.Api.csproj --configuration Release --output ./publish</code></pre>
+      <p>The publish command creates a <code>publish</code> folder. Upload the contents of that folder to the StoreManagement API app on your hosting provider. Set the secrets from Step 5 on that hosting app.</p>
+      <p>You are deploying only StoreManagement API. The subscription class library is included automatically in its published output because the API project references it. Do not start another website for <code>SubscriptionPlatform.Core</code>.</p>
+      <div class="expect"><strong>Ready to continue when</strong>Your host says the StoreManagement API is running, the public HTTPS address opens, and the app can reach both MySQL databases. Razorpay documents test/live keys and capture requirements in its <a href="https://razorpay.com/docs/server-integration/python/test-app/">test and go-live guide</a>.</div>
+    </section>
+
+    <section class="step" id="flutter-app">
+      <div class="heading"><span class="number">8</span><h2>Tell Flutter to use your StoreManagement API</h2></div>
+      <p>This step is easy to miss. The Flutter project has a default API address. When you deploy to your own server, build a new app with your server's address. The address must end with <code>/api</code>. Do not use the SubscriptionPlatform admin address.</p>
+      <h3>Android APK</h3>
+      <p>From the solution folder, go into the sibling Flutter app and build a release APK:</p>
+      <pre><code>cd ../StoreManagementApp
+flutter pub get
+flutter analyze
+flutter build apk --release --dart-define=API_BASE_URL=https://&lt;your-api-domain&gt;/api</code></pre>
+      <p>Replace <code>&lt;your-api-domain&gt;</code> with the real HTTPS domain. For example, if the API address is <code>https://api.myshop.com</code>, the value is <code>https://api.myshop.com/api</code>.</p>
+      <h3>iPhone/iPad IPA</h3>
+      <p>On a Mac with your Apple signing setup, use the same address:</p>
+      <pre><code>flutter build ipa --release --dart-define=API_BASE_URL=https://&lt;your-api-domain&gt;/api</code></pre>
+      <p>Install the release build on a real device and sign in. Flutter should load the subscription page from your StoreManagement API. The Key ID may be used by checkout. The Key Secret must never be included in the app.</p>
+      <div class="expect"><strong>Ready to continue when</strong>The installed phone app signs in against your deployed API and shows the options returned by the plan you made in Step 4.</div>
+    </section>
+
+    <section class="step" id="test-everything">
+      <div class="heading"><span class="number">9</span><h2>Walk through the app like a customer</h2></div>
+      <p>Keep the staging app configured with Razorpay Test Mode keys. Use only the test payment methods shown in your Razorpay account. Do not enter real card or bank details.</p>
+      <ol>
+        <li>Open Flutter and sign in with a test user.</li>
+        <li>Open the subscription page. Check that it shows the right currency and prices.</li>
+        <li>Tap the free trial. It should not open Razorpay. The app should show that trial access is active.</li>
+        <li>Use another eligible test user to buy the 3-month term. Complete a successful test checkout. The app should wait for the server's verification before showing access.</li>
+        <li>Repeat for the 6-month and 1-year options.</li>
+        <li>Try a declined or cancelled test checkout. It should not unlock paid access, and the user should be able to try again.</li>
+        <li>In the Razorpay dashboard, open the payment and make sure it is captured. An authorized-but-not-captured payment must not be treated as paid.</li>
+        <li>Open the webhook delivery page. Check the test event reached <code>/api/subscription/webhook/razorpay</code> successfully.</li>
+        <li>Close and reopen Flutter, sign in again, and confirm that the API still reports the correct access.</li>
+        <li>Try a protected StoreManagement feature with a user who has no active subscription. The app should show the subscription screen.</li>
+      </ol>
+      <div class="warning"><strong>If any check fails, stop here.</strong>Do not put live keys in the app to try to fix it. Check the API logs, database connection, application/plan IDs, key mode, webhook URL, and webhook secret while still in staging.</div>
+    </section>
+
+    <section class="step" id="live">
+      <div class="heading"><span class="number">10</span><h2>Change from test money to real payments</h2></div>
+      <p>Only do this after Step 9 works and Razorpay has activated your account for Live Mode.</p>
+      <ol>
+        <li>In the Razorpay dashboard, switch to <strong>Live Mode</strong>. Generate live API keys. Do not reuse the test keys.</li>
+        <li>In Live Mode, create a webhook to <code>https://&lt;production-api-domain&gt;/api/subscription/webhook/razorpay</code>. Select <code>payment.captured</code> and <code>payment.failed</code>.</li>
+        <li>Make a new live webhook secret. Save it in the production StoreManagement API settings.</li>
+        <li>Replace the production API's test <code>Razorpay__KeyId</code>, <code>Razorpay__KeySecret</code>, and <code>Razorpay__WebhookSecret</code> with the live values. Restart the API.</li>
+        <li>Check the production app still has the correct production database, application ID, and plan ID.</li>
+        <li>Build Flutter again with <code>API_BASE_URL=https://&lt;production-api-domain&gt;/api</code> and publish that signed release to your users.</li>
+        <li>Watch the first payments in both the StoreManagement API logs and Razorpay dashboard. Confirm captured payments, webhook delivery, and settlement status.</li>
+      </ol>
+      <p>See Razorpay's current <a href="https://razorpay.com/docs/server-integration/python/test-app/">Live Mode instructions</a> and <a href="https://razorpay.com/security/checklist/">security checklist</a>. Razorpay menu names and activation requirements may vary by account.</p>
+    </section>
+
+    <section class="end">
+      <h2>Keep these rules in mind</h2>
+      <p><span class="term">Deploy one API</span><span class="term">Keep secrets on the server</span><span class="term">Test first</span><span class="term">Verify captured payment</span></p>
+      <p>The current paid plans are prepaid fixed terms and do not auto-renew. This setup also does not add refunds, recurring charges, renewal retries, or invoice/tax management. Decide whether those features are needed before selling subscriptions.</p>
+      <p><a href="PAYMENT_GO_LIVE_GUIDE.html">Open the shorter go-live checklist</a> · <a href="StoreManagement.sln">Open the solution</a> · <a href="README.md">Solution home</a></p>
+    </section>
+  </main>
+  <footer>StoreManagement API · First-time payment setup</footer>
+</body>
+</html>
