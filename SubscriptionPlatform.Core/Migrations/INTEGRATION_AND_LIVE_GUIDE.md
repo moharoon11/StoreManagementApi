@@ -395,7 +395,7 @@ Razorpay account activation requirements and Dashboard labels can vary. Use Razo
 
 ### Database upgrade for an existing deployment
 
-For a brand-new database, apply the updated `001_initial.sql` only. For an existing database created using the prior version of `001_initial.sql`, back up the database and apply `002_fixed_term_prices.sql` once. Do not apply migration 002 after the updated initial schema, because its columns already exist. Record migration execution in your deployment system; the API does not run migrations automatically.
+For a brand-new database, apply the current `001_initial.sql` only; it already creates both fixed-term price columns. Do not apply `002_fixed_term_prices.sql` after it. Migration 002 upgrades an older database that is missing those columns. It now checks before adding them, but you should still confirm the database version first. Record migration execution in your deployment system; the API does not run migrations automatically.
 
 ### Flutter build and payment boundary
 

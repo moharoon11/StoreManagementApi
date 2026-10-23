@@ -153,7 +153,7 @@
       <h3>Subscription database</h3>
       <p>From the <code>StoreManagementApi</code> solution root, create the subscription tables by applying the initial migration:</p>
       <pre><code>mysql -u &lt;migration-user&gt; -p &lt; SubscriptionPlatform.Core/Migrations/001_initial.sql</code></pre>
-      <p>If the database already exists from the older initial schema, back it up and apply <code>SubscriptionPlatform.Core/Migrations/002_fixed_term_prices.sql</code> once. Do not apply migration 002 after the current migration 001, because the fixed-term columns are already present. The application does not apply SQL migrations automatically.</p>
+      <p>If you used the current <code>001_initial.sql</code>, skip migration 002; it already contains both fixed-term columns. Migration <code>SubscriptionPlatform.Core/Migrations/002_fixed_term_prices.sql</code> is only an upgrade for a database from the older schema. The application does not run migrations automatically. If you are unsure which schema you have, check the columns before running an upgrade.</p>
       <div class="callout"><strong>Database access</strong>Use a privileged account for schema changes and separate restricted runtime users for the API. Do not expose MySQL directly to the internet.</div>
     </section>
 
