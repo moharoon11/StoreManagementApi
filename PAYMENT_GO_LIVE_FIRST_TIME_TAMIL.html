@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="ta">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102a43">
+  <title>முதல் முறை அமைப்பு | StoreManagement பணம் செலுத்துதல்</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #183247; --muted: #5d7182; --line: #dce6ed; --paper: #fff;
+      --wash: #f3f7fa; --navy: #102a43; --blue: #176b87; --teal: #087e72;
+      --warn: #85490b; --warn-bg: #fff5e6; --good: #135f54; --good-bg: #eaf7f3;
+      --code: #10202d;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--wash); color: var(--ink); font: 16px/1.8 "Noto Sans Tamil", "Nirmala UI", Latha, system-ui, sans-serif; }
+    a { color: var(--blue); } a:hover { color: var(--teal); }
+    header { padding: 48px 20px 40px; background: linear-gradient(125deg, #102a43, #176b87 70%, #087e72); color: white; }
+    .hero, main { width: min(100% - 32px, 960px); margin-inline: auto; }
+    .eyebrow { margin: 0 0 8px; color: #b9e9e2; font-size: .78rem; font-weight: 750; letter-spacing: .08em; }
+    h1 { max-width: 750px; margin: 0; font-size: clamp(2rem, 6vw, 3.4rem); line-height: 1.3; letter-spacing: -.02em; }
+    .subtitle { max-width: 750px; margin: 16px 0 0; color: #e0edf3; font-size: 1.08rem; }
+    main { padding: 24px 0 60px; }
+    .banner, .step, .toc, .end { border: 1px solid var(--line); border-radius: 14px; background: var(--paper); box-shadow: 0 5px 20px rgb(16 42 67 / 4%); }
+    .banner { margin-bottom: 20px; padding: 18px 21px; border-left: 5px solid var(--teal); }
+    .banner h2 { margin: 0 0 4px; font-size: 1.1rem; }
+    .banner p { margin: 0; color: var(--muted); }
+    .toc { margin-bottom: 24px; padding: 18px 22px; }
+    .toc h2 { margin: 0 0 8px; font-size: 1rem; }
+    .toc ol { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 4px 20px; margin: 0; padding-left: 22px; }
+    .toc a { text-decoration: none; }
+    .step { margin: 17px 0; padding: 23px clamp(17px, 4vw, 30px); scroll-margin-top: 16px; }
+    .heading { display: flex; align-items: flex-start; gap: 13px; margin-bottom: 13px; }
+    .number { display: grid; flex: 0 0 36px; width: 36px; height: 36px; place-items: center; border-radius: 50%; background: #e5f2f5; color: var(--blue); font-weight: 800; }
+    h2 { margin: 1px 0 0; font-size: clamp(1.18rem, 3vw, 1.48rem); line-height: 1.5; }
+    h3 { margin: 22px 0 6px; font-size: 1.04rem; }
+    p { margin: 9px 0; } ul, ol { padding-left: 23px; } li { margin: 6px 0; }
+    .muted { color: var(--muted); }
+    .do, .expect, .warning { margin: 14px 0; padding: 13px 16px; border-radius: 9px; }
+    .do { background: #eef5f9; }
+    .expect { background: var(--good-bg); color: var(--good); }
+    .warning { background: var(--warn-bg); color: var(--warn); }
+    .do strong, .expect strong, .warning strong { display: block; margin-bottom: 3px; }
+    pre { overflow-x: auto; margin: 12px 0; padding: 15px 16px; border-radius: 9px; background: var(--code); color: #e4f1f7; font: .86rem/1.55 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    code { overflow-wrap: anywhere; font: .9em ui-monospace, SFMono-Regular, Consolas, monospace; }
+    p code, li code { padding: .12em .35em; border-radius: 4px; background: #edf2f5; color: #183247; }
+    .term { display: inline-block; margin: 3px 4px 3px 0; padding: 3px 9px; border: 1px solid var(--line); border-radius: 99px; background: #fff; color: var(--muted); font-size: .85rem; }
+    .end { margin-top: 22px; padding: 20px 22px; }
+    .end h2 { margin-bottom: 7px; }
+    footer { padding: 22px 15px; border-top: 1px solid var(--line); color: var(--muted); text-align: center; font-size: .9rem; }
+    @media (max-width: 600px) { header { padding: 36px 0 30px; } .toc ol { display: block; } .step { padding: 18px 16px; } }
+    @media print { body { background: #fff; } header { padding: 24px 0; background: var(--navy) !important; print-color-adjust: exact; } main { width: 100%; } .step, .banner, .toc, .end { box-shadow: none; break-inside: avoid; } pre { white-space: pre-wrap; } a { color: inherit; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="hero">
+      <p class="eyebrow">StoreManagement · பணம் செலுத்துதல்</p>
+      <h1>Flutter செயலியிலிருந்து பணம் பெறுவது வரை</h1>
+      <p class="subtitle">ஒவ்வொரு படியிலும் என்ன செய்ய வேண்டும், எங்கே செய்ய வேண்டும், முடிந்ததும் என்ன பார்க்க வேண்டும் என்று எளிய தமிழில் விளக்கப்பட்டுள்ளது. முதலில் Test Mode-ல் முயற்சி செய்யுங்கள். எல்லா சோதனைகளும் சரியாகும் வரை உண்மையான பணம் பெறத் தொடங்க வேண்டாம்.</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="banner">
+      <h2>வாடிக்கையாளர்களுக்காக ஒரே ஒரு API-ஐ மட்டும் deploy செய்ய வேண்டும்</h2>
+      <p><code>StoreManagement.Api</code> தான் Flutter செயலி தொடர்பு கொள்ளும் server. <code>SubscriptionPlatform.Core</code> என்பது அந்த server பயன்படுத்தும் தனி code library; இது தனி server அல்ல. <code>SubscriptionPlatform.Api</code> என்ற மற்றொரு API-ஐ application ID மற்றும் plan ID உருவாக்க மட்டும் தற்காலிகமாகப் பயன்படுத்தலாம்.</p>
+    </section>
+
+    <nav class="toc" aria-label="வழிகாட்டி படிகள்">
+      <h2>இந்த வரிசையில் படிகளைச் செய்யுங்கள்</h2>
+      <ol>
+        <li><a href="#map">இதில் உள்ள பகுதிகளைப் புரிந்துகொள்ளுங்கள்</a></li>
+        <li><a href="#accounts">கணக்குகள் மற்றும் hosting தயார் செய்யுங்கள்</a></li>
+        <li><a href="#databases">இரண்டு database-களை உருவாக்குங்கள்</a></li>
+        <li><a href="#ids">Plan ID-களை உருவாக்குங்கள்</a></li>
+        <li><a href="#config">Server அமைப்புகளை உள்ளிடுங்கள்</a></li>
+        <li><a href="#test-dashboard">Razorpay Test Mode அமைக்கவும்</a></li>
+        <li><a href="#publish-api">ஒரே API-ஐ publish செய்யவும்</a></li>
+        <li><a href="#flutter-app">Flutter-ஐ API-க்கு இணைக்கவும்</a></li>
+        <li><a href="#test-everything">வாடிக்கையாளராக முழு flow-ஐ சோதிக்கவும்</a></li>
+        <li><a href="#live">உண்மையான பணம் பெறத் தொடங்கவும்</a></li>
+      </ol>
+    </nav>
+
+    <section class="step" id="map">
+      <div class="heading"><span class="number">1</span><h2>அமைப்புகளை மாற்றுவதற்கு முன் இதைப் புரிந்துகொள்ளுங்கள்</h2></div>
+      <ul>
+        <li><strong>Flutter செயலி:</strong> வாடிக்கையாளர் கைபேசியில் பயன்படுத்தும் திரைகள். Plan-களைப் பார்க்கவும் Razorpay Checkout திறக்கவும் இது API-யிடம் கேட்கும்.</li>
+        <li><strong>StoreManagement API:</strong> server. இது payment order உருவாக்கும், payment சரியா என்று சரிபார்க்கும், யாருக்கு subscription access இருக்கிறது என்று முடிவு செய்யும்.</li>
+        <li><strong>SubscriptionPlatform.Core:</strong> subscription/payment code இருக்கும் தனி project. இது StoreManagement API-க்குள் build ஆகும்.</li>
+        <li><strong>MySQL:</strong> கடைத் தகவலும் subscription/payment தகவலும் சேமிக்கப்படும் database. ஒரே MySQL server-ல் இருந்தாலும் இவை இரண்டு database-கள்.</li>
+        <li><strong>Razorpay:</strong> வாடிக்கையாளரிடமிருந்து பணம் பெற்று, payment நிலை மாறும்போது API-க்கு கையொப்பமிட்ட (signed) செய்தி அனுப்பும் service.</li>
+      </ul>
+      <p>வாடிக்கையாளர் பயன்படுத்தும் வரிசை: Flutter-ல் plan தேர்வு → API order உருவாக்கும் → Razorpay-ல் payment → Flutter முடிவை API-க்கு அனுப்பும் → API சரிபார்க்கும் → சரியானால் செயலியில் access கிடைக்கும்.</p>
+      <div class="warning"><strong>இப்போதுள்ள payment option-கள் எப்படி வேலை செய்கின்றன?</strong>Free trial-க்கு பணம் வசூலிக்கப்படாது. 3 மாதம், 6 மாதம், 1 வருடம் ஆகியவை ஒவ்வொன்றும் ஒரு முறை முன்பணம் செலுத்தும் plan-கள். காலம் முடிந்ததும் வாடிக்கையாளர் மீண்டும் வாங்க வேண்டும். தானாக renew ஆகும் recurring payment இப்போது இல்லை.</div>
+    </section>
+
+    <section class="step" id="accounts">
+      <div class="heading"><span class="number">2</span><h2>Razorpay கணக்கும் இணைய முகவரியும் தயார் செய்யுங்கள்</h2></div>
+      <div class="do"><strong>செய்ய வேண்டியது</strong><ol>
+        <li>Razorpay-ல் உள்நுழைந்து, உங்கள் கணக்கிற்கு கேட்கப்படும் வணிக விவரங்கள் மற்றும் activation படிகளை முடிக்கவும்.</li>
+        <li>API-க்கு ஒரு பொதுவான இணைய முகவரியைத் தேர்ந்தெடுக்கவும். உதாரணம்: <code>https://api.example.com</code>. அந்த முகவரியில் HTTPS certificate வேலை செய்ய வேண்டும்.</li>
+        <li>API server தனிப்பட்ட network வழியாக அணுகக்கூடிய MySQL server-ஐத் தேர்ந்தெடுக்கவும். Database-ஐ எல்லோரும் இணையத்தில் அணுகக்கூடியதாக வைக்க வேண்டாம்.</li>
+        <li>இரண்டு சூழல்களை (environment) வைத்துக்கொள்ளுங்கள்: பாதுகாப்பான சோதனைக்காக <strong>staging</strong>, உண்மையான வாடிக்கையாளர்களுக்காக <strong>production</strong>. இரண்டுக்கும் தனித்த database login மற்றும் Razorpay key-கள் வேண்டும்.</li>
+      </ol></div>
+      <div class="expect"><strong>அடுத்த படிக்குச் செல்லத் தயாராக இருக்கும் போது</strong>Razorpay account, staging HTTPS முகவரி, production HTTPS முகவரி, மற்றும் API server-ல் இருந்து அணுகக்கூடிய MySQL server உங்களிடம் இருக்கும்.</div>
+      <p class="muted">Live Mode-ஐ அனுமதிப்பதற்கு முன் Razorpay வணிகம், வங்கி அல்லது website விவரங்களை கேட்கலாம். உங்கள் கணக்கில் காட்டப்படும் படிகளைப் பின்பற்றுங்கள்.</p>
+    </section>
+
+    <section class="step" id="databases">
+      <div class="heading"><span class="number">3</span><h2>இரண்டு database-களையும் உருவாக்குங்கள்</h2></div>
+      <p>கீழே உள்ள கட்டளைகள் புதிய அமைப்புக்கானவை. <code>StoreManagementApi</code> என்ற solution folder-ல் terminal திறந்து கட்டளைகளை இயக்குங்கள். MySQL இயங்கிக் கொண்டிருக்க வேண்டும்; <code>mysql</code> command-line tool கணினியில் நிறுவப்பட்டிருக்க வேண்டும். Password கேட்டால் MySQL நிர்வாகியின் password-ஐ உள்ளிடுங்கள்.</p>
+      <h3>3A. StoreManagement database உருவாக்குங்கள்</h3>
+      <pre><code>mysql -u root -p &lt; StoreManagement.Api/Scripts/schema.sql
+mysql -u root -p store_management_db &lt; StoreManagement.Api/Scripts/create_customer_credit_invoices.sql
+mysql -u root -p store_management_db &lt; StoreManagement.Api/Scripts/add_refresh_tokens.sql</code></pre>
+      <p>முதல் file database மற்றும் முக்கிய அட்டவணைகளை உருவாக்கும். அடுத்த இரண்டு file-கள் customer credit மற்றும் refresh token அட்டவணைகளை உருவாக்கும்.</p>
+      <div class="warning"><strong>எல்லா SQL file-களையும் யோசிக்காமல் இயக்க வேண்டாம்.</strong><code>StoreManagement.Api/Scripts</code> உள்ள சில file-கள் பழைய database-ஐ upgrade செய்ய மட்டும். தற்போதைய <code>schema.sql</code>-ல் அவற்றில் பல columns ஏற்கனவே உள்ளன. பழைய <code>ALTER TABLE</code>-ஐ மீண்டும் இயக்கினால் “column already exists” பிழை வரலாம். ஏற்கனவே data இருந்தால் முதலில் backup எடுத்து, எந்த மாற்றம் தேவையென்று database நிர்வாகியிடம் சரிபாருங்கள். Production data-வின் ஒரே பிரதியில் migration சோதனை செய்ய வேண்டாம்.</div>
+      <h3>3B. Subscription database உருவாக்குங்கள்</h3>
+      <pre><code>mysql -u root -p &lt; ../SubscriptionPlatform.Api/Migrations/001_initial.sql</code></pre>
+      <p>இது <code>SubscriptionDatabase</code> என்ற தனி database மற்றும் plan, subscription, payment, webhook அட்டவணைகளை உருவாக்கும். பழைய initial schema-வில் உருவாக்கிய database-ல் 3 மாதம் மற்றும் 6 மாத price columns இல்லாவிட்டால் மட்டும், backup எடுத்த பிறகு <code>002_fixed_term_prices.sql</code>-ஐ ஒரு முறை இயக்குங்கள். தற்போதைய 001 schema-க்கு பிறகு 002-ஐ இயக்க வேண்டாம்.</p>
+      <h3>3C. API-க்காக தனி database login உருவாக்குங்கள்</h3>
+      <p>API-ஐ MySQL <code>root</code> கணக்கில் இணைக்க வேண்டாம். Database நிர்வாகியிடம் இரண்டு database-களையும் படிக்கவும் மாற்றவும் மட்டும் அனுமதிக்கும் தனி user உருவாக்கச் சொல்லுங்கள். கீழே ஒரு உதாரணம்; username, network வரம்பு, password ஆகியவற்றை உங்கள் நிர்வாகி சரியான மதிப்புகளால் மாற்ற வேண்டும்:</p>
+      <pre><code>CREATE USER 'store_api'@'10.%' IDENTIFIED BY '&lt;unique-long-password&gt;';
+GRANT SELECT, INSERT, UPDATE, DELETE ON store_management_db.* TO 'store_api'@'10.%';
+GRANT SELECT, INSERT, UPDATE, DELETE ON SubscriptionDatabase.* TO 'store_api'@'10.%';
+FLUSH PRIVILEGES;</code></pre>
+      <p><code>10.%</code> என்பது உதாரணம் மட்டுமே. API server வரும் உண்மையான network-க்கு மட்டும் அனுமதி கொடுக்க வேண்டும்.</p>
+      <div class="expect"><strong>அடுத்த படிக்குத் தயாராக இருக்கும் போது</strong>இரண்டு database-களிலும் அட்டவணைகள் இருக்கும். API பயன்படுத்தும் தனி user இரண்டையும் அணுக முடியும்; root user-ஐ API பயன்படுத்தாது.</div>
+    </section>
+
+    <section class="step" id="ids">
+      <div class="heading"><span class="number">4</span><h2>Application ID மற்றும் Plan ID உருவாக்குங்கள்</h2></div>
+      <p>இந்த இரண்டு ID-கள் StoreManagement எந்த subscription plan-ஐப் பயன்படுத்த வேண்டும் என்று சொல்கின்றன. பொதுவாக இந்த அமைப்பை ஒரே முறை செய்தால் போதும். Application key-ஐ plan நிர்வாகத்திற்காக மட்டும் வைத்துக்கொள்ளுங்கள்; வாடிக்கையாளருக்குக் கொடுக்கக் கூடாது.</p>
+      <h3>4A. உங்கள் development கணினியில் admin tool-ஐ இயக்குங்கள்</h3>
+      <p><code>StoreManagementApi</code> solution folder-ல் terminal திறக்கவும். Step 3-ல் உருவாக்கிய SubscriptionDatabase-ஐ connection string-ல் குறிப்பிடுங்கள். உள்ளூர் admin பயன்பாட்டிற்காக வலுவான தற்காலிக secret-களை அமைக்கவும். இங்கே production key-களைப் பயன்படுத்த வேண்டாம்.</p>
+      <pre><code>export ConnectionStrings__SubscriptionDatabase='Server=&lt;mysql-host&gt;;Port=3306;Database=SubscriptionDatabase;User ID=store_api;Password=&lt;password&gt;;GuidFormat=Char36;'
+export Authentication__SigningKey='&lt;random-secret-at-least-32-bytes&gt;'
+export Authentication__BootstrapAdminKey='&lt;random-admin-secret-at-least-32-characters&gt;'
+dotnet run --project ../SubscriptionPlatform.Api/SubscriptionPlatform.Api.csproj</code></pre>
+      <p>இந்த terminal-ஐ திறந்தபடியே விடுங்கள். <code>http://localhost:12345</code> போன்ற உள்ளூர் முகவரியை அது காட்டும். அடுத்த கட்டளைகளில் அந்த எண்ணைப் பயன்படுத்துங்கள். Windows PowerShell பயன்படுத்தினால் <code>export</code> என்பதற்குப் பதிலாக <code>$env:ConnectionStrings__SubscriptionDatabase = "..."</code> போன்ற முறையைப் பயன்படுத்துங்கள்.</p>
+      <h3>4B. Admin token பெறுங்கள்</h3>
+      <p>இரண்டாவது terminal திறக்கவும். முதல் terminal காட்டிய port எண்ணையும் நீங்கள் அமைத்த admin secret-ஐயும் கீழே மாற்றுங்கள். இந்த request மூலம் application உருவாக்க உங்களுக்கு அனுமதி இருப்பதை server சரிபார்க்கும்.</p>
+      <pre><code>curl -X POST 'http://localhost:&lt;port&gt;/api/v1/auth/token' \
+  -H 'Content-Type: application/json' \
+  -d '{"adminKey":"&lt;your-bootstrap-admin-secret&gt;"}'</code></pre>
+      <p>பதிலில் <code>access_token</code> வரும். அதை தற்காலிகமாக நகலெடுங்கள். அடுத்த படியில் அதுவே admin bearer token.</p>
+      <h3>4C. StoreManagement application-ஐ பதிவு செய்யுங்கள்</h3>
+      <p><code>&lt;admin-token&gt;</code> இடத்தில் முந்தைய பதிலில் வந்த token-ஐ இடுங்கள்:</p>
+      <pre><code>curl -X POST 'http://localhost:&lt;port&gt;/api/v1/admin/applications' \
+  -H 'Authorization: Bearer &lt;admin-token&gt;' \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"StoreManagement"}'</code></pre>
+      <p>பதிலில் வரும் <code>id</code> மற்றும் <code>application_key</code> இரண்டையும் பாதுகாப்பான இடத்தில் சேமியுங்கள். Application key உருவாக்கும் போது ஒரு முறை மட்டுமே காட்டப்படும். அதை Flutter செயலியில் வைக்க வேண்டாம்.</p>
+      <h3>4D. Application token பெற்று plan உருவாக்குங்கள்</h3>
+      <p>Application key பயன்படுத்தி token பெறுங்கள்:</p>
+      <pre><code>curl -X POST 'http://localhost:&lt;port&gt;/api/v1/auth/token' \
+  -H 'Content-Type: application/json' \
+  -d '{"applicationKey":"&lt;application-key&gt;"}'</code></pre>
+      <p>இதில் வந்த <code>access_token</code>-ஐ வைத்து plan உருவாக்குங்கள். கீழே உள்ள விலைகள் உதாரணம் மட்டுமே. உங்கள் உண்மையான விலைகளை இடுங்கள். INR-ல் <code>10000</code> என்றால் ₹100.00.</p>
+      <pre><code>curl -X POST 'http://localhost:&lt;port&gt;/api/v1/plans' \
+  -H 'Authorization: Bearer &lt;application-token&gt;' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name":"StoreManagement Plan",
+    "currency":"INR",
+    "monthlyAmountMinor":0,
+    "threeMonthAmountMinor":149700,
+    "sixMonthAmountMinor":269700,
+    "yearlyAmountMinor":479400,
+    "trialDays":7,
+    "featuresJson":"{}",
+    "limitsJson":"{}"
+  }'</code></pre>
+      <p>இந்த sample விலைகளை உங்கள் வணிகம் முடிவு செய்த விலைகளால் மாற்றுங்கள். பதிலில் வரும் plan <code>id</code>-ஐயும் application <code>id</code>-ஐயும் சேமியுங்கள். Step 5-ல் அவற்றை அமைப்பீர்கள்.</p>
+      <div class="expect"><strong>அடுத்த படிக்குத் தயாராக இருக்கும் போது</strong>Application ID மற்றும் Plan ID பாதுகாப்பாக சேமிக்கப்பட்டிருக்கும். Admin tool இயங்கும் முதல் terminal-க்கு திரும்பி Ctrl+C அழுத்தி அதை நிறுத்துங்கள். வாடிக்கையாளர்கள் payment செய்யும்போது அந்த admin tool இயங்க வேண்டியதில்லை.</div>
+      <p>Endpoint request பற்றிய முழு விளக்கத்திற்கு <a href="../SubscriptionPlatform.Api/Migrations/INTEGRATION_AND_LIVE_GUIDE.md">admin API வழிகாட்டியை</a> பார்க்கவும்.</p>
+    </section>
+
+    <section class="step" id="config">
+      <div class="heading"><span class="number">5</span><h2>StoreManagement API server-ல் அமைப்புகளை உள்ளிடுங்கள்</h2></div>
+      <p>Hosting provider-ல் StoreManagement API-க்கான Environment Variables அல்லது Secrets பகுதியைத் திறக்கவும். கீழே உள்ள பெயர்களை அப்படியே சேர்த்து, வலப்புறத்தில் உங்கள் உண்மையான மதிப்புகளை இடுங்கள்.</p>
+      <pre><code>ConnectionStrings__DefaultConnection=&lt;store_management_db connection&gt;
+ConnectionStrings__SubscriptionDatabase=&lt;SubscriptionDatabase connection&gt;
+SubscriptionPlatform__ApplicationId=&lt;Step 4 application ID&gt;
+SubscriptionPlatform__PlanId=&lt;Step 4 plan ID&gt;
+JwtSettings__SecretKey=&lt;random secret, at least 32 bytes&gt;
+Razorpay__KeyId=&lt;இப்போது test key ID&gt;
+Razorpay__KeySecret=&lt;இப்போது test key secret&gt;
+Razorpay__WebhookSecret=&lt;இப்போது test webhook secret&gt;</code></pre>
+      <p>Connection string என்பது database முகவரி மற்றும் login விவரங்கள் சேர்ந்த ஒரே வரி. அதன் வடிவம் இப்படியிருக்கும் (உதாரண password-ஐ அப்படியே பயன்படுத்த வேண்டாம்):</p>
+      <pre><code>Server=db.example.com;Port=3306;Database=store_management_db;User ID=store_api;Password=&lt;password&gt;;GuidFormat=Char36;SslMode=Required;</code></pre>
+      <p>இரண்டாவது connection string-ல் <code>Database=SubscriptionDatabase</code> என்று மாற்றுங்கள். இரண்டும் ஒரே MySQL server-ல் இருந்தால் server, user, password ஒன்றாக இருக்கலாம். Hosting provider-ல் சரியான environment-இல் சேமித்து, மதிப்புகளை மாற்றிய பிறகு API-ஐ restart செய்யுங்கள்.</p>
+      <div class="warning"><strong>Secret-களை Flutter-ல் அல்லது இந்த HTML file-ல் வைக்க வேண்டாம்.</strong>Database password, JWT secret, Razorpay Key Secret, Webhook Secret, application key ஆகியவை server-ல் மட்டுமே இருக்க வேண்டும். Flutter-க்கு public Key ID மற்றும் order விவரம் மட்டும் போகும்.</div>
+      <div class="expect"><strong>API சரியாகத் தொடங்கினால்</strong>Configuration பிழை இல்லாமல் API start ஆகி இரண்டு database-களையும் இணைக்க வேண்டும். ID GUID ஆக இருக்க வேண்டும் என்ற பிழை வந்தால் முழு ID-ஐ மீண்டும் நகலெடுங்கள். Connection இல்லை என்றால் மேலே உள்ள variable பெயர்களை எழுத்துக்கு எழுத்து சரிபாருங்கள்.</div>
+    </section>
+
+    <section class="step" id="test-dashboard">
+      <div class="heading"><span class="number">6</span><h2>Razorpay Test Mode மற்றும் webhook அமைக்கவும்</h2></div>
+      <p>Test Mode என்பது பயிற்சி செய்வதற்கான பாதுகாப்பான இடம்; இதில் உண்மையான பணம் பிடிக்கப்படாது. Razorpay dashboard-ல் Test Mode தேர்ந்தெடுத்தபடியே பின்வருவன செய்யுங்கள்.</p>
+      <ol>
+        <li>API Keys பகுதியைத் திறந்து test Key ID மற்றும் Key Secret உருவாக்குங்கள்.</li>
+        <li>Key ID மற்றும் Key Secret-ஐ staging StoreManagement API-ன் <code>Razorpay__KeyId</code> மற்றும் <code>Razorpay__KeySecret</code> அமைப்புகளில் உள்ளிடுங்கள்.</li>
+        <li>Webhooks பகுதியைத் திறந்து இந்த முகவரியைச் சேர்க்கவும். <code>&lt;staging-api-host&gt;</code> இடத்தில் உங்கள் staging முகவரியை இடுங்கள்:<br><code>https://&lt;staging-api-host&gt;/api/subscription/webhook/razorpay</code></li>
+        <li><code>payment.captured</code> மற்றும் <code>payment.failed</code> நிகழ்வுகளைத் தேர்ந்தெடுக்கவும்.</li>
+        <li>புதிய webhook secret ஒன்றை அமைத்து Razorpay-ல் சேமியுங்கள். அதே மதிப்பை staging API-ன் <code>Razorpay__WebhookSecret</code>-ல் உள்ளிட்டு API-ஐ restart செய்யுங்கள்.</li>
+      </ol>
+      <p>Key Secret மற்றும் Webhook Secret வெவ்வேறு. ஒன்று Razorpay API-ஐ server அழைக்கப் பயன்படும்; மற்றொன்று webhook செய்தி Razorpay-இலிருந்து வந்ததா என்று சரிபார்க்கும். Dashboard மெனு மாறியிருந்தால் <a href="https://razorpay.com/docs/payments/payments/dashboard/">Razorpay அதிகாரப்பூர்வ வழிமுறைகளை</a> பார்க்கவும்.</p>
+      <div class="expect"><strong>அடுத்த படிக்குத் தயாராக இருக்கும் போது</strong>Webhook இயக்கப்பட்டு அதன் URL StoreManagement API-யைச் சுட்ட வேண்டும். Test payment செய்த பிறகு Razorpay-ல் delivery வெற்றியடைந்ததாகத் தெரிய வேண்டும். Admin API முகவரியை webhook-க்கு கொடுக்க வேண்டாம்.</div>
+    </section>
+
+    <section class="step" id="publish-api">
+      <div class="heading"><span class="number">7</span><h2>ஒரே API-ஐ build செய்து publish செய்யுங்கள்</h2></div>
+      <p>உங்கள் development கணினியில் <code>StoreManagementApi</code> solution folder-ல் terminal திறந்து இந்த கட்டளைகளை ஒன்றன் பின் ஒன்றாக இயக்குங்கள்:</p>
+      <pre><code>dotnet restore StoreManagement.sln
+dotnet build StoreManagement.sln --configuration Release
+dotnet publish StoreManagement.Api/StoreManagement.Api.csproj --configuration Release --output ./publish</code></pre>
+      <p>இந்த கட்டளைகள் <code>publish</code> என்ற folder உருவாக்கும். அந்த folder-க்குள் உள்ள கோப்புகளை hosting provider-ல் StoreManagement API app-க்கு upload செய்யுங்கள். Step 5-ல் வைத்த server secrets-ஐ hosting provider-லும் அமைக்கவும்.</p>
+      <p>Customer payment-க்காக StoreManagement API ஒன்றை மட்டுமே deploy செய்ய வேண்டும். Project reference காரணமாக <code>SubscriptionPlatform.Core</code> library அதன் output-ல் தானாக சேரும். Core-க்காக தனி website/server தொடங்க வேண்டாம்.</p>
+      <div class="expect"><strong>வெற்றிகரமாக முடிந்தது என்று தெரியும் அறிகுறி</strong>Build பிழையின்றி முடிந்து, hosting provider API இயங்குகிறது என்று காட்டும். API இரண்டு database-களையும் அணுக வேண்டும். Razorpay-ன் <a href="https://razorpay.com/docs/server-integration/python/test-app/">test மற்றும் live payment வழிமுறைகளையும்</a> பார்க்கவும்.</div>
+    </section>
+
+    <section class="step" id="flutter-app">
+      <div class="heading"><span class="number">8</span><h2>Flutter செயலியை StoreManagement API-க்கு இணைக்கவும்</h2></div>
+      <p>இந்த படியை மறந்துவிடுவது எளிது. Flutter project-ல் இப்போது ஒரு default API முகவரி உள்ளது. உங்கள் server-ல் deploy செய்த பிறகு, உங்கள் API முகவரியுடன் புதிய release app build செய்ய வேண்டும். முகவரியின் முடிவில் <code>/api</code> இருக்க வேண்டும். SubscriptionPlatform admin முகவரியைப் பயன்படுத்த வேண்டாம்.</p>
+      <h3>Android APK உருவாக்க</h3>
+      <p>Solution folder-ல் இருந்து Flutter project-க்கு சென்று இந்தக் கட்டளைகளை இயக்குங்கள்:</p>
+      <pre><code>cd ../StoreManagementApp
+flutter pub get
+flutter analyze
+flutter build apk --release --dart-define=API_BASE_URL=https://&lt;your-api-domain&gt;/api</code></pre>
+      <p><code>&lt;your-api-domain&gt;</code> இடத்தில் உங்கள் உண்மையான HTTPS domain-ஐ இடுங்கள். உதாரணமாக API முகவரி <code>https://api.myshop.com</code> என்றால், முழு மதிப்பு <code>https://api.myshop.com/api</code>.</p>
+      <h3>iPhone/iPad IPA உருவாக்க</h3>
+      <p>Apple signing அமைப்பு உள்ள Mac-ல் இதே API முகவரியைப் பயன்படுத்துங்கள்:</p>
+      <pre><code>flutter build ipa --release --dart-define=API_BASE_URL=https://&lt;your-api-domain&gt;/api</code></pre>
+      <p>Release app-ஐ உங்கள் வழக்கமான Android/iOS store signing மூலம் sign செய்து, உண்மையான கைபேசியில் நிறுவிச் சோதியுங்கள். Checkout-க்கு public Key ID பயன்படலாம். Key Secret செயலிக்குள் ஒருபோதும் இருக்கக்கூடாது.</p>
+      <div class="expect"><strong>அடுத்த படிக்குத் தயாராக இருக்கும் போது</strong>கைபேசியில் செயலியைத் திறந்து sign in செய்ய முடியும். Step 4-ல் உருவாக்கிய plan-ன் விலைகள் subscription திரையில் தெரியும்.</div>
+    </section>
+
+    <section class="step" id="test-everything">
+      <div class="heading"><span class="number">9</span><h2>வாடிக்கையாளர் போல முழு payment flow-ஐ முயற்சி செய்யுங்கள்</h2></div>
+      <p>Staging செயலி Test Mode key-களைப் பயன்படுத்துகிறதா என்று சரிபாருங்கள். Razorpay dashboard காட்டும் test payment முறைகளை மட்டும் பயன்படுத்துங்கள். உண்மையான card அல்லது bank விவரங்களைப் பயன்படுத்த வேண்டாம்.</p>
+      <ol>
+        <li>Flutter-ஐ திறந்து test user-ஆக sign in செய்யுங்கள்.</li>
+        <li>Subscription திரையைத் திறந்து currency மற்றும் விலைகள் சரியா பார்க்கவும்.</li>
+        <li>Free trial தொடங்குங்கள். Razorpay திறக்கக்கூடாது; செயலியில் trial access வந்திருக்க வேண்டும்.</li>
+        <li>மற்றொரு தகுதியான test user-ஐப் பயன்படுத்தி 3 மாதத் திட்டத்திற்கு வெற்றிகரமான test payment செய்யுங்கள். Server சரிபார்த்த பிறகே access வருகிறதா பார்க்கவும்.</li>
+        <li>6 மாதம் மற்றும் 1 வருடத் திட்டங்களுக்கும் இதைச் செய்யுங்கள்.</li>
+        <li>Declined அல்லது cancel செய்யப்பட்ட payment முயற்சி செய்யுங்கள். Access கிடைக்கக்கூடாது; மீண்டும் முயற்சி செய்ய முடிய வேண்டும்.</li>
+        <li>Razorpay dashboard-ல் payment-ஐத் திறந்து அது <strong>captured</strong> ஆனதா பார்க்கவும். Authorized ஆனது மட்டும் போதாது.</li>
+        <li>Webhook delivery பக்கத்தில் event <code>/api/subscription/webhook/razorpay</code>-க்கு வெற்றியாக வந்ததா பாருங்கள்.</li>
+        <li>Flutter-ஐ மூடி மீண்டும் திறந்து sign in செய்யுங்கள். API சரியான subscription status-ஐத் தருகிறதா சரிபாருங்கள்.</li>
+        <li>Subscription இல்லாத user-ஆக பாதுகாக்கப்பட்ட StoreManagement வசதியைத் திறக்க முயற்சி செய்யுங்கள். App subscription திரையைக் காட்ட வேண்டும்.</li>
+      </ol>
+      <div class="warning"><strong>ஏதேனும் சோதனை தோல்வியடைந்தால் இங்கேயே நிறுத்துங்கள்.</strong>சரிசெய்ய Live key-களை Flutter-ல் போட வேண்டாம். Staging API log, database connection, application/plan ID, Test Mode, webhook URL, webhook secret ஆகியவற்றைச் சரிபாருங்கள்.</div>
+    </section>
+
+    <section class="step" id="live">
+      <div class="heading"><span class="number">10</span><h2>Test பணத்திலிருந்து உண்மையான payment-க்கு மாறுங்கள்</h2></div>
+      <p>Step 9 சரியாக முடிந்ததும், Razorpay உங்கள் கணக்கிற்கு Live Mode அனுமதி கொடுத்த பிறகே இதைச் செய்யுங்கள்.</p>
+      <ol>
+        <li>Razorpay dashboard-ல் <strong>Live Mode</strong> தேர்ந்தெடுத்து புதிய live API key-களை உருவாக்குங்கள். Test key-களைப் பயன்படுத்த வேண்டாம்.</li>
+        <li>Live Mode-ல் புதிய webhook உருவாக்கி <code>https://&lt;production-api-domain&gt;/api/subscription/webhook/razorpay</code> முகவரியை இடுங்கள். <code>payment.captured</code> மற்றும் <code>payment.failed</code> events-ஐத் தேர்ந்தெடுக்கவும்.</li>
+        <li>புதிய Live webhook secret ஒன்றை உருவாக்குங்கள்.</li>
+        <li>Production StoreManagement API-ன் secret manager-ல் live Key ID, Key Secret, Webhook Secret ஆகியவற்றை உள்ளிட்டு API-ஐ restart செய்யுங்கள்.</li>
+        <li>Production API-ல் சரியான production database, application ID, plan ID உள்ளனவா சரிபாருங்கள்.</li>
+        <li><code>API_BASE_URL=https://&lt;production-api-domain&gt;/api</code> வைத்து Flutter-ஐ மீண்டும் build செய்து signed release-ஐ வாடிக்கையாளர்களுக்கு வெளியிடுங்கள்.</li>
+        <li>முதல் சில payment-களின் போது API log மற்றும் Razorpay dashboard-ஐக் கவனியுங்கள். Payment captured ஆனதா, webhook வந்ததா, settlement நிலை என்ன என்று பாருங்கள்.</li>
+      </ol>
+      <p>Razorpay-ன் <a href="https://razorpay.com/docs/server-integration/python/test-app/">Live Mode வழிமுறைகளையும்</a> <a href="https://razorpay.com/security/checklist/">security checklist-ஐயும்</a> பார்க்கவும். Dashboard மெனு மற்றும் account activation தேவைகள் கணக்குக்கு ஏற்ப மாறலாம்.</p>
+    </section>
+
+    <section class="end">
+      <h2>முக்கியமாக நினைவில் வையுங்கள்</h2>
+      <p><span class="term">ஒரே API deploy செய்யுங்கள்</span><span class="term">Secret-களை server-ல் வைத்திருங்கள்</span><span class="term">முதலில் Test Mode</span><span class="term">Captured payment-ஐ சரிபாருங்கள்</span></p>
+      <p>இப்போதுள்ள paid plan-கள் முன்பணம் செலுத்தும் காலவரையறை கொண்டவை; தானாக renew ஆகாது. Refund, recurring charge, renewal retry, invoice/tax வசதிகளும் இப்போதைய அமைப்பில் இல்லை. வாடிக்கையாளர்களிடம் விற்கும் முன் இந்த வசதிகள் தேவையா என்று முடிவு செய்யுங்கள்.</p>
+      <p><a href="PAYMENT_GO_LIVE_FIRST_TIME.html">English வழிகாட்டி</a> · <a href="PAYMENT_GO_LIVE_GUIDE.html">சுருக்கமான checklist</a> · <a href="StoreManagement.sln">Solution</a> · <a href="README.md">முகப்பு</a></p>
+    </section>
+  </main>
+  <footer>StoreManagement API · முதல் முறை payment அமைப்பு வழிகாட்டி</footer>
+</body>
+</html>

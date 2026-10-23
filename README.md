@@ -19,3 +19,5 @@ The published API output includes the class library assembly. The server only ne
 For the end-to-end payment, Razorpay dashboard, database, deployment, and Flutter release steps, open [PAYMENT_GO_LIVE_GUIDE.html](PAYMENT_GO_LIVE_GUIDE.html) in a browser.
 
 For a slower first-time walkthrough with example commands and expected results, open [PAYMENT_GO_LIVE_FIRST_TIME.html](PAYMENT_GO_LIVE_FIRST_TIME.html) in a browser.
+
+For the same first-time walkthrough in Tamil, open [PAYMENT_GO_LIVE_FIRST_TIME_TAMIL.html](PAYMENT_GO_LIVE_FIRST_TIME_TAMIL.html) in a browser.
