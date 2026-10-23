@@ -122,6 +122,15 @@ mysql -u root -p store_management_db &lt; StoreManagement.Api/Scripts/add_refres
       <h3>3B. Subscription database உருவாக்குங்கள்</h3>
       <pre><code>mysql -u root -p &lt; SubscriptionPlatform.Core/Migrations/001_initial.sql</code></pre>
       <p>இது <code>SubscriptionDatabase</code> என்ற தனி database மற்றும் plan, subscription, payment, webhook அட்டவணைகளை உருவாக்கும். தற்போதைய 001 file-ஐ இயக்கியிருந்தால், <strong>002 migration-ஐ இயக்க வேண்டாம்</strong>; இரண்டு price columns-ம் 001-லேயே உள்ளன. பழைய schema-வில் அந்த columns இல்லாதபோது மட்டும் <code>SubscriptionPlatform.Core/Migrations/002_fixed_term_prices.sql</code> பயன்படுத்த வேண்டும். எந்த schema என்று தெரியாவிட்டால், முதலில் columns உள்ளனவா என்று சரிபாருங்கள்.</p>
+      <div class="do"><strong>“Duplicate column name” பிழை ஏற்கனவே வந்திருந்தால்</strong>Database-ஐ delete செய்யவோ, columns-ஐ நீக்கவோ வேண்டாம். ஏற்கனவே உள்ள columns-ஐ முதலில் சரிபாருங்கள்:
+        <pre><code>mysql -u root -p SubscriptionDatabase
+SHOW COLUMNS FROM plans LIKE 'three_month_amount_minor';
+SHOW COLUMNS FROM plans LIKE 'six_month_amount_minor';
+SHOW COLUMNS FROM customers LIKE 'email';</code></pre>
+        இரண்டு plan column-களும் பட்டியலில் வந்தால் அவை database-ல் ஏற்கனவே உள்ளன. Email row-ல் type <code>varchar(320)</code> என்றும் <code>Null</code> மதிப்பு <code>YES</code> என்றும் இருக்க வேண்டும். அப்படி இல்லையென்றால், MySQL prompt-ல் இந்தக் கட்டளையை மட்டும் இயக்கி மீண்டும் சரிபாருங்கள்:
+        <pre><code>ALTER TABLE customers MODIFY COLUMN email VARCHAR(320) NULL;</code></pre>
+        MySQL prompt-ஐ விட்டு வெளியேற <code>exit</code> என்று எழுதுங்கள். Database-ஐ மீண்டும் உருவாக்க வேண்டியதில்லை.
+      </div>
       <h3>3C. API-க்காக தனி database login உருவாக்குங்கள்</h3>
       <p>API-ஐ MySQL <code>root</code> கணக்கில் இணைக்க வேண்டாம். Database நிர்வாகியிடம் இரண்டு database-களையும் படிக்கவும் மாற்றவும் மட்டும் அனுமதிக்கும் தனி user உருவாக்கச் சொல்லுங்கள். கீழே ஒரு உதாரணம்; username, network வரம்பு, password ஆகியவற்றை உங்கள் நிர்வாகி சரியான மதிப்புகளால் மாற்ற வேண்டும்:</p>
       <pre><code>CREATE USER 'store_api'@'10.%' IDENTIFIED BY '&lt;unique-long-password&gt;';

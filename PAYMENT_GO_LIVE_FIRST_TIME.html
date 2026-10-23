@@ -122,6 +122,15 @@ mysql -u root -p store_management_db &lt; StoreManagement.Api/Scripts/add_refres
       <h3>3B. Create the subscription database</h3>
       <pre><code>mysql -u root -p &lt; SubscriptionPlatform.Core/Migrations/001_initial.sql</code></pre>
       <p>This creates a separate database called <code>SubscriptionDatabase</code> and its plan, subscription, payment, and webhook tables. If you ran this current 001 file, <strong>do not run migration 002</strong>; both price columns are already included. File <code>SubscriptionPlatform.Core/Migrations/002_fixed_term_prices.sql</code> is only for an older database that is missing the columns. If you are not sure, check the columns before running an upgrade.</p>
+      <div class="do"><strong>If you already saw “Duplicate column name”</strong>Do not delete the database or remove the columns. Connect to the database and check what is already there:
+        <pre><code>mysql -u root -p SubscriptionDatabase
+SHOW COLUMNS FROM plans LIKE 'three_month_amount_minor';
+SHOW COLUMNS FROM plans LIKE 'six_month_amount_minor';
+SHOW COLUMNS FROM customers LIKE 'email';</code></pre>
+        If both plan columns appear, they were created successfully. The email row should show type <code>varchar(320)</code> and <code>Null</code> as <code>YES</code>. If it does not, run this one statement inside the MySQL prompt, then check again:
+        <pre><code>ALTER TABLE customers MODIFY COLUMN email VARCHAR(320) NULL;</code></pre>
+        Type <code>exit</code> to leave the MySQL prompt. No database reset is needed.
+      </div>
       <h3>3C. Create a runtime database login</h3>
       <p>The API should not connect as MySQL's root user. Ask your database administrator to create a restricted user with read/write access to both databases. Example only; replace the username, host range, and password with values approved for your server:</p>
       <pre><code>CREATE USER 'store_api'@'10.%' IDENTIFIED BY '&lt;unique-long-password&gt;';
