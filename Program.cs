@@ -16,8 +16,9 @@ builder.Logging.ClearProviders();
 builder.Host.UseNLog();
 
 // 1. Database Connection Pooling via MySqlDataSource
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
-    ?? "Server=localhost;Port=3000;Database=store_management_db;User=root;Password=root123;";
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+    throw new InvalidOperationException("ConnectionStrings:DefaultConnection must be set through the host secret configuration.");
 
 var dataSource = new MySqlDataSource(connectionString);
 builder.Services.AddSingleton(dataSource);
@@ -26,6 +27,7 @@ builder.Services.AddScoped<ControllerLoggingFilter>();
 
 // 2. Services Registration
 builder.Services.AddHttpClient();
+builder.Services.AddScoped<SubscriptionPlatformClient>();
 builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
@@ -53,7 +55,9 @@ builder.Services.AddScoped<IReportRepository, ReportRepository>();
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 
 // 4. JWT Authentication Setup
-var secretKey = builder.Configuration["JwtSettings:SecretKey"] ?? "SuperSecretKeyForStoreManagementApiWithMinimum256BitsLength!";
+var secretKey = builder.Configuration["JwtSettings:SecretKey"];
+if (string.IsNullOrWhiteSpace(secretKey) || Encoding.UTF8.GetByteCount(secretKey) < 32)
+    throw new InvalidOperationException("JwtSettings:SecretKey must be configured as a random secret of at least 32 bytes.");
 var issuer = builder.Configuration["JwtSettings:Issuer"] ?? "StoreManagementApi";
 var audience = builder.Configuration["JwtSettings:Audience"] ?? "StoreManagementFlutterApp";
 
@@ -147,6 +151,7 @@ if (app.Environment.IsDevelopment() || true) // Enable Swagger in all environmen
 
 app.UseCors("AllowAll");
 app.UseAuthentication();
+app.UseMiddleware<SubscriptionAccessMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();
