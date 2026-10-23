@@ -154,21 +154,15 @@
       <p>From the <code>StoreManagementApi</code> solution root, create the subscription tables by applying the initial migration:</p>
       <pre><code>mysql -u &lt;migration-user&gt; -p &lt; SubscriptionPlatform.Core/Migrations/001_initial.sql</code></pre>
       <p>If you used the current <code>001_initial.sql</code>, skip migration 002; it already contains both fixed-term columns. Migration <code>SubscriptionPlatform.Core/Migrations/002_fixed_term_prices.sql</code> is only an upgrade for a database from the older schema. The application does not run migrations automatically. If you are unsure which schema you have, check the columns before running an upgrade.</p>
+      <p>After the schema exists, run <code>SubscriptionPlatform.Core/Migrations/003_store_management_seed.sql</code> against <code>SubscriptionDatabase</code>. It inserts the StoreManagement application and sample plan with IDs already configured in <code>StoreManagement.Api/appsettings.json</code>. The sample prices are for testing only; change them before live payments.</p>
       <div class="callout"><strong>Database access</strong>Use a privileged account for schema changes and separate restricted runtime users for the API. Do not expose MySQL directly to the internet.</div>
     </section>
 
     <section class="step" id="plan">
-      <div class="step-heading"><span class="number">4</span><h2>Create the application and plan IDs</h2></div>
-      <p>The StoreManagement API needs an application GUID and plan GUID. If they are not already created, use the standalone administrative host once in a trusted development/staging environment. Do not deploy it to serve customer payments.</p>
-      <ol>
-        <li>From the solution root, run <code>../SubscriptionPlatform.Api/SubscriptionPlatform.Api.csproj</code>. Configure its subscription DB connection, a random <code>Authentication__SigningKey</code> (at least 32 bytes), and a strong <code>Authentication__BootstrapAdminKey</code> (at least 32 characters). Use test Razorpay credentials if needed.</li>
-        <li>Call <code>POST /api/v1/auth/token</code> with <code>{ "adminKey": "&lt;bootstrap-admin-key&gt;" }</code> to get an admin bearer token.</li>
-        <li>Call <code>POST /api/v1/admin/applications</code> with the admin token and <code>{ "name": "StoreManagement" }</code>.</li>
-        <li>Save the returned application <code>id</code> and <code>application_key</code> securely. The key is only shown at creation.</li>
-        <li>Get an application bearer token via <code>POST /api/v1/auth/token</code> with <code>{ "applicationKey": "&lt;application-key&gt;" }</code>. Create the plan using <code>POST /api/v1/plans</code>.</li>
-      </ol>
-      <p>Enter your approved prices in integer minor units. For INR, <code>10000</code> means ₹100.00. Set the 3-month, 6-month, and yearly prices, currency, and trial days (0–90). Copy the returned application ID and plan ID for Step 5.</p>
-      <p>Stop the administrative host after provisioning. Do not run it alongside StoreManagement API on the same database unless you intentionally coordinate both background maintenance workers. See the <a href="SubscriptionPlatform.Core/Migrations/INTEGRATION_AND_LIVE_GUIDE.md">administrative API endpoint guide</a> for request examples.</p>
+      <div class="step-heading"><span class="number">4</span><h2>Application ID and Plan ID</h2></div>
+      <p>For this integration, <code>003_store_management_seed.sql</code> creates the application and plan records using fixed IDs. Those same IDs are already set in StoreManagement's <code>appsettings.json</code>. Apply the migration once; you do not need to start or deploy the standalone admin API.</p>
+      <p>The sample plan uses ₹1,497 for 3 months, ₹2,697 for 6 months, ₹4,794 for 1 year, and a 7-day trial. These are dummy values. Change the migration prices before applying it for production, or update the plan row before accepting live payments. Use Razorpay Test Mode while sample prices are configured.</p>
+      <p>The Application ID identifies the StoreManagement integration. The Plan ID identifies the offer and its prices. Neither is a JWT secret; the JWT signing key remains a separate server secret.</p>
     </section>
 
     <section class="step" id="secrets">
@@ -176,8 +170,8 @@
       <p>Put these values in the hosting provider's protected environment configuration or secret manager, not in committed settings files:</p>
       <pre><code>ConnectionStrings__DefaultConnection=&lt;StoreManagement MySQL connection&gt;
 ConnectionStrings__SubscriptionDatabase=&lt;SubscriptionDatabase MySQL connection&gt;
-SubscriptionPlatform__ApplicationId=&lt;application GUID&gt;
-SubscriptionPlatform__PlanId=&lt;plan GUID&gt;
+SubscriptionPlatform__ApplicationId=7f5a35f8-3ca3-4cc2-9be9-6d7513a24401
+SubscriptionPlatform__PlanId=2b8503d1-a594-47ab-af3d-380a1af28402
 JwtSettings__SecretKey=&lt;random secret, at least 32 bytes&gt;
 Razorpay__KeyId=&lt;key ID for this environment&gt;
 Razorpay__KeySecret=&lt;API key secret for this environment&gt;

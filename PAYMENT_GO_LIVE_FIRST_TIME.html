@@ -66,7 +66,7 @@
   <main>
     <section class="banner">
       <h2>There is only one API to deploy for customers</h2>
-      <p><code>StoreManagement.Api</code> is the website/server your Flutter app talks to. <code>SubscriptionPlatform.Core</code> is a code library used inside it. It is not a separate website or server. The separate <code>SubscriptionPlatform.Api</code> is only a temporary admin tool for creating the application and plan IDs.</p>
+      <p><code>StoreManagement.Api</code> is the website/server your Flutter app talks to. <code>SubscriptionPlatform.Core</code> is a code library used inside it, not a separate server. The seed migration creates the application and plan records; you do not need to run another API to set them up.</p>
     </section>
 
     <nav class="toc" aria-label="Guide contents">
@@ -122,6 +122,7 @@ mysql -u root -p store_management_db &lt; StoreManagement.Api/Scripts/add_refres
       <h3>3B. Create the subscription database</h3>
       <pre><code>mysql -u root -p &lt; SubscriptionPlatform.Core/Migrations/001_initial.sql</code></pre>
       <p>This creates a separate database called <code>SubscriptionDatabase</code> and its plan, subscription, payment, and webhook tables. If you ran this current 001 file, <strong>do not run migration 002</strong>; both price columns are already included. File <code>SubscriptionPlatform.Core/Migrations/002_fixed_term_prices.sql</code> is only for an older database that is missing the columns. If you are not sure, check the columns before running an upgrade.</p>
+      <p>After the tables exist, run <code>SubscriptionPlatform.Core/Migrations/003_store_management_seed.sql</code> against <code>SubscriptionDatabase</code>. It creates the StoreManagement application and sample plan records needed for startup. It is safe to run again. Its sample prices are for testing; replace them with your real prices before taking live payments.</p>
       <div class="do"><strong>If you already saw “Duplicate column name”</strong>Do not delete the database or remove the columns. Connect to the database and check what is already there:
         <pre><code>mysql -u root -p SubscriptionDatabase
 SHOW COLUMNS FROM plans LIKE 'three_month_amount_minor';
@@ -142,50 +143,10 @@ FLUSH PRIVILEGES;</code></pre>
     </section>
 
     <section class="step" id="ids">
-      <div class="heading"><span class="number">4</span><h2>Create the application ID and plan ID</h2></div>
-      <p>These two IDs tell StoreManagement which subscription plan belongs to it. Usually you do this once. The app key is only needed to administer the plan; customers never use it.</p>
-      <h3>4A. Start the admin tool on your development computer</h3>
-      <p>Open a terminal in the <code>StoreManagementApi</code> solution folder. Point it at the <code>SubscriptionDatabase</code> you created in Step 3. Create temporary, strong secrets for this local admin session. Do not use your production keys here.</p>
-      <pre><code>export ConnectionStrings__SubscriptionDatabase='Server=&lt;mysql-host&gt;;Port=3306;Database=SubscriptionDatabase;User ID=store_api;Password=&lt;password&gt;;GuidFormat=Char36;'
-export Authentication__SigningKey='&lt;random-secret-at-least-32-bytes&gt;'
-export Authentication__BootstrapAdminKey='&lt;random-admin-secret-at-least-32-characters&gt;'
-dotnet run --project ../SubscriptionPlatform.Api/SubscriptionPlatform.Api.csproj</code></pre>
-      <p>Leave that terminal running. It prints a local address such as <code>http://localhost:12345</code>. Use the address it prints in the next commands. If you are using Windows PowerShell, set values with <code>$env:ConnectionStrings__SubscriptionDatabase = "..."</code> instead of <code>export</code>.</p>
-      <h3>4B. Get the admin token</h3>
-      <p>Open a second terminal. Replace the URL and secret with the values from the first terminal. This request proves that you are allowed to create an application.</p>
-      <pre><code>curl -X POST 'http://localhost:&lt;port&gt;/api/v1/auth/token' \
-  -H 'Content-Type: application/json' \
-  -d '{"adminKey":"&lt;your-bootstrap-admin-secret&gt;"}'</code></pre>
-      <p>The response contains <code>access_token</code>. Copy it temporarily; it is the admin bearer token used in the next request.</p>
-      <h3>4C. Register StoreManagement</h3>
-      <p>Replace <code>&lt;admin-token&gt;</code> with the token you just received:</p>
-      <pre><code>curl -X POST 'http://localhost:&lt;port&gt;/api/v1/admin/applications' \
-  -H 'Authorization: Bearer &lt;admin-token&gt;' \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"StoreManagement"}'</code></pre>
-      <p>Copy the returned <code>id</code> and <code>application_key</code> into a secure temporary note. You need both for the next action. The key is only shown once; do not put it in the Flutter app.</p>
-      <h3>4D. Get an application token and create your plan</h3>
-      <p>Request a token using the application key:</p>
-      <pre><code>curl -X POST 'http://localhost:&lt;port&gt;/api/v1/auth/token' \
-  -H 'Content-Type: application/json' \
-  -d '{"applicationKey":"&lt;application-key&gt;"}'</code></pre>
-      <p>Use its <code>access_token</code> to create the plan. Replace the sample amounts with the prices you have decided to charge. Amounts use the smallest currency unit: <code>10000</code> is ₹100.00 for INR.</p>
-      <pre><code>curl -X POST 'http://localhost:&lt;port&gt;/api/v1/plans' \
-  -H 'Authorization: Bearer &lt;application-token&gt;' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "name":"StoreManagement Plan",
-    "currency":"INR",
-    "monthlyAmountMinor":0,
-    "threeMonthAmountMinor":149700,
-    "sixMonthAmountMinor":269700,
-    "yearlyAmountMinor":479400,
-    "trialDays":7,
-    "featuresJson":"{}",
-    "limitsJson":"{}"
-  }'</code></pre>
-      <p>The prices above are examples only. Change them to your real prices before using this plan. The response contains the plan <code>id</code>. Save that and the application <code>id</code>. These become the settings named <code>SubscriptionPlatform__ApplicationId</code> and <code>SubscriptionPlatform__PlanId</code>.</p>
-      <div class="expect"><strong>Ready to continue when</strong>You have saved the application ID and plan ID. Stop the admin tool by returning to its terminal and pressing Ctrl+C. It does not need to run while StoreManagement customers pay.</div>
+      <div class="heading"><span class="number">4</span><h2>Application ID and Plan ID</h2></div>
+      <p>For this StoreManagement integration, migration <code>003_store_management_seed.sql</code> creates both records with fixed IDs. The API settings already contain those same IDs. You do not need to run the admin API or copy tokens. The Application ID identifies this integration; the Plan ID points to its sample offer.</p>
+      <p>The migration uses example prices of ₹1,497 for 3 months, ₹2,697 for 6 months, ₹4,794 for 1 year, and a 7-day trial. Those are dummy values. Edit the migration prices before running it for live use, or update the plan row in the database before enabling live payments. Keep Razorpay in Test Mode while using sample prices.</p>
+      <div class="expect"><strong>Ready to continue when</strong>The seed migration completed and the two IDs in StoreManagement API settings match the rows it inserted.</div>
     </section>
 
     <section class="step" id="config">
@@ -193,8 +154,8 @@ dotnet run --project ../SubscriptionPlatform.Api/SubscriptionPlatform.Api.csproj
       <p>Open your hosting provider's environment-variable or secrets page for the StoreManagement API. Add these names exactly. Put your own real values on the right-hand side.</p>
       <pre><code>ConnectionStrings__DefaultConnection=&lt;connection to store_management_db&gt;
 ConnectionStrings__SubscriptionDatabase=&lt;connection to SubscriptionDatabase&gt;
-SubscriptionPlatform__ApplicationId=&lt;application ID from Step 4&gt;
-SubscriptionPlatform__PlanId=&lt;plan ID from Step 4&gt;
+SubscriptionPlatform__ApplicationId=7f5a35f8-3ca3-4cc2-9be9-6d7513a24401
+SubscriptionPlatform__PlanId=2b8503d1-a594-47ab-af3d-380a1af28402
 JwtSettings__SecretKey=&lt;new random secret, at least 32 bytes&gt;
 Razorpay__KeyId=&lt;test key ID for now&gt;
 Razorpay__KeySecret=&lt;test key secret for now&gt;

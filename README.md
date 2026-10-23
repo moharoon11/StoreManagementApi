@@ -8,6 +8,8 @@ This folder is the workspace root. Open `StoreManagement.sln` in Visual Studio o
 - `SubscriptionPlatform.Core/` is a separate class library containing the shared subscription and payment implementation. The API references it directly as a project dependency; it does not call another service over HTTP.
 - `SubscriptionPlatform.Core/Migrations/` contains the subscription database SQL migrations and setup guide.
 
+For a new StoreManagement installation, apply migrations `001_initial.sql` and `003_store_management_seed.sql` to the subscription database. Apply `002_fixed_term_prices.sql` only if upgrading an older schema that is missing the fixed-term price columns. Migration 003 seeds the application and sample plan IDs already configured in `StoreManagement.Api/appsettings.json`; the sample prices are for testing and must be changed before live payments.
+
 Both projects are listed in `StoreManagement.sln`. Keep the project folders together when copying or publishing the source workspace so the project reference remains available. Build or publish the main API from the solution root:
 
 ```sh

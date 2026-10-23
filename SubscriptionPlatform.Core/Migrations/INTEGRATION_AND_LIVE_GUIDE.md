@@ -349,8 +349,8 @@ StoreManagement API references `SubscriptionPlatform.Core` as a project dependen
 
 ```text
 ConnectionStrings__SubscriptionDatabase=<MySQL connection string for SubscriptionDatabase>
-SubscriptionPlatform__ApplicationId=<application-guid-created-in-the-standalone-platform-admin-api>
-SubscriptionPlatform__PlanId=<plan-guid-created-for-this-integration>
+SubscriptionPlatform__ApplicationId=7f5a35f8-3ca3-4cc2-9be9-6d7513a24401
+SubscriptionPlatform__PlanId=2b8503d1-a594-47ab-af3d-380a1af28402
 Razorpay__KeyId=<Razorpay key ID>
 Razorpay__KeySecret=<Razorpay key secret>
 Razorpay__WebhookSecret=<Razorpay webhook secret>
@@ -362,30 +362,18 @@ All values belong in the Store API host's environment or secret manager, never F
 
 ### Configure plan prices
 
-Provision an application and plan using the optional standalone `SubscriptionPlatform.Api` admin host before running StoreManagement. Register the Store API integration and keep the returned application GUID. Use its application key to create one plan through `POST /api/v1/plans` on that standalone host. Example (replace prices with approved amounts; values are paise for INR):
+For this StoreManagement integration, apply `SubscriptionPlatform.Core/Migrations/003_store_management_seed.sql` after the subscription schema migration. It idempotently inserts the application and sample plan using the GUIDs above, so no standalone API needs to be run or deployed. The sample values in the SQL file are ₹1,497 for three months, ₹2,697 for six months, ₹4,794 for one year, and a seven-day trial. They are placeholders only. Edit them to approved prices before running this seed on production, or update the plan row before enabling live payments. Keep Razorpay in Test Mode while using sample prices. INR amount fields are paise (`10000` means ₹100.00).
 
-```json
-{
-  "name": "BillMate",
-  "currency": "INR",
-  "monthlyAmountMinor": 0,
-  "threeMonthAmountMinor": 149700,
-  "sixMonthAmountMinor": 269700,
-  "yearlyAmountMinor": 479400,
-  "trialDays": 7,
-  "featuresJson": "{}",
-  "limitsJson": "{}"
-}
-```
+The separate admin API can still manage other applications and plans, but it is not part of StoreManagement's runtime or required for this single integration.
 
-Copy the returned application ID to `SubscriptionPlatform__ApplicationId`, and the plan's returned `id` to `SubscriptionPlatform__PlanId`. The application key is only needed for this one-time management setup (and future management API calls); StoreManagement does not use it at runtime. Enter actual commercial prices and supported currency; the sample values are illustrative only. Do not send customer-provided prices to create orders.
+Do not send customer-provided prices to create orders. The server selects the amount from the active plan row.
 
 ### Razorpay dashboard setup for real payments
 
 1. Complete merchant onboarding, business verification, settlement bank setup, and required website/app details in the Razorpay Dashboard for the jurisdiction and account.
 2. In **Test Mode**, generate test API Key ID and Key Secret. Configure them only in the Store API host's secret manager as `Razorpay__KeyId` and `Razorpay__KeySecret`.
 3. Create a test webhook for `https://<store-api-host>/api/subscription/webhook/razorpay`. Subscribe to `payment.captured` and `payment.failed`, copy the webhook secret, and configure it as `Razorpay__WebhookSecret`. The webhook secret is separate from the API Key Secret. The Store API endpoint receives the event and the Core library verifies/reconciles it.
-4. Apply the subscription schema to the configured SubscriptionDatabase, deploy the Store API to HTTPS staging, provision a test application/plan with the optional standalone API, configure the Store API environment values above, then install/build the Flutter app with that Store API base URL. No separate SubscriptionPlatform API host is required for payment runtime.
+4. Apply the subscription schema and `003_store_management_seed.sql` to the configured SubscriptionDatabase, deploy the Store API to HTTPS staging, configure its database and Razorpay test credentials, then install/build the Flutter app with that Store API base URL. No separate SubscriptionPlatform API host is required.
 5. Test a successful captured test payment, failed/abandoned checkout, duplicate callback, duplicate webhook, delayed webhook, and platform outage. Confirm an unsuccessful or merely authorized payment never unlocks access.
 6. After staging sign-off and Razorpay live activation, switch to **Live Mode**, generate live API credentials, and set the live key ID/key secret and live webhook secret in the Store API production secret manager. Create the production webhook at the production Store API URL with the same two events. Keep test and live credentials separate; never put either Key Secret in `--dart-define`, Dart source, the APK, or logs.
 7. Make sure live payment capture is enabled or captured through the supported merchant flow. The current service grants access only to a Razorpay payment whose fetched status is `captured`.

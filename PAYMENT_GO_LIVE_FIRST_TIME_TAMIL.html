@@ -66,7 +66,7 @@
   <main>
     <section class="banner">
       <h2>வாடிக்கையாளர்களுக்காக ஒரே ஒரு API-ஐ மட்டும் deploy செய்ய வேண்டும்</h2>
-      <p><code>StoreManagement.Api</code> தான் Flutter செயலி தொடர்பு கொள்ளும் server. <code>SubscriptionPlatform.Core</code> என்பது அந்த server பயன்படுத்தும் தனி code library; இது தனி server அல்ல. <code>SubscriptionPlatform.Api</code> என்ற மற்றொரு API-ஐ application ID மற்றும் plan ID உருவாக்க மட்டும் தற்காலிகமாகப் பயன்படுத்தலாம்.</p>
+      <p><code>StoreManagement.Api</code> தான் Flutter செயலி தொடர்பு கொள்ளும் server. <code>SubscriptionPlatform.Core</code> என்பது அந்த server பயன்படுத்தும் code library; இது தனி server அல்ல. Seed migration application மற்றும் plan records-ஐ உருவாக்கும்; setup-க்காக மற்றொரு API-ஐ இயக்க வேண்டியதில்லை.</p>
     </section>
 
     <nav class="toc" aria-label="வழிகாட்டி படிகள்">
@@ -122,6 +122,7 @@ mysql -u root -p store_management_db &lt; StoreManagement.Api/Scripts/add_refres
       <h3>3B. Subscription database உருவாக்குங்கள்</h3>
       <pre><code>mysql -u root -p &lt; SubscriptionPlatform.Core/Migrations/001_initial.sql</code></pre>
       <p>இது <code>SubscriptionDatabase</code> என்ற தனி database மற்றும் plan, subscription, payment, webhook அட்டவணைகளை உருவாக்கும். தற்போதைய 001 file-ஐ இயக்கியிருந்தால், <strong>002 migration-ஐ இயக்க வேண்டாம்</strong>; இரண்டு price columns-ம் 001-லேயே உள்ளன. பழைய schema-வில் அந்த columns இல்லாதபோது மட்டும் <code>SubscriptionPlatform.Core/Migrations/002_fixed_term_prices.sql</code> பயன்படுத்த வேண்டும். எந்த schema என்று தெரியாவிட்டால், முதலில் columns உள்ளனவா என்று சரிபாருங்கள்.</p>
+      <p>அட்டவணைகள் உருவானதும், <code>SubscriptionPlatform.Core/Migrations/003_store_management_seed.sql</code> file-ஐ <code>SubscriptionDatabase</code>-ல் இயக்குங்கள். இது API-க்கு தேவையான StoreManagement application மற்றும் sample plan records-ஐ உருவாக்கும். மீண்டும் இயக்கினாலும் duplicate records உருவாகாது. விலைகள் சோதனைக்கான உதாரணங்கள் மட்டுமே; உண்மையான payment பெறுவதற்கு முன் உங்கள் விலைகளால் மாற்றுங்கள்.</p>
       <div class="do"><strong>“Duplicate column name” பிழை ஏற்கனவே வந்திருந்தால்</strong>Database-ஐ delete செய்யவோ, columns-ஐ நீக்கவோ வேண்டாம். ஏற்கனவே உள்ள columns-ஐ முதலில் சரிபாருங்கள்:
         <pre><code>mysql -u root -p SubscriptionDatabase
 SHOW COLUMNS FROM plans LIKE 'three_month_amount_minor';
@@ -142,51 +143,10 @@ FLUSH PRIVILEGES;</code></pre>
     </section>
 
     <section class="step" id="ids">
-      <div class="heading"><span class="number">4</span><h2>Application ID மற்றும் Plan ID உருவாக்குங்கள்</h2></div>
-      <p>இந்த இரண்டு ID-கள் StoreManagement எந்த subscription plan-ஐப் பயன்படுத்த வேண்டும் என்று சொல்கின்றன. பொதுவாக இந்த அமைப்பை ஒரே முறை செய்தால் போதும். Application key-ஐ plan நிர்வாகத்திற்காக மட்டும் வைத்துக்கொள்ளுங்கள்; வாடிக்கையாளருக்குக் கொடுக்கக் கூடாது.</p>
-      <h3>4A. உங்கள் development கணினியில் admin tool-ஐ இயக்குங்கள்</h3>
-      <p><code>StoreManagementApi</code> solution folder-ல் terminal திறக்கவும். Step 3-ல் உருவாக்கிய SubscriptionDatabase-ஐ connection string-ல் குறிப்பிடுங்கள். உள்ளூர் admin பயன்பாட்டிற்காக வலுவான தற்காலிக secret-களை அமைக்கவும். இங்கே production key-களைப் பயன்படுத்த வேண்டாம்.</p>
-      <pre><code>export ConnectionStrings__SubscriptionDatabase='Server=&lt;mysql-host&gt;;Port=3306;Database=SubscriptionDatabase;User ID=store_api;Password=&lt;password&gt;;GuidFormat=Char36;'
-export Authentication__SigningKey='&lt;random-secret-at-least-32-bytes&gt;'
-export Authentication__BootstrapAdminKey='&lt;random-admin-secret-at-least-32-characters&gt;'
-dotnet run --project ../SubscriptionPlatform.Api/SubscriptionPlatform.Api.csproj</code></pre>
-      <p>இந்த terminal-ஐ திறந்தபடியே விடுங்கள். <code>http://localhost:12345</code> போன்ற உள்ளூர் முகவரியை அது காட்டும். அடுத்த கட்டளைகளில் அந்த எண்ணைப் பயன்படுத்துங்கள். Windows PowerShell பயன்படுத்தினால் <code>export</code> என்பதற்குப் பதிலாக <code>$env:ConnectionStrings__SubscriptionDatabase = "..."</code> போன்ற முறையைப் பயன்படுத்துங்கள்.</p>
-      <h3>4B. Admin token பெறுங்கள்</h3>
-      <p>இரண்டாவது terminal திறக்கவும். முதல் terminal காட்டிய port எண்ணையும் நீங்கள் அமைத்த admin secret-ஐயும் கீழே மாற்றுங்கள். இந்த request மூலம் application உருவாக்க உங்களுக்கு அனுமதி இருப்பதை server சரிபார்க்கும்.</p>
-      <pre><code>curl -X POST 'http://localhost:&lt;port&gt;/api/v1/auth/token' \
-  -H 'Content-Type: application/json' \
-  -d '{"adminKey":"&lt;your-bootstrap-admin-secret&gt;"}'</code></pre>
-      <p>பதிலில் <code>access_token</code> வரும். அதை தற்காலிகமாக நகலெடுங்கள். அடுத்த படியில் அதுவே admin bearer token.</p>
-      <h3>4C. StoreManagement application-ஐ பதிவு செய்யுங்கள்</h3>
-      <p><code>&lt;admin-token&gt;</code> இடத்தில் முந்தைய பதிலில் வந்த token-ஐ இடுங்கள்:</p>
-      <pre><code>curl -X POST 'http://localhost:&lt;port&gt;/api/v1/admin/applications' \
-  -H 'Authorization: Bearer &lt;admin-token&gt;' \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"StoreManagement"}'</code></pre>
-      <p>பதிலில் வரும் <code>id</code> மற்றும் <code>application_key</code> இரண்டையும் பாதுகாப்பான இடத்தில் சேமியுங்கள். Application key உருவாக்கும் போது ஒரு முறை மட்டுமே காட்டப்படும். அதை Flutter செயலியில் வைக்க வேண்டாம்.</p>
-      <h3>4D. Application token பெற்று plan உருவாக்குங்கள்</h3>
-      <p>Application key பயன்படுத்தி token பெறுங்கள்:</p>
-      <pre><code>curl -X POST 'http://localhost:&lt;port&gt;/api/v1/auth/token' \
-  -H 'Content-Type: application/json' \
-  -d '{"applicationKey":"&lt;application-key&gt;"}'</code></pre>
-      <p>இதில் வந்த <code>access_token</code>-ஐ வைத்து plan உருவாக்குங்கள். கீழே உள்ள விலைகள் உதாரணம் மட்டுமே. உங்கள் உண்மையான விலைகளை இடுங்கள். INR-ல் <code>10000</code> என்றால் ₹100.00.</p>
-      <pre><code>curl -X POST 'http://localhost:&lt;port&gt;/api/v1/plans' \
-  -H 'Authorization: Bearer &lt;application-token&gt;' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "name":"StoreManagement Plan",
-    "currency":"INR",
-    "monthlyAmountMinor":0,
-    "threeMonthAmountMinor":149700,
-    "sixMonthAmountMinor":269700,
-    "yearlyAmountMinor":479400,
-    "trialDays":7,
-    "featuresJson":"{}",
-    "limitsJson":"{}"
-  }'</code></pre>
-      <p>இந்த sample விலைகளை உங்கள் வணிகம் முடிவு செய்த விலைகளால் மாற்றுங்கள். பதிலில் வரும் plan <code>id</code>-ஐயும் application <code>id</code>-ஐயும் சேமியுங்கள். Step 5-ல் அவற்றை அமைப்பீர்கள்.</p>
-      <div class="expect"><strong>அடுத்த படிக்குத் தயாராக இருக்கும் போது</strong>Application ID மற்றும் Plan ID பாதுகாப்பாக சேமிக்கப்பட்டிருக்கும். Admin tool இயங்கும் முதல் terminal-க்கு திரும்பி Ctrl+C அழுத்தி அதை நிறுத்துங்கள். வாடிக்கையாளர்கள் payment செய்யும்போது அந்த admin tool இயங்க வேண்டியதில்லை.</div>
-      <p>Endpoint request பற்றிய முழு விளக்கத்திற்கு <a href="SubscriptionPlatform.Core/Migrations/INTEGRATION_AND_LIVE_GUIDE.md">admin API வழிகாட்டியை</a> பார்க்கவும்.</p>
+      <div class="heading"><span class="number">4</span><h2>Application ID மற்றும் Plan ID</h2></div>
+      <p>இந்த StoreManagement integration-க்காக <code>003_store_management_seed.sql</code> migration இரண்டு records-ஐ நிரந்தர ID-களுடன் உருவாக்கும். API settings-ல் அதே ID-கள் ஏற்கனவே உள்ளன. Admin API-ஐ இயக்கவோ token நகலெடுக்கவோ தேவையில்லை. Application ID இந்த integration-ஐ அடையாளம் காணும்; Plan ID அதன் sample subscription offer-ஐக் குறிக்கும்.</p>
+      <p>Sample plan-ல் 3 மாதத்திற்கு ₹1,497, 6 மாதத்திற்கு ₹2,697, 1 வருடத்திற்கு ₹4,794, 7 நாள் trial அமைக்கப்பட்டுள்ளது. இவை dummy விலைகள். Live payment-க்கு முன் migration-ல் விலைகளை மாற்றி, live payment-ஐ இயக்குவதற்கு முன் database-ல் உறுதி செய்யுங்கள். Sample விலைகள் இருக்கும் வரை Razorpay Test Mode மட்டும் பயன்படுத்துங்கள்.</p>
+      <div class="expect"><strong>அடுத்த படிக்குத் தயாராக இருக்கும் போது</strong>Seed migration வெற்றிகரமாக முடிந்து, அது சேர்த்த rows-ன் ID-களும் StoreManagement API settings-ல் உள்ள ID-களும் ஒன்றாக இருக்கும்.</div>
     </section>
 
     <section class="step" id="config">
@@ -194,8 +154,8 @@ dotnet run --project ../SubscriptionPlatform.Api/SubscriptionPlatform.Api.csproj
       <p>Hosting provider-ல் StoreManagement API-க்கான Environment Variables அல்லது Secrets பகுதியைத் திறக்கவும். கீழே உள்ள பெயர்களை அப்படியே சேர்த்து, வலப்புறத்தில் உங்கள் உண்மையான மதிப்புகளை இடுங்கள்.</p>
       <pre><code>ConnectionStrings__DefaultConnection=&lt;store_management_db connection&gt;
 ConnectionStrings__SubscriptionDatabase=&lt;SubscriptionDatabase connection&gt;
-SubscriptionPlatform__ApplicationId=&lt;Step 4 application ID&gt;
-SubscriptionPlatform__PlanId=&lt;Step 4 plan ID&gt;
+SubscriptionPlatform__ApplicationId=7f5a35f8-3ca3-4cc2-9be9-6d7513a24401
+SubscriptionPlatform__PlanId=2b8503d1-a594-47ab-af3d-380a1af28402
 JwtSettings__SecretKey=&lt;random secret, at least 32 bytes&gt;
 Razorpay__KeyId=&lt;இப்போது test key ID&gt;
 Razorpay__KeySecret=&lt;இப்போது test key secret&gt;
