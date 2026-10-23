@@ -1,11 +1,12 @@
 using System.Security.Claims;
-using StoreManagement.Api.Services;
+using System.Text.Json;
+using SubscriptionPlatform.Core;
 
 namespace StoreManagement.Api.Middleware;
 
 public sealed class SubscriptionAccessMiddleware(RequestDelegate next, ILogger<SubscriptionAccessMiddleware> logger)
 {
-    public async Task InvokeAsync(HttpContext context, SubscriptionPlatformClient platform)
+    public async Task InvokeAsync(HttpContext context, StoreSubscriptionService subscriptions)
     {
         var path = context.Request.Path;
         if (!path.StartsWithSegments("/api") || path.StartsWithSegments("/api/auth") ||
@@ -18,11 +19,14 @@ public sealed class SubscriptionAccessMiddleware(RequestDelegate next, ILogger<S
 
         var userId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? context.User.FindFirst("userId")?.Value;
         if (!int.TryParse(userId, out var id)) { context.Response.StatusCode = StatusCodes.Status401Unauthorized; return; }
+
         try
         {
-            using var status = await platform.GetStatusAsync(id, context.RequestAborted);
-            var hasAccess = status.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object &&
-                status.RootElement.TryGetProperty("has_access", out var snake) && snake.ValueKind == System.Text.Json.JsonValueKind.Number && snake.GetInt32() == 1;
+            var status = await subscriptions.GetStatusAsync(id.ToString());
+            var json = JsonSerializer.SerializeToElement(status);
+            var hasAccess = json.ValueKind == JsonValueKind.Object &&
+                json.TryGetProperty("has_access", out var access) &&
+                (access.ValueKind == JsonValueKind.True || access.ValueKind == JsonValueKind.Number && access.GetInt32() == 1);
             if (!hasAccess)
             {
                 context.Response.StatusCode = StatusCodes.Status402PaymentRequired;

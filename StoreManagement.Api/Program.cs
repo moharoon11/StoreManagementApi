@@ -9,6 +9,7 @@ using StoreManagement.Api.Filters;
 using StoreManagement.Api.Middleware;
 using StoreManagement.Api.Repositories;
 using StoreManagement.Api.Services;
+using SubscriptionPlatform.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
@@ -19,6 +20,11 @@ builder.Host.UseNLog();
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (string.IsNullOrWhiteSpace(connectionString))
     throw new InvalidOperationException("ConnectionStrings:DefaultConnection must be set through the host secret configuration.");
+if (string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("SubscriptionDatabase")))
+    throw new InvalidOperationException("ConnectionStrings:SubscriptionDatabase must be set for the embedded subscription library.");
+if (!Guid.TryParse(builder.Configuration["SubscriptionPlatform:ApplicationId"], out _) ||
+    !Guid.TryParse(builder.Configuration["SubscriptionPlatform:PlanId"], out _))
+    throw new InvalidOperationException("SubscriptionPlatform:ApplicationId and SubscriptionPlatform:PlanId must be configured as GUID values.");
 
 var dataSource = new MySqlDataSource(connectionString);
 builder.Services.AddSingleton(dataSource);
@@ -27,7 +33,7 @@ builder.Services.AddScoped<ControllerLoggingFilter>();
 
 // 2. Services Registration
 builder.Services.AddHttpClient();
-builder.Services.AddScoped<SubscriptionPlatformClient>();
+builder.Services.AddSubscriptionPlatformCore();
 builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
