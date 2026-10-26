@@ -10,18 +10,43 @@ public sealed class StoreSubscriptionService(
     PaymentService payments,
     IConfiguration configuration)
 {
-    private Guid ApplicationId => Guid.TryParse(configuration["SubscriptionPlatform:ApplicationId"], out var id)
-        ? id
-        : throw new InvalidOperationException("SubscriptionPlatform:ApplicationId must be configured.");
+    private Guid ApplicationId
+    {
+        get
+        {
+            if (Guid.TryParse(configuration["SubscriptionPlatform:ApplicationId"], out var id))
+            {
+                return id;
+            }
 
-    private Guid PlanId => Guid.TryParse(configuration["SubscriptionPlatform:PlanId"], out var id)
-        ? id
-        : throw new InvalidOperationException("SubscriptionPlatform:PlanId must be configured.");
+            throw new InvalidOperationException(
+                "SubscriptionPlatform:ApplicationId must be configured.");
+        }
+    }
 
-    public Task<object?> GetOptionsAsync() => catalog.GetPlanAsync(ApplicationId, PlanId);
+    private Guid PlanId
+    {
+        get
+        {
+            if (Guid.TryParse(configuration["SubscriptionPlatform:PlanId"], out var id))
+            {
+                return id;
+            }
 
-    public Task<object?> GetStatusAsync(string externalCustomerId) =>
-        subscriptions.GetByExternalCustomerAsync(ApplicationId, externalCustomerId);
+            throw new InvalidOperationException(
+                "SubscriptionPlatform:PlanId must be configured.");
+        }
+    }
+
+    public Task<object?> GetOptionsAsync()
+    {
+        return catalog.GetPlanAsync(ApplicationId, PlanId);
+    }
+
+    public Task<object?> GetStatusAsync(string externalCustomerId)
+    {
+        return subscriptions.GetByExternalCustomerAsync(ApplicationId, externalCustomerId);
+    }
 
     public async Task<StoreSubscriptionOrder> StartAsync(
         string externalCustomerId,
@@ -38,14 +63,41 @@ public sealed class StoreSubscriptionService(
             startTrial);
         var result = await subscriptions.CreateAsync(ApplicationId, request)
             ?? throw new InvalidOperationException("Configured plan or customer is unavailable.");
-        return new StoreSubscriptionOrder(result.SubscriptionId, result.Status, result.PaymentId, result.OrderId, result.KeyId, result.AmountMinor, result.Currency);
+        return new StoreSubscriptionOrder(
+            result.SubscriptionId,
+            result.Status,
+            result.PaymentId,
+            result.OrderId,
+            result.KeyId,
+            result.AmountMinor,
+            result.Currency);
     }
 
-    public Task<bool> VerifyPaymentAsync(Guid paymentId, string orderId, string razorpayPaymentId, string signature) =>
-        payments.VerifyAsync(ApplicationId, paymentId, orderId, razorpayPaymentId, signature);
+    public Task<bool> VerifyPaymentAsync(
+        Guid paymentId,
+        string orderId,
+        string razorpayPaymentId,
+        string signature)
+    {
+        return payments.VerifyAsync(
+            ApplicationId,
+            paymentId,
+            orderId,
+            razorpayPaymentId,
+            signature);
+    }
 
-    public Task<bool> MarkPaymentFailedAsync(string externalCustomerId, Guid paymentId, string orderId) =>
-        payments.MarkFailedAsync(ApplicationId, paymentId, orderId, externalCustomerId);
+    public Task<bool> MarkPaymentFailedAsync(
+        string externalCustomerId,
+        Guid paymentId,
+        string orderId)
+    {
+        return payments.MarkFailedAsync(
+            ApplicationId,
+            paymentId,
+            orderId,
+            externalCustomerId);
+    }
 
     public async Task<(bool IsValidSignature, bool Duplicate)> ProcessWebhookAsync(string eventId, string rawPayload, string signature)
     {
@@ -54,4 +106,11 @@ public sealed class StoreSubscriptionService(
     }
 }
 
-public sealed record StoreSubscriptionOrder(Guid SubscriptionId, string Status, Guid? PaymentId, string? OrderId, string? KeyId, long? AmountMinor, string? Currency);
+public sealed record StoreSubscriptionOrder(
+    Guid SubscriptionId,
+    string Status,
+    Guid? PaymentId,
+    string? OrderId,
+    string? KeyId,
+    long? AmountMinor,
+    string? Currency);

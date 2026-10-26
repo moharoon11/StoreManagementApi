@@ -28,8 +28,14 @@ public sealed class SubscriptionMaintenanceWorker(ConnectionFactory connections,
                 }
                 await tx.CommitAsync(stoppingToken);
             }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
-            catch (Exception e) { logger.LogError(e, "Subscription maintenance failed"); }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(exception, "Subscription maintenance failed");
+            }
 
             await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
         }
