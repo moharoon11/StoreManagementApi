@@ -1,5 +1,6 @@
 using SubscriptionPlatform.Api.Models;
 using SubscriptionPlatform.Api.Services;
+using NLog;
 
 namespace SubscriptionPlatform.Core;
 
@@ -10,6 +11,7 @@ public sealed class StoreSubscriptionService(
     PaymentService payments,
     IConfiguration configuration)
 {
+    private static readonly Logger Logger = LogManager.GetLogger("SubscriptionPlatform.Services.StoreSubscriptionService");
     private Guid ApplicationId
     {
         get
@@ -40,11 +42,13 @@ public sealed class StoreSubscriptionService(
 
     public Task<object?> GetOptionsAsync()
     {
+        Logger.Debug($"{nameof(GetOptionsAsync)} | ApplicationId: {ApplicationId} | PlanId: {PlanId}");
         return catalog.GetPlanAsync(ApplicationId, PlanId);
     }
 
     public Task<object?> GetStatusAsync(string externalCustomerId)
     {
+        Logger.Debug($"{nameof(GetStatusAsync)} | ApplicationId: {ApplicationId} | ExternalCustomerId: {externalCustomerId}");
         return subscriptions.GetByExternalCustomerAsync(ApplicationId, externalCustomerId);
     }
 
@@ -54,6 +58,8 @@ public sealed class StoreSubscriptionService(
         bool startTrial,
         string idempotencyKey)
     {
+        Logger.Info($"{nameof(StartAsync)} | ApplicationId: {ApplicationId} | ExternalCustomerId: {externalCustomerId} | " +
+            $"Payload: BillingPeriod={billingPeriod}, StartTrial={startTrial}");
         dynamic customer = await catalog.CreateCustomerAsync(ApplicationId, new CustomerRequest(externalCustomerId));
         var request = new CreateSubscriptionRequest(
             (Guid)customer.id,
@@ -79,6 +85,7 @@ public sealed class StoreSubscriptionService(
         string razorpayPaymentId,
         string signature)
     {
+        Logger.Debug($"{nameof(VerifyPaymentAsync)} | ApplicationId: {ApplicationId} | Payload: PaymentId={paymentId}, OrderId={orderId}");
         return payments.VerifyAsync(
             ApplicationId,
             paymentId,
@@ -92,6 +99,7 @@ public sealed class StoreSubscriptionService(
         Guid paymentId,
         string orderId)
     {
+        Logger.Info($"{nameof(MarkPaymentFailedAsync)} | ApplicationId: {ApplicationId} | Payload: PaymentId={paymentId}, OrderId={orderId}");
         return payments.MarkFailedAsync(
             ApplicationId,
             paymentId,
@@ -101,6 +109,7 @@ public sealed class StoreSubscriptionService(
 
     public async Task<(bool IsValidSignature, bool Duplicate)> ProcessWebhookAsync(string eventId, string rawPayload, string signature)
     {
+        Logger.Debug($"{nameof(ProcessWebhookAsync)} | EventId: {eventId} | PayloadLength: {rawPayload.Length}");
         var result = await payments.ProcessWebhookAsync(eventId, rawPayload, signature);
         return (result != WebhookProcessingResult.InvalidSignature, result == WebhookProcessingResult.Duplicate);
     }

@@ -1,17 +1,20 @@
 using SubscriptionPlatform.Api.Models;
 using SubscriptionPlatform.Api.Repositories;
+using NLog;
 
 namespace SubscriptionPlatform.Api.Services;
 
 public sealed class SubscriptionService(
     SubscriptionRepository repository,
-    RazorpayService razorpay,
-    ILogger<SubscriptionService> logger)
+    RazorpayService razorpay)
 {
+    private static readonly Logger Logger = LogManager.GetLogger("SubscriptionPlatform.Services.SubscriptionService");
     public async Task<SubscriptionCreatedResponse?> CreateAsync(
         Guid appId,
         CreateSubscriptionRequest request)
     {
+        Logger.Debug($"{nameof(CreateAsync)} | ApplicationId: {appId} | CustomerId: {request.CustomerId} | PlanId: {request.PlanId} | " +
+            $"Payload: BillingPeriod={request.BillingPeriod}, StartTrial={request.StartTrial}");
         if (request.BillingPeriod is not ("three_month" or "six_month" or "one_year" or "monthly" or "yearly")
             || string.IsNullOrWhiteSpace(request.IdempotencyKey)
             || request.IdempotencyKey.Length > 80)
@@ -25,11 +28,13 @@ public sealed class SubscriptionService(
 
             if (result is null)
             {
+                Logger.Warn($"{nameof(CreateAsync)} | ApplicationId: {appId} | CustomerId: {request.CustomerId} | Payload: no result returned");
                 return null;
             }
 
             if (request.StartTrial || result.Status == "trialing")
             {
+                Logger.Info($"{nameof(CreateAsync)} | ApplicationId: {appId} | SubscriptionId: {result.SubscriptionId} | Status: {result.Status}");
                 return new(result.SubscriptionId, result.Status);
             }
 
@@ -71,20 +76,14 @@ public sealed class SubscriptionService(
             }
             catch (Exception ex)
             {
-                logger.LogError(
-                    ex,
-                    "Razorpay order creation failed for payment {PaymentId}",
-                    result.PaymentId);
+                Logger.Error(ex, $"{nameof(CreateAsync)} | Razorpay order creation failed | PaymentId: {result.PaymentId}");
                 await repository.MarkOrderFailedAsync(result.PaymentId);
                 throw;
             }
         }
         catch (Exception ex)
         {
-            logger.LogError(
-                ex,
-                "Subscription creation failed for application {ApplicationId}",
-                appId);
+            Logger.Error(ex, $"{nameof(CreateAsync)} | ApplicationId: {appId} | CustomerId: {request.CustomerId} | Exception: {ex.Message}");
             throw;
         }
     }

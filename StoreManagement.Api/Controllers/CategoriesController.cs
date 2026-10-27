@@ -131,8 +131,11 @@ namespace StoreManagement.Api.Controllers
                 }
                 return Ok(ApiResponse.SuccessResult("Category deleted successfully."));
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Logger.Warn(ex,
+                    $"{nameof(Delete)} | UserId: {CurrentUserId} | CategoryId: {id} | " +
+                    "The category could not be deleted because it may contain active products.");
                 return BadRequest(ApiResponse.ErrorResult("Cannot delete category because it contains active products."));
             }
         }

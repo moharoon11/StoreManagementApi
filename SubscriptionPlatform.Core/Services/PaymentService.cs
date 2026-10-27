@@ -1,5 +1,6 @@
 using System.Text.Json;
 using SubscriptionPlatform.Api.Repositories;
+using NLog;
 
 namespace SubscriptionPlatform.Api.Services;
 
@@ -10,8 +11,9 @@ public enum WebhookProcessingResult
     Duplicate
 }
 
-public sealed class PaymentService(PaymentRepository repository, RazorpayService razorpay, ILogger<PaymentService> logger)
+public sealed class PaymentService(PaymentRepository repository, RazorpayService razorpay)
 {
+    private static readonly Logger Logger = LogManager.GetLogger("SubscriptionPlatform.Services.PaymentService");
     public async Task<bool> VerifyAsync(
         Guid appId,
         Guid paymentId,
@@ -19,8 +21,10 @@ public sealed class PaymentService(PaymentRepository repository, RazorpayService
         string providerPaymentId,
         string signature)
     {
+        Logger.Debug($"{nameof(VerifyAsync)} | ApplicationId: {appId} | Payload: PaymentId={paymentId}, OrderId={orderId}");
         if (!razorpay.VerifyPayment(orderId, providerPaymentId, signature))
         {
+            Logger.Warn($"{nameof(VerifyAsync)} | PaymentId: {paymentId} | OrderId: {orderId} | Provider signature verification failed");
             return false;
         }
 
@@ -44,7 +48,7 @@ public sealed class PaymentService(PaymentRepository repository, RazorpayService
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Payment verification processing failed for {PaymentId}", paymentId);
+            Logger.Error(ex, $"{nameof(VerifyAsync)} | PaymentId: {paymentId} | OrderId: {orderId} | Exception: {ex.Message}");
             throw;
         }
     }
@@ -68,8 +72,10 @@ public sealed class PaymentService(PaymentRepository repository, RazorpayService
         string raw,
         string signature)
     {
+        Logger.Debug($"{nameof(ProcessWebhookAsync)} | EventId: {eventId} | PayloadLength: {raw.Length}");
         if (!razorpay.VerifyWebhook(raw, signature))
         {
+            Logger.Warn($"{nameof(ProcessWebhookAsync)} | EventId: {eventId} | Provider signature verification failed");
             return WebhookProcessingResult.InvalidSignature;
         }
 
@@ -127,7 +133,7 @@ public sealed class PaymentService(PaymentRepository repository, RazorpayService
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Razorpay webhook processing failed for event {EventId}", eventId);
+            Logger.Error(ex, $"{nameof(ProcessWebhookAsync)} | EventId: {eventId} | Exception: {ex.Message}");
             throw;
         }
     }

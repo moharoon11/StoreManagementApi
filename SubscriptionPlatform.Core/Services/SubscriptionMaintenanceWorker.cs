@@ -1,10 +1,12 @@
 using Dapper;
 using SubscriptionPlatform.Api.Data;
+using NLog;
 
 namespace SubscriptionPlatform.Api.Services;
 
-public sealed class SubscriptionMaintenanceWorker(ConnectionFactory connections, ILogger<SubscriptionMaintenanceWorker> logger) : BackgroundService
+public sealed class SubscriptionMaintenanceWorker(ConnectionFactory connections) : BackgroundService
 {
+    private static readonly Logger Logger = LogManager.GetLogger("SubscriptionPlatform.Services.SubscriptionMaintenanceWorker");
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
@@ -34,7 +36,7 @@ public sealed class SubscriptionMaintenanceWorker(ConnectionFactory connections,
             }
             catch (Exception exception)
             {
-                logger.LogError(exception, "Subscription maintenance failed");
+                Logger.Error(exception, $"{nameof(ExecuteAsync)} | Subscription maintenance failed | Exception: {exception.Message}");
             }
 
             await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);

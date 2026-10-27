@@ -10,7 +10,13 @@ public sealed class ControllerLoggingFilter : IAsyncActionFilter, IAsyncResultFi
 {
     internal const string FailureLoggedItemKey = "ControllerLoggingFailureLogged";
     private const string StartedAtItemKey = "ControllerLoggingStartedAt";
-    private static readonly string[] SensitiveNames = ["password", "token", "secret", "apikey", "authorization", "credential"];
+    private const string PayloadItemKey = "ControllerLoggingPayload";
+    private static readonly string[] SensitiveNames = ["password", "token", "secret", "signature", "apikey", "authorization", "credential", "idempotencykey"];
+    private static readonly JsonSerializerOptions ReadableJson = new(JsonSerializerDefaults.Web)
+    {
+        WriteIndented = true
+    };
+
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
         if (context.ActionDescriptor is not ControllerActionDescriptor action)
@@ -21,18 +27,25 @@ public sealed class ControllerLoggingFilter : IAsyncActionFilter, IAsyncResultFi
 
         var startedAt = DateTimeOffset.UtcNow;
         context.HttpContext.Items[StartedAtItemKey] = startedAt;
+        var payload = BuildPayload(context.ActionArguments);
+        context.HttpContext.Items[PayloadItemKey] = payload;
+        using var requestScope = ScopeContext.PushProperty("RequestId", context.HttpContext.TraceIdentifier);
+        var userId = context.HttpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ?? context.HttpContext.User.FindFirst("userId")?.Value;
+        using var userScope = userId is null ? null : ScopeContext.PushProperty("UserId", userId);
         var logger = LogManager.GetLogger(action.ControllerTypeInfo.Name);
 
-        logger.Debug(JsonSerializer.Serialize(new
+        logger.Debug(ToReadableJson(new
         {
             timestampUtc = startedAt,
+            level = "DEBUG",
             eventType = "method_entered",
             requestId = context.HttpContext.TraceIdentifier,
             controller = action.ControllerName,
             methodName = action.ActionName,
             httpMethod = context.HttpContext.Request.Method,
             path = context.HttpContext.Request.Path.Value,
-            payload = BuildPayload(context.ActionArguments),
+            payload,
             reason = "Controller action started."
         }));
 
@@ -60,9 +73,10 @@ public sealed class ControllerLoggingFilter : IAsyncActionFilter, IAsyncResultFi
             : (double?)null;
 
         var succeeded = statusCode < StatusCodes.Status400BadRequest;
-        var message = JsonSerializer.Serialize(new
+        var logData = new
         {
             timestampUtc = DateTimeOffset.UtcNow,
+            level = succeeded ? "INFO" : statusCode < 500 ? "WARN" : "ERROR",
             eventType = "method_finished",
             requestId = context.HttpContext.TraceIdentifier,
             controller = action.ControllerName,
@@ -70,27 +84,33 @@ public sealed class ControllerLoggingFilter : IAsyncActionFilter, IAsyncResultFi
             responseStatus = statusCode,
             outcome = succeeded ? "succeeded" : "failed",
             durationMs,
+            payload = context.HttpContext.Items[PayloadItemKey],
             reason = succeeded
                 ? "Action completed with a successful HTTP response."
                 : $"Action completed with HTTP {statusCode}."
-        });
+        };
 
         var logger = LogManager.GetLogger(action.ControllerTypeInfo.Name);
         if (succeeded)
         {
-            logger.Info(message);
+            logger.Info(ToReadableJson(logData));
+        }
+        else if (statusCode < 500)
+        {
+            logger.Warn(ToReadableJson(logData));
         }
         else
         {
-            logger.Error(message);
+            logger.Error(ToReadableJson(logData));
         }
     }
 
     public static void WriteFailure(HttpContext context, ControllerActionDescriptor action, Exception exception, int statusCode)
     {
-        var message = JsonSerializer.Serialize(new
+        var message = ToReadableJson(new
         {
             timestampUtc = DateTimeOffset.UtcNow,
+            level = "ERROR",
             eventType = "method_failed",
             requestId = context.TraceIdentifier,
             controller = action.ControllerName,
@@ -98,7 +118,8 @@ public sealed class ControllerLoggingFilter : IAsyncActionFilter, IAsyncResultFi
             responseStatus = statusCode,
             outcome = "failed",
             reason = exception.Message,
-            exceptionType = exception.GetType().Name
+            exceptionType = exception.GetType().Name,
+            payload = context.Items[PayloadItemKey]
         });
 
         LogManager.GetLogger(action.ControllerTypeInfo.Name).Error(exception, message);
@@ -163,4 +184,6 @@ public sealed class ControllerLoggingFilter : IAsyncActionFilter, IAsyncResultFi
 
     private static bool IsSensitive(string name) =>
         SensitiveNames.Any(sensitive => name.Contains(sensitive, StringComparison.OrdinalIgnoreCase));
+
+    private static string ToReadableJson(object value) => JsonSerializer.Serialize(value, ReadableJson);
 }
