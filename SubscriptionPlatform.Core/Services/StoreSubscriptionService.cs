@@ -16,6 +16,7 @@ public sealed class StoreSubscriptionService(
     {
         get
         {
+            // Read and validate the application ID used to isolate Store subscription data.
             if (Guid.TryParse(configuration["SubscriptionPlatform:ApplicationId"], out var id))
             {
                 return id;
@@ -30,6 +31,7 @@ public sealed class StoreSubscriptionService(
     {
         get
         {
+            // Read and validate the plan ID configured for the Store application.
             if (Guid.TryParse(configuration["SubscriptionPlatform:PlanId"], out var id))
             {
                 return id;
@@ -42,12 +44,14 @@ public sealed class StoreSubscriptionService(
 
     public Task<object?> GetOptionsAsync()
     {
+        // Return the configured plan so the client can display prices and trial options.
         Logger.Debug($"{nameof(GetOptionsAsync)} | ApplicationId: {ApplicationId} | PlanId: {PlanId}");
         return catalog.GetPlanAsync(ApplicationId, PlanId);
     }
 
     public Task<object?> GetStatusAsync(string externalCustomerId)
     {
+        // Return the subscription status belonging to the signed-in Store customer.
         Logger.Debug($"{nameof(GetStatusAsync)} | ApplicationId: {ApplicationId} | ExternalCustomerId: {externalCustomerId}");
         return subscriptions.GetByExternalCustomerAsync(ApplicationId, externalCustomerId);
     }
@@ -58,17 +62,22 @@ public sealed class StoreSubscriptionService(
         bool startTrial,
         string idempotencyKey)
     {
+        // This facade adapts the Store API request to the shared subscription platform.
         Logger.Info($"{nameof(StartAsync)} | ApplicationId: {ApplicationId} | ExternalCustomerId: {externalCustomerId} | " +
             $"Payload: BillingPeriod={billingPeriod}, StartTrial={startTrial}");
+        // The Store user ID is converted into the platform customer record used by subscriptions.
         dynamic customer = await catalog.CreateCustomerAsync(ApplicationId, new CustomerRequest(externalCustomerId));
+        // Use the configured plan so the Store client cannot choose another application's plan.
         var request = new CreateSubscriptionRequest(
             (Guid)customer.id,
             PlanId,
             billingPeriod,
             idempotencyKey,
             startTrial);
+        // Create the trial or paid subscription, including the local payment row for paid terms.
         var result = await subscriptions.CreateAsync(ApplicationId, request)
             ?? throw new InvalidOperationException("Configured plan or customer is unavailable.");
+        // Return the IDs and server-calculated payment values needed to open Razorpay Checkout.
         return new StoreSubscriptionOrder(
             result.SubscriptionId,
             result.Status,
@@ -85,6 +94,7 @@ public sealed class StoreSubscriptionService(
         string razorpayPaymentId,
         string signature)
     {
+        // A successful client callback is not trusted by itself; this verifies the provider payment first.
         Logger.Debug($"{nameof(VerifyPaymentAsync)} | ApplicationId: {ApplicationId} | Payload: PaymentId={paymentId}, OrderId={orderId}");
         return payments.VerifyAsync(
             ApplicationId,
@@ -99,6 +109,7 @@ public sealed class StoreSubscriptionService(
         Guid paymentId,
         string orderId)
     {
+        // The customer ID is passed through so a user cannot mark another user's payment as failed.
         Logger.Info($"{nameof(MarkPaymentFailedAsync)} | ApplicationId: {ApplicationId} | Payload: PaymentId={paymentId}, OrderId={orderId}");
         return payments.MarkFailedAsync(
             ApplicationId,
@@ -109,6 +120,7 @@ public sealed class StoreSubscriptionService(
 
     public async Task<(bool IsValidSignature, bool Duplicate)> ProcessWebhookAsync(string eventId, string rawPayload, string signature)
     {
+        // Keep the raw body unchanged because Razorpay's signature is calculated from those exact bytes.
         Logger.Debug($"{nameof(ProcessWebhookAsync)} | EventId: {eventId} | PayloadLength: {rawPayload.Length}");
         var result = await payments.ProcessWebhookAsync(eventId, rawPayload, signature);
         return (result != WebhookProcessingResult.InvalidSignature, result == WebhookProcessingResult.Duplicate);

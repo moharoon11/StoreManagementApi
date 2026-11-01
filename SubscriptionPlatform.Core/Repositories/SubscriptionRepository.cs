@@ -18,30 +18,38 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
 
     public async Task<OrderData?> CreateAsync(Guid appId, CreateSubscriptionRequest request)
     {
+        // Keep customer checks, duplicate detection, and inserts in one transaction so two requests
+        // cannot create two current subscriptions for the same customer.
         await using var db = connections.Create();
         await db.OpenAsync();
         await using var transaction = await db.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
 
+        // The customer must belong to this application; the row lock also serializes competing starts.
         var customer = await db.ExecuteScalarAsync<Guid?>(
             "SELECT id FROM customers WHERE id=@CustomerId AND application_id=@appId FOR UPDATE",
             new { request.CustomerId, appId }, transaction);
+        // The active plan is the source of truth for prices, currency, and trial rules.
         var plan = await db.QuerySingleOrDefaultAsync<dynamic>(
             "SELECT currency,monthly_amount_minor,yearly_amount_minor,three_month_amount_minor,six_month_amount_minor,trial_days FROM plans WHERE id=@PlanId AND application_id=@appId AND active=1",
             new { request.PlanId, appId }, transaction);
 
         if (customer is null || plan is null)
         {
+            // Returning null prevents a caller from using another tenant's customer or plan.
             return null;
         }
 
+        // Hash the retry key with the application ID so different apps can safely reuse the same key.
         var scopedKey = Convert.ToHexStringLower(
             SHA256.HashData(Encoding.UTF8.GetBytes($"{appId:N}:{request.IdempotencyKey}")));
+        // Look up the first attempt before inserting anything new.
         var prior = await db.QuerySingleOrDefaultAsync<dynamic>(
             "SELECT p.id,p.subscription_id,p.status,p.amount_minor,p.currency,p.razorpay_order_id FROM payments p JOIN subscriptions s ON s.id=p.subscription_id WHERE p.idempotency_key=@key AND s.application_id=@appId",
             new { key = scopedKey, appId }, transaction);
 
         if (prior is not null)
         {
+            // Return the original IDs and state so the create operation is safe to retry.
             return new(
                 (Guid)prior.subscription_id,
                 (Guid)prior.id,
@@ -51,6 +59,7 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
                 (string?)prior.razorpay_order_id);
         }
 
+        // Only expired or cancelled subscriptions allow another subscription to start.
         if (await db.ExecuteScalarAsync<int>(
                 "SELECT COUNT(*) FROM subscriptions WHERE customer_id=@customerId AND status NOT IN ('expired','cancelled')",
                 new { customerId = request.CustomerId }, transaction) > 0)
@@ -58,18 +67,23 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
             throw new InvalidOperationException("Customer already has a current subscription.");
         }
 
+        // Trial eligibility depends on the customer's complete subscription history.
         var priorSubscriptions = await db.ExecuteScalarAsync<int>(
             "SELECT COUNT(*) FROM subscriptions WHERE customer_id=@customerId",
             new { customerId = request.CustomerId }, transaction);
+        // Read the configured trial length from the selected plan.
         var trialDays = (int)plan.trial_days;
 
         if (request.StartTrial && (trialDays == 0 || priorSubscriptions > 0))
         {
+            // Reject trials when the plan has no trial period or the customer has used subscription history.
             throw new InvalidOperationException("Trial is not eligible.");
         }
 
+        // These server-created IDs are the stable references used by later payment requests.
         var subscriptionId = Guid.NewGuid();
         var paymentId = Guid.NewGuid();
+        // Select the configured amount for the requested billing period.
         var amount = request.BillingPeriod switch
         {
             "three_month" => (long)plan.three_month_amount_minor,
@@ -81,30 +95,37 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
 
         if (!request.StartTrial && amount <= 0)
         {
+            // Do not create a paid checkout when the selected term has no positive price.
             throw new InvalidOperationException("This paid term has no configured price.");
         }
 
+        // A trial gets an end date now; a paid term waits for payment before its real term begins.
         var currency = (string)plan.currency;
         var now = DateTime.UtcNow;
         var status = request.StartTrial ? "trialing" : "pending_payment";
         var ends = request.StartTrial ? now.AddDays(trialDays) : now;
 
+        // Save the local subscription before contacting Razorpay so the order has a local owner.
         await db.ExecuteAsync(
             "INSERT INTO subscriptions(id,application_id,customer_id,plan_id,status,billing_period,starts_utc,ends_utc,version,created_utc) VALUES(@subscriptionId,@appId,@CustomerId,@PlanId,@status,@BillingPeriod,@now,@ends,0,@now)",
             new { subscriptionId, appId, request.CustomerId, request.PlanId, status, request.BillingPeriod, now, ends }, transaction);
 
         if (request.StartTrial)
         {
+            // Keep an audit trail showing that the subscription started through an eligible trial.
             await db.ExecuteAsync(
                 "INSERT INTO subscription_audits(subscription_id,from_status,to_status,reason,at_utc) VALUES(@subscriptionId,'new','trialing','eligible_trial_started',@now)",
                 new { subscriptionId, now }, transaction);
+            // The trial is ready immediately, so it needs no payment row or provider order.
             await transaction.CommitAsync();
             return new(subscriptionId, Guid.Empty, status, 0, currency);
         }
 
+        // This payment ID is the local checkout reference; Razorpay's order ID is added afterward.
         await db.ExecuteAsync(
             "INSERT INTO payments(id,subscription_id,idempotency_key,amount_minor,currency,status,created_utc) VALUES(@paymentId,@subscriptionId,@key,@amount,@currency,'order_pending',@now)",
             new { paymentId, subscriptionId, key = scopedKey, amount, currency, now }, transaction);
+        // Commit before contacting Razorpay so an interrupted request can find and reuse this payment.
         await transaction.CommitAsync();
 
         // The payment row is ready for Razorpay order creation. The payment status
