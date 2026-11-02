@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Plain-English guide to the StoreManagement subscription platform flow and database relationships.">
+  <title>StoreManagement Subscription Flow</title>
+  <style>
+    :root{--ink:#172033;--muted:#657087;--line:#e5e9f2;--paper:#fff;--bg:#f5f7fb;--purple:#6d5dfc;--blue:#3182ce;--green:#159570;--orange:#d9822b;--red:#d95050;--shadow:0 18px 50px rgba(28,38,72,.08)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.65 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}h1,h2,h3,p{margin-top:0}h1{font-size:clamp(2.2rem,5vw,4.5rem);letter-spacing:-.055em;line-height:1.02;margin-bottom:20px}h2{font-size:clamp(1.55rem,3vw,2.35rem);letter-spacing:-.035em;line-height:1.15;margin-bottom:15px}h3{font-size:1.03rem;margin-bottom:7px}p{color:var(--muted)}code{background:#eef1f7;border-radius:5px;color:#34415a;font:600 .88em ui-monospace,SFMono-Regular,Menlo,monospace;padding:2px 6px}.hero{background:radial-gradient(circle at 80% 20%,rgba(120,103,255,.38),transparent 28%),linear-gradient(135deg,#18213c,#273961 62%,#1b7f80);color:#fff;padding:84px 22px 76px}.hero-inner,.page-shell{max-width:1160px;margin:auto}.eyebrow{text-transform:uppercase;letter-spacing:.16em;font-size:11px;font-weight:800;color:#bfcaff}.hero-copy{color:#dce5ff;font-size:1.13rem;max-width:680px}.hero-actions{display:flex;gap:12px;margin-top:30px;flex-wrap:wrap}.button{border:1px solid rgba(255,255,255,.35);border-radius:10px;color:#fff;display:inline-block;font-weight:800;padding:10px 17px;text-decoration:none}.button.primary{background:#fff;color:#27345e}.button.ghost{background:rgba(255,255,255,.08)}.page-shell{padding:42px 22px 80px}.grid-2{display:grid;grid-template-columns:1.15fr .85fr;gap:20px}.panel,.role,.endpoint,.video-card{background:var(--paper);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}.panel{padding:27px}.accent-panel{border-top:4px solid var(--purple)}.section-block{margin-top:72px}.section-heading{align-items:end;display:flex;justify-content:space-between;gap:30px;margin-bottom:24px}.section-heading>p{max-width:470px;margin-bottom:4px}.tag{background:#f0edff;border-radius:999px;color:var(--purple);display:inline-block;font-size:11px;font-weight:900;letter-spacing:.09em;margin-bottom:12px;padding:4px 10px;text-transform:uppercase}.tag.blue{background:#e7f2ff;color:var(--blue)}.tag.green{background:#e7f8f2;color:var(--green)}.tag.orange{background:#fff3e5;color:var(--orange)}.tag.red{background:#ffeded;color:var(--red)}.tag.purple{background:#f0edff;color:var(--purple)}.responsibility-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}.role{padding:22px}.role-icon{align-items:center;background:#eef0ff;border-radius:10px;color:var(--purple);display:flex;font-size:12px;font-weight:900;height:32px;justify-content:center;margin-bottom:18px;width:36px}.role p{min-height:76px}.role code{display:block;overflow-wrap:anywhere;font-size:11px}.flow-video{background:#151c31;border-radius:22px;box-shadow:0 25px 70px rgba(21,28,49,.22);color:#fff;overflow:hidden}.video-topbar{background:#202a45;color:#bec9e8;font-size:11px;font-weight:900;letter-spacing:.13em;padding:14px 20px}.live-dot{background:#f06b6b;border-radius:50%;display:inline-block;height:7px;margin-right:7px;width:7px}.video-time{float:right;color:#8390b0}.video-stage{min-height:410px;position:relative}.video-step{background:linear-gradient(145deg,#283658,#1f2b48);border:1px solid #536284;border-radius:14px;box-shadow:0 12px 25px rgba(0,0,0,.16);display:flex;flex-direction:column;left:8%;opacity:0;padding:17px;position:absolute;top:110px;width:210px}.video-step b{background:#8378ff;border-radius:50%;font-size:12px;height:25px;line-height:25px;margin-bottom:13px;text-align:center;width:25px}.video-step strong{font-size:17px}.video-step small{color:#aab7d8;margin-top:4px}.video-step em{color:#77d6b4;font-size:12px;font-style:normal;margin-top:10px}.step-two{left:25%}.step-three{left:42%}.step-four{left:59%}.step-five{left:25%;top:260px}.step-six{left:59%;top:260px}.video-step{animation:show-step 18s infinite}.step-two{animation-delay:3s}.step-three{animation-delay:6s}.step-four{animation-delay:9s}.step-five{animation-delay:12s}.step-six{animation-delay:15s}@keyframes show-step{0%,16%,100%{opacity:0;transform:translateY(12px)}4%,14%{opacity:1;transform:none}}.video-line{background:linear-gradient(90deg,#8277ff,#54d0ad);height:2px;left:17%;position:absolute;top:188px;width:66%;z-index:0}.video-caption{border-top:1px solid #34415f;color:#cdd5e8;padding:16px 20px}.video-caption span{align-items:center;background:#8378ff;border-radius:50%;display:inline-flex;font-size:11px;font-weight:900;height:22px;justify-content:center;margin-right:8px;width:22px}.relationship-map{background:#f0f4fa;border:1px solid var(--line);border-radius:20px;display:grid;gap:16px;grid-template-columns:repeat(12,1fr);padding:28px;position:relative}.db-card{background:#fff;border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:13px;box-shadow:0 8px 20px rgba(34,48,80,.06);padding:15px;position:relative;z-index:1}.db-card span{color:var(--blue);font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}.db-card h3{font-size:.95rem;overflow-wrap:anywhere}.db-card p{font-size:12px;line-height:1.45;min-height:52px}.db-card small{color:#748096;font:11px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace}.app-card{border-left-color:var(--purple);grid-column:1/4;grid-row:1}.plan-card{grid-column:4/7;grid-row:1}.customer-card{grid-column:7/10;grid-row:1}.subscription-card{border-left-color:var(--green);grid-column:4/8;grid-row:2}.payment-card{border-left-color:var(--orange);grid-column:8/11;grid-row:2}.audit-card{grid-column:2/5;grid-row:3}.webhook-card{grid-column:6/10;grid-row:3}.relation-legend{display:flex;gap:20px;flex-wrap:wrap;margin-top:15px}.relation-legend span{color:var(--muted);font-size:12px}.dot{border-radius:50%;display:inline-block;height:9px;margin-right:6px;width:9px}.dot.app{background:var(--purple)}.dot.access{background:var(--green)}.dot.money{background:var(--orange)}.endpoint-list{display:grid;gap:11px}.endpoint{align-items:center;display:grid;gap:18px;grid-template-columns:62px 1fr auto;padding:17px 20px}.endpoint h3{margin-bottom:2px}.endpoint p{margin:0}.method{border-radius:8px;font-size:11px;font-weight:900;padding:5px 7px;text-align:center}.method.get{background:#e8f3ff;color:var(--blue)}.method.post{background:#e9f8f1;color:var(--green)}.method.hook{background:#fff0e3;color:var(--orange)}.endpoint-owner{color:#7b879d;font:11px ui-monospace,SFMono-Regular,Menlo,monospace;text-align:right}.timeline{border-left:2px solid #d9dff0;margin-left:14px;padding-left:30px}.timeline-item{margin-bottom:28px;position:relative}.timeline-item>b{align-items:center;background:var(--purple);border:5px solid var(--bg);border-radius:50%;color:#fff;display:flex;height:31px;justify-content:center;left:-47px;position:absolute;top:0;width:31px}.timeline-item h3{margin-bottom:3px}.timeline-item p{margin-bottom:0;max-width:820px}.video-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}.video-card{overflow:hidden}.video-card h3,.video-card p{padding-left:20px;padding-right:20px}.video-card p{font-size:13px}.video-frame{aspect-ratio:16/9;background:#161d32}.video-frame iframe{border:0;height:100%;width:100%}.notes{margin-top:72px;border-left:4px solid var(--orange)}li{color:var(--muted);margin:7px 0}footer{background:#18213c;color:#aeb9d4;padding:25px;text-align:center}footer p{color:inherit;font-size:12px;margin:0}@media(max-width:850px){.grid-2,.video-grid{grid-template-columns:1fr}.responsibility-grid{grid-template-columns:repeat(2,1fr)}.section-heading{align-items:start;flex-direction:column;gap:5px}.endpoint{align-items:start;grid-template-columns:55px 1fr}.endpoint-owner{grid-column:2;text-align:left}.relationship-map{grid-template-columns:1fr}.db-card{grid-column:auto!important;grid-row:auto!important}.video-stage{min-height:620px}.video-step{left:8%!important;width:84%}.step-two{top:180px}.step-three{top:250px}.step-four{top:320px}.step-five{top:390px}.step-six{top:460px}.video-line{display:none}}@media(max-width:520px){.responsibility-grid{grid-template-columns:1fr}.page-shell{padding-left:15px;padding-right:15px}.hero{padding-left:18px;padding-right:18px}.panel{padding:21px}}
+
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <p class="eyebrow">StoreManagement API · SubscriptionPlatform.Core</p>
+      <h1>How the subscription system works</h1>
+      <p class="hero-copy">A plain-English map of the endpoints, services, database tables, payment states, and Razorpay flow in this project.</p>
+      <div class="hero-actions">
+        <a class="button primary" href="#walkthrough">Play the flow</a>
+        <a class="button ghost" href="#tables">Explore the database</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section class="intro grid-2">
+      <article class="panel accent-panel">
+        <span class="tag">The short version</span>
+        <h2>A paid subscription has two separate records</h2>
+        <p><strong>Subscription</strong> answers: “Does this customer have access, and until when?”</p>
+        <p><strong>Payment</strong> answers: “Did this checkout attempt get paid, and which Razorpay order belongs to it?”</p>
+        <p>The payment becomes <code>paid</code> first. Only then does the subscription become <code>active</code>.</p>
+      </article>
+      <article class="panel">
+        <span class="tag blue">Important rule</span>
+        <h2>The browser never grants access</h2>
+        <p>The app callback is treated as a request for verification. The server checks the Razorpay signature, fetches the provider payment, compares order/amount/currency, and updates the database.</p>
+        <p>Razorpay webhooks provide a second, independent path for delayed or missed callbacks.</p>
+      </article>
+    </section>
+
+    <section id="walkthrough" class="section-block">
+      <div class="section-heading">
+        <div><span class="tag purple">Application-specific walkthrough</span><h2>Watch the subscription flow</h2></div>
+        <p>This is a CSS animated walkthrough made for this codebase. It explains the same sequence a video would show, without needing a separate video file.</p>
+      </div>
+      <div class="flow-video" role="img" aria-label="Animated subscription flow from Store app to database to Razorpay and back">
+        <div class="video-topbar"><span class="live-dot"></span> STORE SUBSCRIPTION FLOW <span class="video-time">01:20</span></div>
+        <div class="video-stage">
+          <div class="video-step step-one"><b>1</b><strong>Store app</strong><small>POST /api/subscription/start</small><em>user chooses a term</em></div>
+          <div class="video-step step-two"><b>2</b><strong>Core services</strong><small>customer + plan checks</small><em>server calculates price</em></div>
+          <div class="video-step step-three"><b>3</b><strong>Database</strong><small>subscription + payment</small><em>status: pending_payment</em></div>
+          <div class="video-step step-four"><b>4</b><strong>Razorpay</strong><small>checkout order</small><em>customer completes payment</em></div>
+          <div class="video-step step-five"><b>5</b><strong>Verify / webhook</strong><small>signature + provider check</small><em>payment is trusted</em></div>
+          <div class="video-step step-six"><b>6</b><strong>Access granted</strong><small>subscription becomes active</small><em>protected routes open</em></div>
+          <div class="video-line"></div>
+        </div>
+        <div class="video-caption"><span>1</span> Authenticate → create local records → pay → verify on the server → activate access</div>
+      </div>
+    </section>
+
+    <section class="section-block">
+      <div class="section-heading"><div><span class="tag green">Code structure</span><h2>Who is responsible for what?</h2></div></div>
+      <div class="responsibility-grid">
+        <article class="role"><div class="role-icon">01</div><h3>SubscriptionController</h3><p>Receives HTTP requests, validates simple input, calls the Store facade, and converts results into HTTP responses.</p><code>StoreManagement.Api/Controllers/SubscriptionController.cs</code></article>
+        <article class="role"><div class="role-icon">02</div><h3>StoreSubscriptionService</h3><p>Connects the signed-in Store user to the configured application and plan. It prevents the Store client from choosing another customer or plan.</p><code>SubscriptionPlatform.Core/Services/StoreSubscriptionService.cs</code></article>
+        <article class="role"><div class="role-icon">03</div><h3>SubscriptionService</h3><p>Applies subscription rules, creates Razorpay orders for paid terms, and reuses an existing order during retries.</p><code>SubscriptionPlatform.Core/Services/SubscriptionService.cs</code></article>
+        <article class="role"><div class="role-icon">04</div><h3>Repositories</h3><p>Read and update MySQL. SubscriptionRepository owns subscription creation/state; PaymentRepository owns payment verification, failures, and webhooks.</p><code>SubscriptionPlatform.Core/Repositories/</code></article>
+        <article class="role"><div class="role-icon">05</div><h3>RazorpayService</h3><p>Creates provider orders and verifies checkout/webhook signatures. Provider credentials stay on the server.</p><code>SubscriptionPlatform.Core/Services/RazorpayService.cs</code></article>
+        <article class="role"><div class="role-icon">06</div><h3>SubscriptionMaintenanceWorker</h3><p>Runs every minute and expires ended subscriptions, grace periods, and unpaid orders older than 30 minutes.</p><code>SubscriptionPlatform.Core/Services/SubscriptionMaintenanceWorker.cs</code></article>
+      </div>
+    </section>
+
+    <section id="tables" class="section-block">
+      <div class="section-heading"><div><span class="tag orange">Database map</span><h2>Tables and how they connect</h2></div><p>Every plan, customer, subscription, and payment is isolated by <code>application_id</code>.</p></div>
+      <div class="relationship-map">
+        <div class="db-card app-card"><span>tenant</span><h3>registered_applications</h3><p>One row per application using the platform.</p><small>id → application_id</small></div>
+        <div class="db-card plan-card"><span>catalog</span><h3>plans</h3><p>Prices, currency, trial days, features, and limits.</p><small>application_id → registered_applications.id</small></div>
+        <div class="db-card customer-card"><span>people</span><h3>customers</h3><p>Maps the Store user's external ID to a platform customer.</p><small>application_id → registered_applications.id</small></div>
+        <div class="db-card subscription-card"><span>access</span><h3>subscriptions</h3><p>The access record: owner, plan, status, dates, and cancellation flag.</p><small>customer_id + plan_id + application_id</small></div>
+        <div class="db-card payment-card"><span>money</span><h3>payments</h3><p>One checkout attempt connected to one subscription.</p><small>subscription_id → subscriptions.id</small></div>
+        <div class="db-card audit-card"><span>history</span><h3>subscription_audits</h3><p>Explains every important subscription status transition.</p><small>subscription_id → subscriptions.id</small></div>
+        <div class="db-card webhook-card"><span>reliability</span><h3>webhook_events</h3><p>Stores provider event IDs so duplicate webhooks do not run twice.</p><small>event_id is unique</small></div>
+        <div class="connector c-app-plan"></div><div class="connector c-app-customer"></div><div class="connector c-customer-sub"></div><div class="connector c-plan-sub"></div><div class="connector c-sub-payment"></div><div class="connector c-sub-audit"></div>
+      </div>
+      <div class="relation-legend"><span><i class="dot app"></i>Tenant owns catalog and customers</span><span><i class="dot access"></i>Customer + plan form a subscription</span><span><i class="dot money"></i>Subscription owns payments and history</span></div>
+    </section>
+
+    <section class="section-block">
+      <div class="section-heading"><div><span class="tag red">Endpoint guide</span><h2>What each endpoint does</h2></div></div>
+      <div class="endpoint-list">
+        <article class="endpoint"><div class="method get">GET</div><div><h3>/api/subscription/options</h3><p>Loads the configured plan so the client knows the available trial and paid prices.</p></div><span class="endpoint-owner">CatalogService → CatalogRepository</span></article>
+        <article class="endpoint"><div class="method get">GET</div><div><h3>/api/subscription/status</h3><p>Finds the signed-in Store user's latest subscription and calculates <code>has_access</code> from its status and dates.</p></div><span class="endpoint-owner">SubscriptionService → SubscriptionRepository</span></article>
+        <article class="endpoint"><div class="method post">POST</div><div><h3>/api/subscription/start</h3><p>Creates a trial immediately, or creates a pending subscription/payment and a Razorpay order for checkout.</p></div><span class="endpoint-owner">StoreSubscriptionService → SubscriptionService</span></article>
+        <article class="endpoint"><div class="method post">POST</div><div><h3>/api/subscription/verify</h3><p>Checks the checkout signature and provider payment, then changes <code>payment → paid</code> and <code>subscription → active</code>.</p></div><span class="endpoint-owner">PaymentService → PaymentRepository</span></article>
+        <article class="endpoint"><div class="method post">POST</div><div><h3>/api/subscription/failure</h3><p>Marks an unpaid checkout as failed and expires its pending subscription so the customer can retry.</p></div><span class="endpoint-owner">PaymentService → PaymentRepository</span></article>
+        <article class="endpoint"><div class="method hook">HOOK</div><div><h3>/api/subscription/webhook/razorpay</h3><p>Accepts signed Razorpay events, ignores duplicate event IDs, and reconciles captured or failed payments.</p></div><span class="endpoint-owner">PaymentService → PaymentRepository</span></article>
+      </div>
+    </section>
+
+    <section class="section-block">
+      <div class="section-heading"><div><span class="tag blue">Payment lifecycle</span><h2>Follow one paid purchase</h2></div></div>
+      <div class="timeline">
+        <div class="timeline-item"><b>1</b><h3>Start request</h3><p>The server creates a subscription with <code>pending_payment</code>, creates a local payment with <code>order_pending</code>, then commits both.</p></div>
+        <div class="timeline-item"><b>2</b><h3>Create order</h3><p>Razorpay receives the server-calculated amount. Its returned order ID is stored in <code>payments.razorpay_order_id</code>.</p></div>
+        <div class="timeline-item"><b>3</b><h3>Checkout</h3><p>The client opens Razorpay Checkout using the returned public key, order ID, amount, and currency.</p></div>
+        <div class="timeline-item"><b>4</b><h3>Verify</h3><p>The server verifies the signature, fetches the provider payment, and compares order ID, payment ID, amount, currency, and captured status.</p></div>
+        <div class="timeline-item"><b>5</b><h3>Activate</h3><p>In one database transaction, payment becomes <code>paid</code>, the subscription becomes <code>active</code>, dates are calculated, and an audit row is inserted.</p></div>
+        <div class="timeline-item"><b>6</b><h3>Expire</h3><p>The worker later changes expired access to <code>expired</code>. An abandoned pending order expires after 30 minutes.</p></div>
+      </div>
+    </section>
+
+    <section class="section-block video-library">
+      <div class="section-heading"><div><span class="tag purple">Learn visually</span><h2>Helpful videos</h2></div><p>These external videos explain the surrounding concepts. They are not part of this repository and may change or become unavailable.</p></div>
+      <div class="video-grid">
+        <article class="video-card"><div class="video-frame"><iframe src="https://www.youtube.com/embed/4v6gBuOJQgI" title="Razorpay payment gateway and webhooks" loading="lazy" allowfullscreen></iframe></div><h3>Razorpay checkout and webhooks</h3><p>Useful for understanding why the provider webhook is a second payment confirmation path.</p></article>
+        <article class="video-card"><div class="video-frame"><iframe src="https://www.youtube.com/embed/lkmvnjypENw" title="ASP.NET Core layered architecture" loading="lazy" allowfullscreen></iframe></div><h3>Controller, service, repository architecture</h3><p>Useful for seeing why this project separates HTTP, business rules, and database work.</p></article>
+      </div>
+    </section>
+
+    <section class="notes panel">
+      <span class="tag orange">Project-specific notes</span>
+      <h2>Things this implementation does not do yet</h2>
+      <ul><li>Paid terms are fixed local periods; automatic Razorpay recurring renewals are not implemented.</li><li>Changing a plan updates the subscription immediately and does not calculate proration or charge a difference.</li><li>The Store API derives the customer from the authenticated user, which is important because clients should not choose another customer's ID.</li><li>Amounts are stored in minor currency units. For INR, <code>149700</code> means ₹1,497.00.</li></ul>
+    </section>
+  </main>
+  <footer><p>Generated for the StoreManagement subscription codebase · Open this file directly in a browser.</p></footer>
+</body>
+</html>
