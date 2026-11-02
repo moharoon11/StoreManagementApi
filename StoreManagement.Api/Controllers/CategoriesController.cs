@@ -93,7 +93,8 @@ namespace StoreManagement.Api.Controllers
                 return NotFound(ApiResponse.ErrorResult("Category not found."));
             }
 
-            string? imageUrl = dto.ImageUrl ?? category.ImageUrl;
+            string? previousImageUrl = category.ImageUrl;
+            string? imageUrl = dto.ImageUrl ?? previousImageUrl;
             if (dto.ImageFile != null && dto.ImageFile.Length > 0)
             {
                 imageUrl = await _cloudinaryService.UploadImageAsync(dto.ImageFile, "category_images");
@@ -109,6 +110,10 @@ namespace StoreManagement.Api.Controllers
             }
 
             var result = await _categoryRepository.GetByIdAsync(id, CurrentUserId);
+            if (result != null)
+            {
+                await _cloudinaryService.DeleteReplacedImageAsync(previousImageUrl, result.ImageUrl);
+            }
             return Ok(ApiResponse<Category>.SuccessResult(result!, "Category updated successfully."));
         }
 

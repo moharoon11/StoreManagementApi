@@ -4,5 +4,6 @@ namespace StoreManagement.Api.Services
     {
         Task<string?> UploadImageAsync(IFormFile file, string folder = "store_management");
         Task<bool> DeleteImageAsync(string publicId);
+        Task DeleteReplacedImageAsync(string? oldUrl, string? newUrl);
     }
 }

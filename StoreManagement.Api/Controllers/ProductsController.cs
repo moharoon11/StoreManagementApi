@@ -157,7 +157,8 @@ namespace StoreManagement.Api.Controllers
                 return BadRequest(ApiResponse.ErrorResult("Selected category does not exist."));
             }
 
-            string? imageUrl = dto.ImageUrl ?? existingProduct.ImageUrl;
+            string? previousImageUrl = existingProduct.ImageUrl;
+            string? imageUrl = dto.ImageUrl ?? previousImageUrl;
             if (dto.ImageFile != null && dto.ImageFile.Length > 0)
             {
                 imageUrl = await _cloudinaryService.UploadImageAsync(dto.ImageFile, "product_images");
@@ -188,6 +189,10 @@ namespace StoreManagement.Api.Controllers
             }
 
             var result = await _productRepository.GetByIdAsync(id, CurrentUserId);
+            if (result != null)
+            {
+                await _cloudinaryService.DeleteReplacedImageAsync(previousImageUrl, result.ImageUrl);
+            }
             return Ok(ApiResponse<Product>.SuccessResult(result!, "Product updated successfully."));
         }
 

@@ -45,6 +45,8 @@ namespace StoreManagement.Api.Controllers
                 return BadRequest(ApiResponse.ErrorResult("Invalid store profile data."));
             }
 
+            var existingProfile = await _storeProfileRepository.GetByUserIdAsync(CurrentUserId);
+            string? previousLogoUrl = existingProfile?.LogoUrl;
             string? logoUrl = dto.ExistingLogoUrl;
 
             if (dto.LogoFile != null && dto.LogoFile.Length > 0)
@@ -71,6 +73,10 @@ namespace StoreManagement.Api.Controllers
 
             await _storeProfileRepository.CreateOrUpdateProfileAsync(profile);
             var updatedProfile = await _storeProfileRepository.GetByUserIdAsync(CurrentUserId);
+            if (updatedProfile != null)
+            {
+                await _cloudinaryService.DeleteReplacedImageAsync(previousLogoUrl, updatedProfile.LogoUrl);
+            }
 
             return Ok(ApiResponse<StoreProfile>.SuccessResult(updatedProfile!, "Store profile saved successfully."));
         }

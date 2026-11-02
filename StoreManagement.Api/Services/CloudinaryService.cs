@@ -1,17 +1,23 @@
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
+using Dapper;
 using NLog;
+using StoreManagement.Api.Data;
 
 namespace StoreManagement.Api.Services
 {
     public class CloudinaryService : ICloudinaryService
     {
         private readonly Cloudinary _cloudinary;
+        private readonly IDbConnectionFactory _dbConnectionFactory;
+        private readonly string? _cloudName;
         private static readonly Logger Logger = LogManager.GetLogger("CloudinaryService");
 
-        public CloudinaryService(IConfiguration configuration)
+        public CloudinaryService(IConfiguration configuration, IDbConnectionFactory dbConnectionFactory)
         {
             var cloudName = configuration["Cloudinary:CloudName"];
+            _cloudName = cloudName;
+            _dbConnectionFactory = dbConnectionFactory;
             var apiKey = configuration["Cloudinary:ApiKey"];
             var apiSecret = configuration["Cloudinary:ApiSecret"];
 
@@ -74,6 +80,62 @@ namespace StoreManagement.Api.Services
             else
                 Logger.Error("DeleteImageAsync failed. Reason: Cloudinary returned {0}. PublicId: {1}", result.Result, publicId);
             return succeeded;
+        }
+
+        public async Task DeleteReplacedImageAsync(string? oldUrl, string? newUrl)
+        {
+            if (string.IsNullOrWhiteSpace(oldUrl) || string.Equals(oldUrl, newUrl, StringComparison.Ordinal))
+                return;
+
+            var oldPublicId = GetManagedPublicId(oldUrl);
+            if (oldPublicId == null || string.Equals(oldPublicId, GetManagedPublicId(newUrl), StringComparison.Ordinal))
+                return;
+
+            try
+            {
+                using var connection = await _dbConnectionFactory.CreateConnectionAsync();
+                const string sql = @"
+                    SELECT EXISTS(SELECT 1 FROM Products WHERE ImageUrl = @Url)
+                         + EXISTS(SELECT 1 FROM Categories WHERE ImageUrl = @Url)
+                         + EXISTS(SELECT 1 FROM StoreProfiles WHERE LogoUrl = @Url);";
+                if (await connection.ExecuteScalarAsync<int>(sql, new { Url = oldUrl }) > 0)
+                    return;
+
+                await DeleteImageAsync(oldPublicId);
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn(ex, "Could not delete replaced Cloudinary image. PublicId: {0}", oldPublicId);
+            }
+        }
+
+        private string? GetManagedPublicId(string? imageUrl)
+        {
+            if (string.IsNullOrWhiteSpace(imageUrl) || string.IsNullOrWhiteSpace(_cloudName) ||
+                !Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri) ||
+                (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp) ||
+                !string.Equals(uri.Host, "res.cloudinary.com", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Length < 6 ||
+                !string.Equals(segments[0], _cloudName, StringComparison.OrdinalIgnoreCase) ||
+                segments[1] != "image" || segments[2] != "upload")
+                return null;
+
+            var versionIndex = Array.FindIndex(segments, 3, segment =>
+                segment.Length > 1 && segment[0] == 'v' &&
+                long.TryParse(segment.AsSpan(1), out _));
+            if (versionIndex < 0 || versionIndex + 2 >= segments.Length ||
+                segments[versionIndex + 1] is not ("general" or "product_images" or "category_images" or "store_logos" or "store_management"))
+                return null;
+
+            var publicIdWithExtension = string.Join('/', segments[(versionIndex + 1)..]);
+            var extensionIndex = publicIdWithExtension.LastIndexOf('.');
+            if (extensionIndex <= publicIdWithExtension.LastIndexOf('/'))
+                return null;
+
+            return Uri.UnescapeDataString(publicIdWithExtension[..extensionIndex]);
         }
     }
 }
