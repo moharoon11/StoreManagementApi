@@ -134,7 +134,6 @@ namespace StoreManagement.Api.Controllers
                 {
                     return BadRequest(ApiResponse.ErrorResult("Could not delete category."));
                 }
-                return Ok(ApiResponse.SuccessResult("Category deleted successfully."));
             }
             catch (Exception ex)
             {
@@ -143,6 +142,9 @@ namespace StoreManagement.Api.Controllers
                     "The category could not be deleted because it may contain active products.");
                 return BadRequest(ApiResponse.ErrorResult("Cannot delete category because it contains active products."));
             }
+
+            await _cloudinaryService.DeleteReplacedImageAsync(category.ImageUrl, null);
+            return Ok(ApiResponse.SuccessResult("Category deleted successfully."));
         }
     }
 }

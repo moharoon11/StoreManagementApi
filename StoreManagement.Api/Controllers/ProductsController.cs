@@ -212,6 +212,7 @@ namespace StoreManagement.Api.Controllers
                 return BadRequest(ApiResponse.ErrorResult("Could not delete product."));
             }
 
+            await _cloudinaryService.DeleteReplacedImageAsync(product.ImageUrl, null);
             return Ok(ApiResponse.SuccessResult("Product deleted successfully."));
         }
 
