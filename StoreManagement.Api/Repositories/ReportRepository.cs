@@ -17,23 +17,20 @@ namespace StoreManagement.Api.Repositories
         {
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
 
-            DateTime now = DateTime.UtcNow;
+            DateTime now = await connection.ExecuteScalarAsync<DateTime>("SELECT NOW();");
             DateTime startDate;
-            DateTime endDate = now;
+            DateTime endDate = now.Date.AddDays(1).AddTicks(-1);
 
             switch (filter.Period?.ToLower())
             {
                 case "today":
                     startDate = now.Date;
-                    endDate = now.Date.AddDays(1).AddTicks(-1);
                     break;
                 case "week":
                     startDate = now.Date.AddDays(-(int)now.DayOfWeek);
-                    endDate = now;
                     break;
                 case "month":
                     startDate = new DateTime(now.Year, now.Month, 1);
-                    endDate = now;
                     break;
                 case "custom":
                     startDate = filter.FromDate ?? now.Date;
