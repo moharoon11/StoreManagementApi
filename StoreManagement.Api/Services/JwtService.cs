@@ -18,32 +18,40 @@ namespace StoreManagement.Api.Services
 
         public string GenerateToken(int userId, string username)
         {
-            Logger.Debug(this.MethodName() + " | GenerateToken started. UserId: {0}, Username: {1}", userId, username);
-            var secretKey = _configuration["JwtSettings:SecretKey"] ?? "DefaultSecretKeyThatIsAtLeast32BytesLongForSecurity!";
-            var issuer = _configuration["JwtSettings:Issuer"] ?? "StoreManagementApi";
-            var audience = _configuration["JwtSettings:Audience"] ?? "StoreManagementFlutterApp";
-            var expiryMinutes = int.TryParse(_configuration["JwtSettings:AccessTokenExpiryInMinutes"], out var minutes) ? minutes : 30;
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
-            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var claims = new[]
+            try
             {
-                new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
-                new Claim(ClaimTypes.Name, username),
-                new Claim("userId", userId.ToString())
-            };
+                Logger.Debug(this.MethodName() + " | GenerateToken started. UserId: {0}, Username: {1}", userId, username);
+                var secretKey = _configuration["JwtSettings:SecretKey"] ?? "DefaultSecretKeyThatIsAtLeast32BytesLongForSecurity!";
+                var issuer = _configuration["JwtSettings:Issuer"] ?? "StoreManagementApi";
+                var audience = _configuration["JwtSettings:Audience"] ?? "StoreManagementFlutterApp";
+                var expiryMinutes = int.TryParse(_configuration["JwtSettings:AccessTokenExpiryInMinutes"], out var minutes) ? minutes : 30;
 
-            var token = new JwtSecurityToken(
-                issuer: issuer,
-                audience: audience,
-                claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(expiryMinutes),
-                signingCredentials: credentials);
+                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+                var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            var generatedToken = new JwtSecurityTokenHandler().WriteToken(token);
-            Logger.Info(this.MethodName() + " | GenerateToken succeeded. UserId: {0}, Username: {1}", userId, username);
-            return generatedToken;
+                var claims = new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+                    new Claim(ClaimTypes.Name, username),
+                    new Claim("userId", userId.ToString())
+                };
+
+                var token = new JwtSecurityToken(
+                    issuer: issuer,
+                    audience: audience,
+                    claims: claims,
+                    expires: DateTime.UtcNow.AddMinutes(expiryMinutes),
+                    signingCredentials: credentials);
+
+                var generatedToken = new JwtSecurityTokenHandler().WriteToken(token);
+                Logger.Info(this.MethodName() + " | GenerateToken succeeded. UserId: {0}, Username: {1}", userId, username);
+                return generatedToken;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, this.MethodName() + " | Service operation failed.");
+                throw;
+            }
         }
     }
 }

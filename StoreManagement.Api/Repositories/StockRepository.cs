@@ -17,15 +17,17 @@ namespace StoreManagement.Api.Repositories
 
         public async Task<IEnumerable<StockMovement>> GetMovementsByUserIdAsync(int userId, int? productId = null, int limit = 50)
         {
-            using var connection = await _dbConnectionFactory.CreateConnectionAsync();
-
-            var whereClause = "sm.UserId = @UserId";
-            if (productId.HasValue)
+            try
             {
-                whereClause += " AND sm.ProductId = @ProductId";
-            }
+                using var connection = await _dbConnectionFactory.CreateConnectionAsync();
 
-            var sql = $@"
+                var whereClause = "sm.UserId = @UserId";
+                if (productId.HasValue)
+                {
+                    whereClause += " AND sm.ProductId = @ProductId";
+                }
+
+                var sql = $@"
                 SELECT 
                     sm.Id, sm.UserId, sm.ProductId, p.Name AS ProductName,
                     sm.PreviousQuantity, sm.QuantityChanged, sm.NewQuantity, p.Unit, sm.Reason, sm.CreatedAt
@@ -35,9 +37,15 @@ namespace StoreManagement.Api.Repositories
                 ORDER BY sm.CreatedAt DESC
                 LIMIT @Limit;";
 
-            var movements = (await connection.QueryAsync<StockMovement>(sql, new { UserId = userId, ProductId = productId, Limit = limit })).AsList();
-            Logger.Debug(this.MethodName() + " | Stock movements loaded. UserId: {0}, ProductId: {1}, Count: {2}", userId, productId, movements.Count);
-            return movements;
+                var movements = (await connection.QueryAsync<StockMovement>(sql, new { UserId = userId, ProductId = productId, Limit = limit })).AsList();
+                Logger.Debug(this.MethodName() + " | Stock movements loaded. UserId: {0}, ProductId: {1}, Count: {2}", userId, productId, movements.Count);
+                return movements;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, this.MethodName() + " | Repository operation failed.");
+                throw;
+            }
         }
 
         public async Task<bool> AdjustStockAsync(int userId, int productId, decimal quantityChanged, string reason)
@@ -90,8 +98,15 @@ namespace StoreManagement.Api.Repositories
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
-                Logger.Error(ex, this.MethodName() + " | Stock adjustment rolled back. UserId: {0}, ProductId: {1}", userId, productId);
+                Logger.Error(ex, this.MethodName() + " | Stock adjustment failed. UserId: {0}, ProductId: {1}", userId, productId);
+                try
+                {
+                    await transaction.RollbackAsync();
+                }
+                catch (Exception rollbackException)
+                {
+                    Logger.Error(rollbackException, this.MethodName() + " | Stock adjustment rollback failed. UserId: {0}, ProductId: {1}", userId, productId);
+                }
                 throw;
             }
         }

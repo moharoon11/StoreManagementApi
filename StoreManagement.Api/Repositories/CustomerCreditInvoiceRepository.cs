@@ -11,162 +11,218 @@ public class CustomerCreditInvoiceRepository(IDbConnectionFactory dbConnectionFa
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
     public async Task<CustomerCreditInvoice> CreateAsync(int userId, CreateCustomerCreditInvoiceDto dto)
     {
-        await using var connection = await dbConnectionFactory.CreateConnectionAsync();
-        await using var transaction = await connection.BeginTransactionAsync();
-        var invoiceDate = (dto.InvoiceDate ?? DateTime.UtcNow).Date;
-        const string insertInvoice = @"INSERT INTO CustomerCreditInvoices
+        try
+        {
+            await using var connection = await dbConnectionFactory.CreateConnectionAsync();
+            await using var transaction = await connection.BeginTransactionAsync();
+            var invoiceDate = (dto.InvoiceDate ?? DateTime.UtcNow).Date;
+            const string insertInvoice = @"INSERT INTO CustomerCreditInvoices
             (UserId, CustomerName, CustomerMobileNumber, BorrowedAmount, OutstandingBalance, InvoiceDate)
             VALUES (@UserId, @CustomerName, @CustomerMobileNumber, @BorrowedAmount, @BorrowedAmount, @InvoiceDate);
             SELECT LAST_INSERT_ID();";
-        var invoiceId = await connection.ExecuteScalarAsync<int>(insertInvoice, new
+            var invoiceId = await connection.ExecuteScalarAsync<int>(insertInvoice, new
+            {
+                UserId = userId, CustomerName = dto.CustomerName.Trim(), CustomerMobileNumber = dto.CustomerMobileNumber.Trim(),
+                dto.BorrowedAmount, InvoiceDate = invoiceDate
+            }, transaction);
+            await InsertCreditLinesAsync(connection, transaction, invoiceId, dto.BorrowedAmount, invoiceDate,
+                dto.ProductName, dto.Quantity, dto.Price, dto.Notes, dto.Items);
+            await transaction.CommitAsync();
+            Logger.Debug(this.MethodName() + " | Credit invoice committed. UserId: {0}, InvoiceId: {1}", userId, invoiceId);
+            return (await GetByIdAsync(invoiceId, userId))!;
+        }
+        catch (Exception ex)
         {
-            UserId = userId, CustomerName = dto.CustomerName.Trim(), CustomerMobileNumber = dto.CustomerMobileNumber.Trim(),
-            dto.BorrowedAmount, InvoiceDate = invoiceDate
-        }, transaction);
-        await InsertCreditLinesAsync(connection, transaction, invoiceId, dto.BorrowedAmount, invoiceDate,
-            dto.ProductName, dto.Quantity, dto.Price, dto.Notes, dto.Items);
-        await transaction.CommitAsync();
-        Logger.Debug(this.MethodName() + " | Credit invoice committed. UserId: {0}, InvoiceId: {1}", userId, invoiceId);
-        return (await GetByIdAsync(invoiceId, userId))!;
+            Logger.Error(ex, this.MethodName() + " | Repository operation failed.");
+            throw;
+        }
     }
 
     public async Task<IReadOnlyList<CustomerCreditInvoice>> GetAllAsync(int userId, bool pendingOnly)
     {
-        await using var connection = await dbConnectionFactory.CreateConnectionAsync();
-        var sql = @"SELECT * FROM CustomerCreditInvoices WHERE UserId = @UserId" +
-                  (pendingOnly ? " AND IsReceived = 0" : string.Empty) + " ORDER BY IsReceived, InvoiceDate DESC, Id DESC;";
-        var invoices = (await connection.QueryAsync<CustomerCreditInvoice>(sql, new { UserId = userId })).ToList();
-        if (invoices.Count == 0)
+        try
         {
-            Logger.Debug(this.MethodName() + " | No credit invoices found. UserId: {0}, PendingOnly: {1}", userId, pendingOnly);
+            await using var connection = await dbConnectionFactory.CreateConnectionAsync();
+            var sql = @"SELECT * FROM CustomerCreditInvoices WHERE UserId = @UserId" +
+                      (pendingOnly ? " AND IsReceived = 0" : string.Empty) + " ORDER BY IsReceived, InvoiceDate DESC, Id DESC;";
+            var invoices = (await connection.QueryAsync<CustomerCreditInvoice>(sql, new { UserId = userId })).ToList();
+            if (invoices.Count == 0)
+            {
+                Logger.Debug(this.MethodName() + " | No credit invoices found. UserId: {0}, PendingOnly: {1}", userId, pendingOnly);
+                return invoices;
+            }
+            var transactions = await connection.QueryAsync<CustomerCreditTransaction>(
+                "SELECT * FROM CustomerCreditTransactions WHERE CustomerCreditInvoiceId IN @Ids ORDER BY TransactionDate DESC, Id DESC;",
+                new { Ids = invoices.Select(x => x.Id).ToArray() });
+            var grouped = transactions.GroupBy(x => x.CustomerCreditInvoiceId).ToDictionary(x => x.Key, x => x.ToList());
+            foreach (var invoice in invoices)
+                invoice.Transactions = grouped.GetValueOrDefault(invoice.Id, new List<CustomerCreditTransaction>());
+            Logger.Debug(this.MethodName() + " | Credit invoices loaded. UserId: {0}, Count: {1}", userId, invoices.Count);
             return invoices;
         }
-        var transactions = await connection.QueryAsync<CustomerCreditTransaction>(
-            "SELECT * FROM CustomerCreditTransactions WHERE CustomerCreditInvoiceId IN @Ids ORDER BY TransactionDate DESC, Id DESC;",
-            new { Ids = invoices.Select(x => x.Id).ToArray() });
-        var grouped = transactions.GroupBy(x => x.CustomerCreditInvoiceId).ToDictionary(x => x.Key, x => x.ToList());
-        foreach (var invoice in invoices)
-            invoice.Transactions = grouped.GetValueOrDefault(invoice.Id, new List<CustomerCreditTransaction>());
-        Logger.Debug(this.MethodName() + " | Credit invoices loaded. UserId: {0}, Count: {1}", userId, invoices.Count);
-        return invoices;
+        catch (Exception ex)
+        {
+            Logger.Error(ex, this.MethodName() + " | Repository operation failed.");
+            throw;
+        }
     }
 
     public async Task<CustomerCreditInvoice?> GetByIdAsync(int id, int userId)
     {
-        await using var connection = await dbConnectionFactory.CreateConnectionAsync();
-        const string invoiceSql = "SELECT * FROM CustomerCreditInvoices WHERE Id = @Id AND UserId = @UserId LIMIT 1;";
-        var invoice = await connection.QuerySingleOrDefaultAsync<CustomerCreditInvoice>(invoiceSql, new { Id = id, UserId = userId });
-        if (invoice is null)
+        try
         {
-            Logger.Debug(this.MethodName() + " | Credit invoice not found. UserId: {0}, InvoiceId: {1}", userId, id);
-            return null;
+            await using var connection = await dbConnectionFactory.CreateConnectionAsync();
+            const string invoiceSql = "SELECT * FROM CustomerCreditInvoices WHERE Id = @Id AND UserId = @UserId LIMIT 1;";
+            var invoice = await connection.QuerySingleOrDefaultAsync<CustomerCreditInvoice>(invoiceSql, new { Id = id, UserId = userId });
+            if (invoice is null)
+            {
+                Logger.Debug(this.MethodName() + " | Credit invoice not found. UserId: {0}, InvoiceId: {1}", userId, id);
+                return null;
+            }
+            const string transactionSql = "SELECT * FROM CustomerCreditTransactions WHERE CustomerCreditInvoiceId = @Id ORDER BY TransactionDate DESC, Id DESC;";
+            invoice.Transactions = (await connection.QueryAsync<CustomerCreditTransaction>(transactionSql, new { Id = id })).ToList();
+            Logger.Debug(this.MethodName() + " | Credit invoice loaded. UserId: {0}, InvoiceId: {1}, TransactionCount: {2}", userId, id, invoice.Transactions.Count);
+            return invoice;
         }
-        const string transactionSql = "SELECT * FROM CustomerCreditTransactions WHERE CustomerCreditInvoiceId = @Id ORDER BY TransactionDate DESC, Id DESC;";
-        invoice.Transactions = (await connection.QueryAsync<CustomerCreditTransaction>(transactionSql, new { Id = id })).ToList();
-        Logger.Debug(this.MethodName() + " | Credit invoice loaded. UserId: {0}, InvoiceId: {1}, TransactionCount: {2}", userId, id, invoice.Transactions.Count);
-        return invoice;
+        catch (Exception ex)
+        {
+            Logger.Error(ex, this.MethodName() + " | Repository operation failed.");
+            throw;
+        }
     }
 
     public async Task<CustomerCreditInvoice?> AddTransactionAsync(int id, int userId, AddCustomerCreditTransactionDto dto)
     {
-        await using var connection = await dbConnectionFactory.CreateConnectionAsync();
-        await using var transaction = await connection.BeginTransactionAsync();
-        const string lockSql = "SELECT * FROM CustomerCreditInvoices WHERE Id = @Id AND UserId = @UserId AND IsReceived = 0 FOR UPDATE;";
-        var invoice = await connection.QuerySingleOrDefaultAsync<CustomerCreditInvoice>(lockSql, new { Id = id, UserId = userId }, transaction);
-        if (invoice is null)
+        try
         {
-            Logger.Debug(this.MethodName() + " | Credit transaction rejected: pending invoice not found. UserId: {0}, InvoiceId: {1}", userId, id);
-            return null;
+            await using var connection = await dbConnectionFactory.CreateConnectionAsync();
+            await using var transaction = await connection.BeginTransactionAsync();
+            const string lockSql = "SELECT * FROM CustomerCreditInvoices WHERE Id = @Id AND UserId = @UserId AND IsReceived = 0 FOR UPDATE;";
+            var invoice = await connection.QuerySingleOrDefaultAsync<CustomerCreditInvoice>(lockSql, new { Id = id, UserId = userId }, transaction);
+            if (invoice is null)
+            {
+                Logger.Debug(this.MethodName() + " | Credit transaction rejected: pending invoice not found. UserId: {0}, InvoiceId: {1}", userId, id);
+                return null;
+            }
+            var date = (dto.TransactionDate ?? DateTime.UtcNow).Date;
+            await InsertCreditLinesAsync(connection, transaction, id, dto.Amount, date,
+                dto.ProductName, dto.Quantity, dto.Price, dto.Notes, dto.Items);
+            await connection.ExecuteAsync("UPDATE CustomerCreditInvoices SET OutstandingBalance = OutstandingBalance + @Amount WHERE Id = @Id;", new { Id = id, dto.Amount }, transaction);
+            await transaction.CommitAsync();
+            Logger.Debug(this.MethodName() + " | Credit transaction committed. UserId: {0}, InvoiceId: {1}", userId, id);
+            var updatedInvoice = await GetByIdAsync(id, userId);
+            if (updatedInvoice is null)
+                Logger.Warn(this.MethodName() + " | Committed credit invoice could not be reloaded. UserId: {0}, InvoiceId: {1}", userId, id);
+            return updatedInvoice;
         }
-        var date = (dto.TransactionDate ?? DateTime.UtcNow).Date;
-        await InsertCreditLinesAsync(connection, transaction, id, dto.Amount, date,
-            dto.ProductName, dto.Quantity, dto.Price, dto.Notes, dto.Items);
-        await connection.ExecuteAsync("UPDATE CustomerCreditInvoices SET OutstandingBalance = OutstandingBalance + @Amount WHERE Id = @Id;", new { Id = id, dto.Amount }, transaction);
-        await transaction.CommitAsync();
-        Logger.Debug(this.MethodName() + " | Credit transaction committed. UserId: {0}, InvoiceId: {1}", userId, id);
-        var updatedInvoice = await GetByIdAsync(id, userId);
-        if (updatedInvoice is null)
-            Logger.Warn(this.MethodName() + " | Committed credit invoice could not be reloaded. UserId: {0}, InvoiceId: {1}", userId, id);
-        return updatedInvoice;
+        catch (Exception ex)
+        {
+            Logger.Error(ex, this.MethodName() + " | Repository operation failed.");
+            throw;
+        }
     }
 
     public async Task<bool> MarkReceivedAsync(int id, int userId)
     {
-        await using var connection = await dbConnectionFactory.CreateConnectionAsync();
-        await using var transaction = await connection.BeginTransactionAsync();
-        const string lockSql = "SELECT * FROM CustomerCreditInvoices WHERE Id = @Id AND UserId = @UserId AND IsReceived = 0 FOR UPDATE;";
-        var invoice = await connection.QuerySingleOrDefaultAsync<CustomerCreditInvoice>(lockSql, new { Id = id, UserId = userId }, transaction);
-        if (invoice is null)
+        try
         {
-            Logger.Debug(this.MethodName() + " | Credit settlement rejected: pending invoice not found. UserId: {0}, InvoiceId: {1}", userId, id);
-            return false;
-        }
-        if (invoice.OutstandingBalance > 0)
-            await InsertTransactionAsync(connection, transaction, id, "SETTLEMENT", invoice.OutstandingBalance, DateTime.UtcNow.Date, null, null, null, "Marked received");
-        await connection.ExecuteAsync(@"UPDATE CustomerCreditTransactions
+            await using var connection = await dbConnectionFactory.CreateConnectionAsync();
+            await using var transaction = await connection.BeginTransactionAsync();
+            const string lockSql = "SELECT * FROM CustomerCreditInvoices WHERE Id = @Id AND UserId = @UserId AND IsReceived = 0 FOR UPDATE;";
+            var invoice = await connection.QuerySingleOrDefaultAsync<CustomerCreditInvoice>(lockSql, new { Id = id, UserId = userId }, transaction);
+            if (invoice is null)
+            {
+                Logger.Debug(this.MethodName() + " | Credit settlement rejected: pending invoice not found. UserId: {0}, InvoiceId: {1}", userId, id);
+                return false;
+            }
+            if (invoice.OutstandingBalance > 0)
+                await InsertTransactionAsync(connection, transaction, id, "SETTLEMENT", invoice.OutstandingBalance, DateTime.UtcNow.Date, null, null, null, "Marked received");
+            await connection.ExecuteAsync(@"UPDATE CustomerCreditTransactions
             SET IsReceived = 1, ReceivedAt = UTC_TIMESTAMP()
             WHERE CustomerCreditInvoiceId = @Id AND TransactionType = 'CREDIT' AND IsReceived = 0;", new { Id = id }, transaction);
-        await connection.ExecuteAsync(@"UPDATE CustomerCreditInvoices SET IsReceived = 1, OutstandingBalance = 0, ReceivedAt = UTC_TIMESTAMP() WHERE Id = @Id;", new { Id = id }, transaction);
-        await transaction.CommitAsync();
-        Logger.Debug(this.MethodName() + " | Credit invoice settlement committed. UserId: {0}, InvoiceId: {1}", userId, id);
-        return true;
+            await connection.ExecuteAsync(@"UPDATE CustomerCreditInvoices SET IsReceived = 1, OutstandingBalance = 0, ReceivedAt = UTC_TIMESTAMP() WHERE Id = @Id;", new { Id = id }, transaction);
+            await transaction.CommitAsync();
+            Logger.Debug(this.MethodName() + " | Credit invoice settlement committed. UserId: {0}, InvoiceId: {1}", userId, id);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, this.MethodName() + " | Repository operation failed.");
+            throw;
+        }
     }
 
     public async Task<bool> MarkTransactionReceivedAsync(int invoiceId, int transactionId, int userId)
     {
-        await using var connection = await dbConnectionFactory.CreateConnectionAsync();
-        await using var transaction = await connection.BeginTransactionAsync();
-        const string invoiceSql = "SELECT * FROM CustomerCreditInvoices WHERE Id = @InvoiceId AND UserId = @UserId AND IsReceived = 0 FOR UPDATE;";
-        var invoice = await connection.QuerySingleOrDefaultAsync<CustomerCreditInvoice>(invoiceSql, new { InvoiceId = invoiceId, UserId = userId }, transaction);
-        if (invoice is null)
+        try
         {
-            Logger.Debug(this.MethodName() + " | Credit entry settlement rejected: pending invoice not found. UserId: {0}, InvoiceId: {1}", userId, invoiceId);
-            return false;
-        }
-        const string creditSql = @"SELECT * FROM CustomerCreditTransactions
+            await using var connection = await dbConnectionFactory.CreateConnectionAsync();
+            await using var transaction = await connection.BeginTransactionAsync();
+            const string invoiceSql = "SELECT * FROM CustomerCreditInvoices WHERE Id = @InvoiceId AND UserId = @UserId AND IsReceived = 0 FOR UPDATE;";
+            var invoice = await connection.QuerySingleOrDefaultAsync<CustomerCreditInvoice>(invoiceSql, new { InvoiceId = invoiceId, UserId = userId }, transaction);
+            if (invoice is null)
+            {
+                Logger.Debug(this.MethodName() + " | Credit entry settlement rejected: pending invoice not found. UserId: {0}, InvoiceId: {1}", userId, invoiceId);
+                return false;
+            }
+            const string creditSql = @"SELECT * FROM CustomerCreditTransactions
             WHERE Id = @TransactionId AND CustomerCreditInvoiceId = @InvoiceId AND TransactionType = 'CREDIT' AND IsReceived = 0 FOR UPDATE;";
-        var credit = await connection.QuerySingleOrDefaultAsync<CustomerCreditTransaction>(creditSql, new { TransactionId = transactionId, InvoiceId = invoiceId }, transaction);
-        if (credit is null)
-        {
-            Logger.Debug(this.MethodName() + " | Credit entry settlement rejected: entry not found or already settled. InvoiceId: {0}, TransactionId: {1}", invoiceId, transactionId);
-            return false;
+            var credit = await connection.QuerySingleOrDefaultAsync<CustomerCreditTransaction>(creditSql, new { TransactionId = transactionId, InvoiceId = invoiceId }, transaction);
+            if (credit is null)
+            {
+                Logger.Debug(this.MethodName() + " | Credit entry settlement rejected: entry not found or already settled. InvoiceId: {0}, TransactionId: {1}", invoiceId, transactionId);
+                return false;
+            }
+            var remaining = Math.Max(0m, credit.Amount - credit.ReceivedAmount);
+            if (remaining <= 0m)
+            {
+                Logger.Debug(this.MethodName() + " | Credit entry settlement rejected: no remaining balance. InvoiceId: {0}, TransactionId: {1}", invoiceId, transactionId);
+                return false;
+            }
+            await ApplyTransactionPaymentAsync(connection, transaction, invoice, credit, remaining);
+            await transaction.CommitAsync();
+            Logger.Debug(this.MethodName() + " | Credit entry settlement committed. UserId: {0}, InvoiceId: {1}, TransactionId: {2}", userId, invoiceId, transactionId);
+            return true;
         }
-        var remaining = Math.Max(0m, credit.Amount - credit.ReceivedAmount);
-        if (remaining <= 0m)
+        catch (Exception ex)
         {
-            Logger.Debug(this.MethodName() + " | Credit entry settlement rejected: no remaining balance. InvoiceId: {0}, TransactionId: {1}", invoiceId, transactionId);
-            return false;
+            Logger.Error(ex, this.MethodName() + " | Repository operation failed.");
+            throw;
         }
-        await ApplyTransactionPaymentAsync(connection, transaction, invoice, credit, remaining);
-        await transaction.CommitAsync();
-        Logger.Debug(this.MethodName() + " | Credit entry settlement committed. UserId: {0}, InvoiceId: {1}, TransactionId: {2}", userId, invoiceId, transactionId);
-        return true;
     }
 
     public async Task<bool> RecordTransactionPaymentAsync(int invoiceId, int transactionId, int userId, decimal amount)
     {
-        await using var connection = await dbConnectionFactory.CreateConnectionAsync();
-        await using var transaction = await connection.BeginTransactionAsync();
-        const string invoiceSql = "SELECT * FROM CustomerCreditInvoices WHERE Id = @InvoiceId AND UserId = @UserId AND IsReceived = 0 FOR UPDATE;";
-        var invoice = await connection.QuerySingleOrDefaultAsync<CustomerCreditInvoice>(invoiceSql, new { InvoiceId = invoiceId, UserId = userId }, transaction);
-        if (invoice is null)
+        try
         {
-            Logger.Debug(this.MethodName() + " | Credit payment rejected: pending invoice not found. UserId: {0}, InvoiceId: {1}", userId, invoiceId);
-            return false;
-        }
-        const string creditSql = @"SELECT * FROM CustomerCreditTransactions
+            await using var connection = await dbConnectionFactory.CreateConnectionAsync();
+            await using var transaction = await connection.BeginTransactionAsync();
+            const string invoiceSql = "SELECT * FROM CustomerCreditInvoices WHERE Id = @InvoiceId AND UserId = @UserId AND IsReceived = 0 FOR UPDATE;";
+            var invoice = await connection.QuerySingleOrDefaultAsync<CustomerCreditInvoice>(invoiceSql, new { InvoiceId = invoiceId, UserId = userId }, transaction);
+            if (invoice is null)
+            {
+                Logger.Debug(this.MethodName() + " | Credit payment rejected: pending invoice not found. UserId: {0}, InvoiceId: {1}", userId, invoiceId);
+                return false;
+            }
+            const string creditSql = @"SELECT * FROM CustomerCreditTransactions
             WHERE Id = @TransactionId AND CustomerCreditInvoiceId = @InvoiceId AND TransactionType = 'CREDIT' AND IsReceived = 0 FOR UPDATE;";
-        var credit = await connection.QuerySingleOrDefaultAsync<CustomerCreditTransaction>(creditSql, new { TransactionId = transactionId, InvoiceId = invoiceId }, transaction);
-        if (credit is null || amount <= 0m || amount > credit.Amount - credit.ReceivedAmount)
-        {
-            Logger.Debug(this.MethodName() + " | Credit payment rejected: entry missing, amount invalid, or balance exceeded. InvoiceId: {0}, TransactionId: {1}", invoiceId, transactionId);
-            return false;
-        }
+            var credit = await connection.QuerySingleOrDefaultAsync<CustomerCreditTransaction>(creditSql, new { TransactionId = transactionId, InvoiceId = invoiceId }, transaction);
+            if (credit is null || amount <= 0m || amount > credit.Amount - credit.ReceivedAmount)
+            {
+                Logger.Debug(this.MethodName() + " | Credit payment rejected: entry missing, amount invalid, or balance exceeded. InvoiceId: {0}, TransactionId: {1}", invoiceId, transactionId);
+                return false;
+            }
 
-        await ApplyTransactionPaymentAsync(connection, transaction, invoice, credit, amount);
-        await transaction.CommitAsync();
-        Logger.Debug(this.MethodName() + " | Credit partial payment committed. UserId: {0}, InvoiceId: {1}, TransactionId: {2}", userId, invoiceId, transactionId);
-        return true;
+            await ApplyTransactionPaymentAsync(connection, transaction, invoice, credit, amount);
+            await transaction.CommitAsync();
+            Logger.Debug(this.MethodName() + " | Credit partial payment committed. UserId: {0}, InvoiceId: {1}, TransactionId: {2}", userId, invoiceId, transactionId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, this.MethodName() + " | Repository operation failed.");
+            throw;
+        }
     }
 
     private static async Task ApplyTransactionPaymentAsync(

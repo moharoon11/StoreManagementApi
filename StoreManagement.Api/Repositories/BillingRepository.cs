@@ -175,8 +175,15 @@ namespace StoreManagement.Api.Repositories
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
-                Logger.Error(ex, this.MethodName() + " | Checkout rolled back. UserId: {0}", userId);
+                Logger.Error(ex, this.MethodName() + " | Checkout failed. UserId: {0}", userId);
+                try
+                {
+                    await transaction.RollbackAsync();
+                }
+                catch (Exception rollbackException)
+                {
+                    Logger.Error(rollbackException, this.MethodName() + " | Checkout rollback failed. UserId: {0}", userId);
+                }
                 throw;
             }
         }
@@ -282,8 +289,15 @@ namespace StoreManagement.Api.Repositories
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
-                Logger.Error(ex, this.MethodName() + " | Manual checkout rolled back. UserId: {0}", userId);
+                Logger.Error(ex, this.MethodName() + " | Manual checkout failed. UserId: {0}", userId);
+                try
+                {
+                    await transaction.RollbackAsync();
+                }
+                catch (Exception rollbackException)
+                {
+                    Logger.Error(rollbackException, this.MethodName() + " | Manual checkout rollback failed. UserId: {0}", userId);
+                }
                 throw;
             }
         }

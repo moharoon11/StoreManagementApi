@@ -17,31 +17,49 @@ namespace StoreManagement.Api.Repositories
 
         public async Task<bool> AddFavouriteAsync(int userId, int productId)
         {
-            using var connection = await _dbConnectionFactory.CreateConnectionAsync();
-            const string sql = @"
+            try
+            {
+                using var connection = await _dbConnectionFactory.CreateConnectionAsync();
+                const string sql = @"
                 INSERT INTO Favourites (UserId, ProductId, CreatedAt)
                 VALUES (@UserId, @ProductId, NOW())
                 ON DUPLICATE KEY UPDATE CreatedAt = NOW();";
-            var affected = await connection.ExecuteAsync(sql, new { UserId = userId, ProductId = productId });
-            if (affected > 0)
-                Logger.Info(this.MethodName() + " | Favourite saved. UserId: {0}, ProductId: {1}", userId, productId);
-            return affected > 0;
+                var affected = await connection.ExecuteAsync(sql, new { UserId = userId, ProductId = productId });
+                if (affected > 0)
+                    Logger.Info(this.MethodName() + " | Favourite saved. UserId: {0}, ProductId: {1}", userId, productId);
+                return affected > 0;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, this.MethodName() + " | Repository operation failed.");
+                throw;
+            }
         }
 
         public async Task<bool> RemoveFavouriteAsync(int userId, int productId)
         {
-            using var connection = await _dbConnectionFactory.CreateConnectionAsync();
-            const string sql = "DELETE FROM Favourites WHERE UserId = @UserId AND ProductId = @ProductId;";
-            var affected = await connection.ExecuteAsync(sql, new { UserId = userId, ProductId = productId });
-            if (affected > 0)
-                Logger.Info(this.MethodName() + " | Favourite removed. UserId: {0}, ProductId: {1}", userId, productId);
-            return affected > 0;
+            try
+            {
+                using var connection = await _dbConnectionFactory.CreateConnectionAsync();
+                const string sql = "DELETE FROM Favourites WHERE UserId = @UserId AND ProductId = @ProductId;";
+                var affected = await connection.ExecuteAsync(sql, new { UserId = userId, ProductId = productId });
+                if (affected > 0)
+                    Logger.Info(this.MethodName() + " | Favourite removed. UserId: {0}, ProductId: {1}", userId, productId);
+                return affected > 0;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, this.MethodName() + " | Repository operation failed.");
+                throw;
+            }
         }
 
         public async Task<IEnumerable<Product>> GetFavouritesByUserIdAsync(int userId)
         {
-            using var connection = await _dbConnectionFactory.CreateConnectionAsync();
-            const string sql = @"
+            try
+            {
+                using var connection = await _dbConnectionFactory.CreateConnectionAsync();
+                const string sql = @"
                 SELECT 
                     p.Id, p.UserId, p.CategoryId, c.Name AS CategoryName, p.Name, p.ImageUrl, 
                     p.CostPrice, p.SellingPrice, p.StockQuantity, p.SoldsCount, p.Unit, p.CreatedAt, p.UpdatedAt,
@@ -51,9 +69,15 @@ namespace StoreManagement.Api.Repositories
                 INNER JOIN Categories c ON p.CategoryId = c.Id
                 WHERE f.UserId = @UserId
                 ORDER BY f.CreatedAt DESC;";
-            var favourites = (await connection.QueryAsync<Product>(sql, new { UserId = userId })).AsList();
-            Logger.Debug(this.MethodName() + " | Favourites loaded. UserId: {0}, Count: {1}", userId, favourites.Count);
-            return favourites;
+                var favourites = (await connection.QueryAsync<Product>(sql, new { UserId = userId })).AsList();
+                Logger.Debug(this.MethodName() + " | Favourites loaded. UserId: {0}, Count: {1}", userId, favourites.Count);
+                return favourites;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, this.MethodName() + " | Repository operation failed.");
+                throw;
+            }
         }
     }
 }

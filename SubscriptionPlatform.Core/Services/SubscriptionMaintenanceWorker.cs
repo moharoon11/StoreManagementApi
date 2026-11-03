@@ -49,7 +49,14 @@ public sealed class SubscriptionMaintenanceWorker(ConnectionFactory connections)
             }
 
             // Wait one minute before checking for more expired records.
-            await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+            try
+            {
+                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
         }
     }
 }

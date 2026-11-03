@@ -12,10 +12,18 @@ public sealed class EmailQueueService : BackgroundService, IEmailQueue
     public EmailQueueService(IServiceScopeFactory scopeFactory) => _scopeFactory = scopeFactory;
     public bool Queue(Func<IEmailService, CancellationToken, Task> send)
     {
-        var queued = _queue.Writer.TryWrite(send);
-        if (!queued)
-            Logger.Warn(this.MethodName() + " | Security email could not be queued.");
-        return queued;
+        try
+        {
+            var queued = _queue.Writer.TryWrite(send);
+            if (!queued)
+                Logger.Warn(this.MethodName() + " | Security email could not be queued.");
+            return queued;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, this.MethodName() + " | Service operation failed.");
+            throw;
+        }
     }
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {

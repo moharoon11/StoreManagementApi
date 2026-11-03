@@ -66,10 +66,18 @@ public sealed class PaymentService(PaymentRepository repository, RazorpayService
 
     public async Task<IEnumerable<object>> HistoryAsync(Guid appId)
     {
-        // Return payment history limited to subscriptions owned by this application.
-        var payments = (await repository.HistoryAsync(appId)).ToList();
-        Logger.Debug(this.MethodName() + " | Payment history returned. ApplicationId: {0}, Count: {1}", appId, payments.Count);
-        return payments;
+        try
+        {
+            // Return payment history limited to subscriptions owned by this application.
+            var payments = (await repository.HistoryAsync(appId)).ToList();
+            Logger.Debug(this.MethodName() + " | Payment history returned. ApplicationId: {0}, Count: {1}", appId, payments.Count);
+            return payments;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, this.MethodName() + " | Service operation failed.");
+            throw;
+        }
     }
 
     public async Task<bool> MarkFailedAsync(
@@ -78,13 +86,21 @@ public sealed class PaymentService(PaymentRepository repository, RazorpayService
         string orderId,
         string externalId)
     {
-        // Mark a pending payment as failed after confirming its customer and order ownership.
-        var marked = await repository.MarkFailedAsync(appId, paymentId, orderId, externalId);
-        if (marked)
-            Logger.Info(this.MethodName() + " | Payment failure callback recorded. PaymentId: {0}", paymentId);
-        else
-            Logger.Warn(this.MethodName() + " | Payment failure callback ignored. PaymentId: {0}", paymentId);
-        return marked;
+        try
+        {
+            // Mark a pending payment as failed after confirming its customer and order ownership.
+            var marked = await repository.MarkFailedAsync(appId, paymentId, orderId, externalId);
+            if (marked)
+                Logger.Info(this.MethodName() + " | Payment failure callback recorded. PaymentId: {0}", paymentId);
+            else
+                Logger.Warn(this.MethodName() + " | Payment failure callback ignored. PaymentId: {0}", paymentId);
+            return marked;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, this.MethodName() + " | Service operation failed.");
+            throw;
+        }
     }
 
     public async Task<WebhookProcessingResult> ProcessWebhookAsync(

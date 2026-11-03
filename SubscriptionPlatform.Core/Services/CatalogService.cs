@@ -31,17 +31,33 @@ public sealed class CatalogService(CatalogRepository repository)
 
     public async Task<IEnumerable<object>> ListPlansAsync(Guid appId)
     {
-        var plans = (await repository.ListPlansAsync(appId)).ToList();
-        Logger.Debug(this.MethodName() + " | Plan list returned. ApplicationId: {0}, Count: {1}", appId, plans.Count);
-        return plans;
+        try
+        {
+            var plans = (await repository.ListPlansAsync(appId)).ToList();
+            Logger.Debug(this.MethodName() + " | Plan list returned. ApplicationId: {0}, Count: {1}", appId, plans.Count);
+            return plans;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, this.MethodName() + " | Service operation failed.");
+            throw;
+        }
     }
 
     public async Task<object?> GetPlanAsync(Guid appId, Guid planId)
     {
-        Logger.Debug($"{this.MethodName()} | ApplicationId: {appId} | PlanId: {planId}");
-        var plan = await repository.GetPlanAsync(appId, planId);
-        Logger.Debug(this.MethodName() + " | Plan found: {0}. ApplicationId: {1}, PlanId: {2}", plan is not null, appId, planId);
-        return plan;
+        try
+        {
+            Logger.Debug($"{this.MethodName()} | ApplicationId: {appId} | PlanId: {planId}");
+            var plan = await repository.GetPlanAsync(appId, planId);
+            Logger.Debug(this.MethodName() + " | Plan found: {0}. ApplicationId: {1}, PlanId: {2}", plan is not null, appId, planId);
+            return plan;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, this.MethodName() + " | Service operation failed.");
+            throw;
+        }
     }
 
     public async Task<object> CreateCustomerAsync(Guid appId, CustomerRequest request)
@@ -77,9 +93,17 @@ public sealed class CatalogService(CatalogRepository repository)
 
     public async Task<IEnumerable<object>> ListCustomersAsync(Guid appId)
     {
-        var customers = (await repository.ListCustomersAsync(appId)).ToList();
-        Logger.Debug(this.MethodName() + " | Customer list returned. ApplicationId: {0}, Count: {1}", appId, customers.Count);
-        return customers;
+        try
+        {
+            var customers = (await repository.ListCustomersAsync(appId)).ToList();
+            Logger.Debug(this.MethodName() + " | Customer list returned. ApplicationId: {0}, Count: {1}", appId, customers.Count);
+            return customers;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, this.MethodName() + " | Service operation failed.");
+            throw;
+        }
     }
 
     private void ValidatePlan(PlanRequest request)

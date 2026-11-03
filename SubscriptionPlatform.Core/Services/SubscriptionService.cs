@@ -109,33 +109,65 @@ public sealed class SubscriptionService(
     }
     public async Task<object?> GetAsync(Guid id, Guid appId)
     {
-        // Retrieve one subscription while restricting the query to the application owner.
-        var subscription = await repository.GetAsync(id, appId);
-        Logger.Debug(this.MethodName() + " | Subscription found: {0}. SubscriptionId: {1}, ApplicationId: {2}", subscription is not null, id, appId);
-        return subscription;
+        try
+        {
+            // Retrieve one subscription while restricting the query to the application owner.
+            var subscription = await repository.GetAsync(id, appId);
+            Logger.Debug(this.MethodName() + " | Subscription found: {0}. SubscriptionId: {1}, ApplicationId: {2}", subscription is not null, id, appId);
+            return subscription;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, this.MethodName() + " | Service operation failed.");
+            throw;
+        }
     }
 
     public async Task<object?> GetByExternalCustomerAsync(Guid appId, string externalId)
     {
-        // Retrieve the latest subscription for a customer's external application ID.
-        var subscription = await repository.GetByExternalCustomerAsync(appId, externalId);
-        Logger.Debug(this.MethodName() + " | Customer subscription found: {0}. ApplicationId: {1}, ExternalId: {2}", subscription is not null, appId, externalId);
-        return subscription;
+        try
+        {
+            // Retrieve the latest subscription for a customer's external application ID.
+            var subscription = await repository.GetByExternalCustomerAsync(appId, externalId);
+            Logger.Debug(this.MethodName() + " | Customer subscription found: {0}. ApplicationId: {1}, ExternalId: {2}", subscription is not null, appId, externalId);
+            return subscription;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, this.MethodName() + " | Service operation failed.");
+            throw;
+        }
     }
 
     public async Task<bool> CancelAsync(Guid id, Guid appId)
     {
-        // Set the period-end cancellation flag; this does not remove access immediately.
-        var cancelled = await repository.CancelAsync(id, appId);
-        Logger.Debug(this.MethodName() + " | Cancellation scheduled: {0}. SubscriptionId: {1}", cancelled, id);
-        return cancelled;
+        try
+        {
+            // Set the period-end cancellation flag; this does not remove access immediately.
+            var cancelled = await repository.CancelAsync(id, appId);
+            Logger.Debug(this.MethodName() + " | Cancellation scheduled: {0}. SubscriptionId: {1}", cancelled, id);
+            return cancelled;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, this.MethodName() + " | Service operation failed.");
+            throw;
+        }
     }
 
     public async Task<bool> ChangePlanAsync(Guid id, Guid appId, Guid planId)
     {
-        // Replace the plan only for an active/trialing subscription; the repository enforces ownership.
-        var changed = await repository.ChangePlanAsync(id, appId, planId);
-        Logger.Debug(this.MethodName() + " | Plan changed: {0}. SubscriptionId: {1}, PlanId: {2}", changed, id, planId);
-        return changed;
+        try
+        {
+            // Replace the plan only for an active/trialing subscription; the repository enforces ownership.
+            var changed = await repository.ChangePlanAsync(id, appId, planId);
+            Logger.Debug(this.MethodName() + " | Plan changed: {0}. SubscriptionId: {1}, PlanId: {2}", changed, id, planId);
+            return changed;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, this.MethodName() + " | Service operation failed.");
+            throw;
+        }
     }
 }

@@ -46,20 +46,36 @@ public sealed class StoreSubscriptionService(
 
     public async Task<object?> GetOptionsAsync()
     {
-        // Return the configured plan so the client can display prices and trial options.
-        Logger.Debug($"{this.MethodName()} | ApplicationId: {ApplicationId} | PlanId: {PlanId}");
-        var plan = await catalog.GetPlanAsync(ApplicationId, PlanId);
-        Logger.Debug(this.MethodName() + " | Configured plan found: {0}", plan is not null);
-        return plan;
+        try
+        {
+            // Return the configured plan so the client can display prices and trial options.
+            Logger.Debug($"{this.MethodName()} | ApplicationId: {ApplicationId} | PlanId: {PlanId}");
+            var plan = await catalog.GetPlanAsync(ApplicationId, PlanId);
+            Logger.Debug(this.MethodName() + " | Configured plan found: {0}", plan is not null);
+            return plan;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, this.MethodName() + " | Service operation failed.");
+            throw;
+        }
     }
 
     public async Task<object?> GetStatusAsync(string externalCustomerId)
     {
-        // Return the subscription status belonging to the signed-in Store customer.
-        Logger.Debug($"{this.MethodName()} | ApplicationId: {ApplicationId} | ExternalCustomerId: {externalCustomerId}");
-        var status = await subscriptions.GetByExternalCustomerAsync(ApplicationId, externalCustomerId);
-        Logger.Debug(this.MethodName() + " | Customer subscription found: {0}. ExternalCustomerId: {1}", status is not null, externalCustomerId);
-        return status;
+        try
+        {
+            // Return the subscription status belonging to the signed-in Store customer.
+            Logger.Debug($"{this.MethodName()} | ApplicationId: {ApplicationId} | ExternalCustomerId: {externalCustomerId}");
+            var status = await subscriptions.GetByExternalCustomerAsync(ApplicationId, externalCustomerId);
+            Logger.Debug(this.MethodName() + " | Customer subscription found: {0}. ExternalCustomerId: {1}", status is not null, externalCustomerId);
+            return status;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, this.MethodName() + " | Service operation failed.");
+            throw;
+        }
     }
 
     public async Task<StoreSubscriptionOrder> StartAsync(
@@ -68,32 +84,40 @@ public sealed class StoreSubscriptionService(
         bool startTrial,
         string idempotencyKey)
     {
-        // This facade adapts the Store API request to the shared subscription platform.
-        Logger.Info($"{this.MethodName()} | ApplicationId: {ApplicationId} | ExternalCustomerId: {externalCustomerId} | " +
-            $"Payload: BillingPeriod={billingPeriod}, StartTrial={startTrial}");
-        // The Store user ID is converted into the platform customer record used by subscriptions.
-        dynamic customer = await catalog.CreateCustomerAsync(ApplicationId, new CustomerRequest(externalCustomerId));
-        // Use the configured plan so the Store client cannot choose another application's plan.
-        var request = new CreateSubscriptionRequest(
-            (Guid)customer.id,
-            PlanId,
-            billingPeriod,
-            idempotencyKey,
-            startTrial);
-        // Create the trial or paid subscription, including the local payment row for paid terms.
-        var result = await subscriptions.CreateAsync(ApplicationId, request)
-            ?? throw new InvalidOperationException("Configured plan or customer is unavailable.");
-        // Return the IDs and server-calculated payment values needed to open Razorpay Checkout.
-        var order = new StoreSubscriptionOrder(
-            result.SubscriptionId,
-            result.Status,
-            result.PaymentId,
-            result.OrderId,
-            result.KeyId,
-            result.AmountMinor,
-            result.Currency);
-        Logger.Info(this.MethodName() + " | Subscription start returned. SubscriptionId: {0}, Status: {1}, PaymentId: {2}", order.SubscriptionId, order.Status, order.PaymentId);
-        return order;
+        try
+        {
+            // This facade adapts the Store API request to the shared subscription platform.
+            Logger.Info($"{this.MethodName()} | ApplicationId: {ApplicationId} | ExternalCustomerId: {externalCustomerId} | " +
+                $"Payload: BillingPeriod={billingPeriod}, StartTrial={startTrial}");
+            // The Store user ID is converted into the platform customer record used by subscriptions.
+            dynamic customer = await catalog.CreateCustomerAsync(ApplicationId, new CustomerRequest(externalCustomerId));
+            // Use the configured plan so the Store client cannot choose another application's plan.
+            var request = new CreateSubscriptionRequest(
+                (Guid)customer.id,
+                PlanId,
+                billingPeriod,
+                idempotencyKey,
+                startTrial);
+            // Create the trial or paid subscription, including the local payment row for paid terms.
+            var result = await subscriptions.CreateAsync(ApplicationId, request)
+                ?? throw new InvalidOperationException("Configured plan or customer is unavailable.");
+            // Return the IDs and server-calculated payment values needed to open Razorpay Checkout.
+            var order = new StoreSubscriptionOrder(
+                result.SubscriptionId,
+                result.Status,
+                result.PaymentId,
+                result.OrderId,
+                result.KeyId,
+                result.AmountMinor,
+                result.Currency);
+            Logger.Info(this.MethodName() + " | Subscription start returned. SubscriptionId: {0}, Status: {1}, PaymentId: {2}", order.SubscriptionId, order.Status, order.PaymentId);
+            return order;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, this.MethodName() + " | Service operation failed.");
+            throw;
+        }
     }
 
     public async Task<bool> VerifyPaymentAsync(
@@ -102,16 +126,24 @@ public sealed class StoreSubscriptionService(
         string razorpayPaymentId,
         string signature)
     {
-        // A successful client callback is not trusted by itself; this verifies the provider payment first.
-        Logger.Debug($"{this.MethodName()} | ApplicationId: {ApplicationId} | Payload: PaymentId={paymentId}, OrderId={orderId}");
-        var verified = await payments.VerifyAsync(
-            ApplicationId,
-            paymentId,
-            orderId,
-            razorpayPaymentId,
-            signature);
-        Logger.Debug(this.MethodName() + " | Payment verification result: {0}. PaymentId: {1}", verified, paymentId);
-        return verified;
+        try
+        {
+            // A successful client callback is not trusted by itself; this verifies the provider payment first.
+            Logger.Debug($"{this.MethodName()} | ApplicationId: {ApplicationId} | Payload: PaymentId={paymentId}, OrderId={orderId}");
+            var verified = await payments.VerifyAsync(
+                ApplicationId,
+                paymentId,
+                orderId,
+                razorpayPaymentId,
+                signature);
+            Logger.Debug(this.MethodName() + " | Payment verification result: {0}. PaymentId: {1}", verified, paymentId);
+            return verified;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, this.MethodName() + " | Service operation failed.");
+            throw;
+        }
     }
 
     public async Task<bool> MarkPaymentFailedAsync(
@@ -119,24 +151,40 @@ public sealed class StoreSubscriptionService(
         Guid paymentId,
         string orderId)
     {
-        // The customer ID is passed through so a user cannot mark another user's payment as failed.
-        Logger.Info($"{this.MethodName()} | ApplicationId: {ApplicationId} | Payload: PaymentId={paymentId}, OrderId={orderId}");
-        var marked = await payments.MarkFailedAsync(
-            ApplicationId,
-            paymentId,
-            orderId,
-            externalCustomerId);
-        Logger.Debug(this.MethodName() + " | Payment failure recorded: {0}. PaymentId: {1}", marked, paymentId);
-        return marked;
+        try
+        {
+            // The customer ID is passed through so a user cannot mark another user's payment as failed.
+            Logger.Info($"{this.MethodName()} | ApplicationId: {ApplicationId} | Payload: PaymentId={paymentId}, OrderId={orderId}");
+            var marked = await payments.MarkFailedAsync(
+                ApplicationId,
+                paymentId,
+                orderId,
+                externalCustomerId);
+            Logger.Debug(this.MethodName() + " | Payment failure recorded: {0}. PaymentId: {1}", marked, paymentId);
+            return marked;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, this.MethodName() + " | Service operation failed.");
+            throw;
+        }
     }
 
     public async Task<(bool IsValidSignature, bool Duplicate)> ProcessWebhookAsync(string eventId, string rawPayload, string signature)
     {
-        // Keep the raw body unchanged because Razorpay's signature is calculated from those exact bytes.
-        Logger.Debug($"{this.MethodName()} | EventId: {eventId} | PayloadLength: {rawPayload.Length}");
-        var result = await payments.ProcessWebhookAsync(eventId, rawPayload, signature);
-        Logger.Debug(this.MethodName() + " | Webhook result: {0}. EventId: {1}", result, eventId);
-        return (result != WebhookProcessingResult.InvalidSignature, result == WebhookProcessingResult.Duplicate);
+        try
+        {
+            // Keep the raw body unchanged because Razorpay's signature is calculated from those exact bytes.
+            Logger.Debug($"{this.MethodName()} | EventId: {eventId} | PayloadLength: {rawPayload.Length}");
+            var result = await payments.ProcessWebhookAsync(eventId, rawPayload, signature);
+            Logger.Debug(this.MethodName() + " | Webhook result: {0}. EventId: {1}", result, eventId);
+            return (result != WebhookProcessingResult.InvalidSignature, result == WebhookProcessingResult.Duplicate);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, this.MethodName() + " | Service operation failed.");
+            throw;
+        }
     }
 }
 

@@ -17,56 +17,58 @@ namespace StoreManagement.Api.Repositories
 
         public async Task<SalesReportDto> GetSalesReportAsync(int userId, SalesReportFilterDto filter)
         {
-            Logger.Debug(this.MethodName() + " | Loading sales report. UserId: {0}, Period: {1}", userId, filter.Period);
-            using var connection = await _dbConnectionFactory.CreateConnectionAsync();
-
-            DateTime now = await connection.ExecuteScalarAsync<DateTime>("SELECT NOW();");
-            DateTime startDate;
-            DateTime endDate = now.Date.AddDays(1).AddTicks(-1);
-
-            switch (filter.Period?.ToLower())
+            try
             {
-                case "today":
-                    startDate = now.Date;
-                    break;
-                case "week":
-                    startDate = now.Date.AddDays(-(int)now.DayOfWeek);
-                    break;
-                case "month":
-                    startDate = new DateTime(now.Year, now.Month, 1);
-                    break;
-                case "custom":
-                    startDate = filter.FromDate ?? now.Date;
-                    endDate = filter.ToDate ?? now;
-                    break;
-                default:
-                    startDate = now.Date;
-                    break;
-            }
+                Logger.Debug(this.MethodName() + " | Loading sales report. UserId: {0}, Period: {1}", userId, filter.Period);
+                using var connection = await _dbConnectionFactory.CreateConnectionAsync();
 
-            var parameters = new { UserId = userId, StartDate = startDate, EndDate = endDate };
+                DateTime now = await connection.ExecuteScalarAsync<DateTime>("SELECT NOW();");
+                DateTime startDate;
+                DateTime endDate = now.Date.AddDays(1).AddTicks(-1);
 
-            // 1. Overall Summary
-            const string summarySql = @"
+                switch (filter.Period?.ToLower())
+                {
+                    case "today":
+                        startDate = now.Date;
+                        break;
+                    case "week":
+                        startDate = now.Date.AddDays(-(int)now.DayOfWeek);
+                        break;
+                    case "month":
+                        startDate = new DateTime(now.Year, now.Month, 1);
+                        break;
+                    case "custom":
+                        startDate = filter.FromDate ?? now.Date;
+                        endDate = filter.ToDate ?? now;
+                        break;
+                    default:
+                        startDate = now.Date;
+                        break;
+                }
+
+                var parameters = new { UserId = userId, StartDate = startDate, EndDate = endDate };
+
+                // 1. Overall Summary
+                const string summarySql = @"
                 SELECT 
                     COALESCE(SUM(GrandTotal), 0) AS TotalSales,
                     COUNT(*) AS TotalInvoices
                 FROM Invoices
                 WHERE UserId = @UserId AND CreatedAt BETWEEN @StartDate AND @EndDate;";
 
-            var summary = await connection.QuerySingleAsync<(decimal TotalSales, int TotalInvoices)>(summarySql, parameters);
+                var summary = await connection.QuerySingleAsync<(decimal TotalSales, int TotalInvoices)>(summarySql, parameters);
 
-            // 2. Total Products Sold
-            const string totalItemsSql = @"
+                // 2. Total Products Sold
+                const string totalItemsSql = @"
                 SELECT COALESCE(SUM(ii.Quantity), 0)
                 FROM InvoiceItems ii
                 INNER JOIN Invoices i ON ii.InvoiceId = i.Id
                 WHERE i.UserId = @UserId AND i.CreatedAt BETWEEN @StartDate AND @EndDate;";
 
-            var totalProductsSold = await connection.ExecuteScalarAsync<decimal>(totalItemsSql, parameters);
+                var totalProductsSold = await connection.ExecuteScalarAsync<decimal>(totalItemsSql, parameters);
 
-            // 3. Top Sold Products
-            const string topProductsSql = @"
+                // 3. Top Sold Products
+                const string topProductsSql = @"
                 SELECT 
                     ii.ProductId,
                     ii.ProductName,
@@ -80,10 +82,10 @@ namespace StoreManagement.Api.Repositories
                 ORDER BY TotalQuantitySold DESC
                 LIMIT 10;";
 
-            var topProducts = (await connection.QueryAsync<TopSoldProductDto>(topProductsSql, parameters)).ToList();
+                var topProducts = (await connection.QueryAsync<TopSoldProductDto>(topProductsSql, parameters)).ToList();
 
-            // 4. Sales by Category
-            const string categorySalesSql = @"
+                // 4. Sales by Category
+                const string categorySalesSql = @"
                 SELECT 
                     c.Id AS CategoryId,
                     c.Name AS CategoryName,
@@ -97,18 +99,24 @@ namespace StoreManagement.Api.Repositories
                 GROUP BY c.Id, c.Name
                 ORDER BY TotalRevenue DESC;";
 
-            var categorySales = (await connection.QueryAsync<CategorySalesDto>(categorySalesSql, parameters)).ToList();
+                var categorySales = (await connection.QueryAsync<CategorySalesDto>(categorySalesSql, parameters)).ToList();
 
-            var report = new SalesReportDto
+                var report = new SalesReportDto
+                {
+                    TotalSales = summary.TotalSales,
+                    TotalInvoices = summary.TotalInvoices,
+                    TotalProductsSold = totalProductsSold,
+                    TopSoldProducts = topProducts,
+                    SalesByCategory = categorySales
+                };
+                Logger.Debug(this.MethodName() + " | Sales report loaded. UserId: {0}, InvoiceCount: {1}, TopProducts: {2}", userId, report.TotalInvoices, topProducts.Count);
+                return report;
+            }
+            catch (Exception ex)
             {
-                TotalSales = summary.TotalSales,
-                TotalInvoices = summary.TotalInvoices,
-                TotalProductsSold = totalProductsSold,
-                TopSoldProducts = topProducts,
-                SalesByCategory = categorySales
-            };
-            Logger.Debug(this.MethodName() + " | Sales report loaded. UserId: {0}, InvoiceCount: {1}, TopProducts: {2}", userId, report.TotalInvoices, topProducts.Count);
-            return report;
+                Logger.Error(ex, this.MethodName() + " | Repository operation failed.");
+                throw;
+            }
         }
     }
 }
