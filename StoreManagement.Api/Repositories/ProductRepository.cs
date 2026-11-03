@@ -1,5 +1,6 @@
 using System.Text;
 using Dapper;
+using NLog;
 using StoreManagement.Api.Data;
 using StoreManagement.Api.Dtos;
 using StoreManagement.Api.Helpers;
@@ -9,6 +10,7 @@ namespace StoreManagement.Api.Repositories
 {
     public class ProductRepository : IProductRepository
     {
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private readonly IDbConnectionFactory _dbConnectionFactory;
 
         public ProductRepository(IDbConnectionFactory dbConnectionFactory)
@@ -136,7 +138,9 @@ namespace StoreManagement.Api.Repositories
                 VALUES 
                     (@UserId, @CategoryId, @Name, @ImageUrl, @CostPrice, @SellingPrice, @StockQuantity, 0, @Unit, NOW(), NOW());
                 SELECT LAST_INSERT_ID();";
-            return await connection.ExecuteScalarAsync<int>(sql, product);
+            var id = await connection.ExecuteScalarAsync<int>(sql, product);
+            Logger.Info("Product created. UserId: {0}, ProductId: {1}", product.UserId, id);
+            return id;
         }
 
         public async Task<bool> UpdateProductAsync(Product product)
@@ -154,6 +158,8 @@ namespace StoreManagement.Api.Repositories
                     UpdatedAt = NOW()
                 WHERE Id = @Id AND UserId = @UserId;";
             var affected = await connection.ExecuteAsync(sql, product);
+            if (affected > 0)
+                Logger.Info("Product updated. UserId: {0}, ProductId: {1}", product.UserId, product.Id);
             return affected > 0;
         }
 
@@ -162,6 +168,8 @@ namespace StoreManagement.Api.Repositories
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
             const string sql = "DELETE FROM Products WHERE Id = @Id AND UserId = @UserId;";
             var affected = await connection.ExecuteAsync(sql, new { Id = id, UserId = userId });
+            if (affected > 0)
+                Logger.Info("Product deleted. UserId: {0}, ProductId: {1}", userId, id);
             return affected > 0;
         }
 
@@ -170,6 +178,8 @@ namespace StoreManagement.Api.Repositories
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
             const string sql = "UPDATE Products SET StockQuantity = @NewQuantity, UpdatedAt = NOW() WHERE Id = @Id AND UserId = @UserId;";
             var affected = await connection.ExecuteAsync(sql, new { Id = id, UserId = userId, NewQuantity = newQuantity });
+            if (affected > 0)
+                Logger.Info("Product stock set. UserId: {0}, ProductId: {1}, Quantity: {2}", userId, id, newQuantity);
             return affected > 0;
         }
     }

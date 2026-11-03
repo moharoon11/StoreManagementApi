@@ -24,41 +24,62 @@ namespace StoreManagement.Api.Controllers
         [HttpGet]
         public async Task<IActionResult> GetFavourites()
         {
-            Logger.Debug("GetFavourites started.");
-            var favourites = await _favouriteRepository.GetFavouritesByUserIdAsync(CurrentUserId);
-            return Ok(ApiResponse<IEnumerable<Product>>.SuccessResult(favourites, "Favourite products retrieved."));
+            try
+            {
+                Logger.Debug("GetFavourites started.");
+                var favourites = await _favouriteRepository.GetFavouritesByUserIdAsync(CurrentUserId);
+                return Ok(ApiResponse<IEnumerable<Product>>.SuccessResult(favourites, "Favourite products retrieved."));
+            }
+            catch (Exception ex)
+            {
+                return ApiExceptionHandler.Handle(this, ex, Logger, nameof(GetFavourites));
+            }
         }
 
         [HttpPost("{productId:int}")]
         public async Task<IActionResult> AddFavourite(int productId)
         {
-            Logger.Debug("AddFavourite started. ProductId: {0}", productId);
-            var product = await _productRepository.GetByIdAsync(productId, CurrentUserId);
-            if (product == null)
+            try
             {
-                return NotFound(ApiResponse.ErrorResult("Product not found."));
-            }
+                Logger.Debug("AddFavourite started. ProductId: {0}", productId);
+                var product = await _productRepository.GetByIdAsync(productId, CurrentUserId);
+                if (product == null)
+                {
+                    return NotFound(ApiResponse.ErrorResult("Product not found."));
+                }
 
-            var success = await _favouriteRepository.AddFavouriteAsync(CurrentUserId, productId);
-            if (!success)
+                var success = await _favouriteRepository.AddFavouriteAsync(CurrentUserId, productId);
+                if (!success)
+                {
+                    return BadRequest(ApiResponse.ErrorResult("Could not add product to favourites."));
+                }
+
+                return Ok(ApiResponse.SuccessResult("Product added to favourites."));
+            }
+            catch (Exception ex)
             {
-                return BadRequest(ApiResponse.ErrorResult("Could not add product to favourites."));
+                return ApiExceptionHandler.Handle(this, ex, Logger, nameof(AddFavourite));
             }
-
-            return Ok(ApiResponse.SuccessResult("Product added to favourites."));
         }
 
         [HttpDelete("{productId:int}")]
         public async Task<IActionResult> RemoveFavourite(int productId)
         {
-            Logger.Debug("RemoveFavourite started. ProductId: {0}", productId);
-            var success = await _favouriteRepository.RemoveFavouriteAsync(CurrentUserId, productId);
-            if (!success)
+            try
             {
-                return NotFound(ApiResponse.ErrorResult("Favourite not found or already removed."));
-            }
+                Logger.Debug("RemoveFavourite started. ProductId: {0}", productId);
+                var success = await _favouriteRepository.RemoveFavouriteAsync(CurrentUserId, productId);
+                if (!success)
+                {
+                    return NotFound(ApiResponse.ErrorResult("Favourite not found or already removed."));
+                }
 
-            return Ok(ApiResponse.SuccessResult("Product removed from favourites."));
+                return Ok(ApiResponse.SuccessResult("Product removed from favourites."));
+            }
+            catch (Exception ex)
+            {
+                return ApiExceptionHandler.Handle(this, ex, Logger, nameof(RemoveFavourite));
+            }
         }
     }
 }

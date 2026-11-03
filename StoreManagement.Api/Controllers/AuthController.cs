@@ -39,135 +39,200 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterDto dto)
     {
-        if (!ModelState.IsValid) return BadRequest(ApiResponse.ErrorResult("Invalid registration data."));
-        if (await _userRepository.GetByUsernameAsync(dto.Username) != null)
-            return BadRequest(ApiResponse.ErrorResult("Username is already taken."));
+        try
+        {
+            if (!ModelState.IsValid) return BadRequest(ApiResponse.ErrorResult("Invalid registration data."));
+            if (await _userRepository.GetByUsernameAsync(dto.Username) != null)
+                return BadRequest(ApiResponse.ErrorResult("Username is already taken."));
 
-        var user = new User { Username = dto.Username, PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password) };
-        user.Id = await _userRepository.CreateUserAsync(user);
-        var auth = await IssueTokensAsync(user, dto.DeviceId, dto.DeviceName);
-        return auth is null
-            ? Conflict(ApiResponse.ErrorResult("This account is already active on two devices. Sign out from another device to continue."))
-            : Ok(ApiResponse<AuthResponseDto>.SuccessResult(auth, "User registered successfully."));
+            var user = new User { Username = dto.Username, PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password) };
+            user.Id = await _userRepository.CreateUserAsync(user);
+            Logger.Info("User registered. UserId: {0}", user.Id);
+            var auth = await IssueTokensAsync(user, dto.DeviceId, dto.DeviceName);
+            return auth is null
+                ? Conflict(ApiResponse.ErrorResult("This account is already active on two devices. Sign out from another device to continue."))
+                : Ok(ApiResponse<AuthResponseDto>.SuccessResult(auth, "User registered successfully."));
+        }
+        catch (Exception ex)
+        {
+            return ApiExceptionHandler.Handle(this, ex, Logger, nameof(Register));
+        }
     }
 
     [AllowAnonymous]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDto dto)
     {
-        if (!ModelState.IsValid) return BadRequest(ApiResponse.ErrorResult("Invalid login credentials format."));
-        var user = await _userRepository.GetByUsernameAsync(dto.Username);
-        if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
-            return Unauthorized(ApiResponse.ErrorResult("Invalid username or password."));
+        try
+        {
+            if (!ModelState.IsValid) return BadRequest(ApiResponse.ErrorResult("Invalid login credentials format."));
+            var user = await _userRepository.GetByUsernameAsync(dto.Username);
+            if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+            {
+                Logger.Warn("Login rejected: invalid credentials. RequestId: {0}", HttpContext.TraceIdentifier);
+                return Unauthorized(ApiResponse.ErrorResult("Invalid username or password."));
+            }
 
-        var auth = await IssueTokensAsync(user, dto.DeviceId, dto.DeviceName);
-        return auth is null
-            ? Conflict(ApiResponse.ErrorResult("This account is already active on two devices. Sign out from another device to continue."))
-            : Ok(ApiResponse<AuthResponseDto>.SuccessResult(auth, "Login successful."));
+            var auth = await IssueTokensAsync(user, dto.DeviceId, dto.DeviceName);
+            Logger.Info("Login {0}. UserId: {1}", auth is null ? "blocked by device limit" : "succeeded", user.Id);
+            return auth is null
+                ? Conflict(ApiResponse.ErrorResult("This account is already active on two devices. Sign out from another device to continue."))
+                : Ok(ApiResponse<AuthResponseDto>.SuccessResult(auth, "Login successful."));
+        }
+        catch (Exception ex)
+        {
+            return ApiExceptionHandler.Handle(this, ex, Logger, nameof(Login));
+        }
     }
 
     [AllowAnonymous]
     [HttpPost("refresh")]
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequestDto dto)
     {
-        if (!ModelState.IsValid) return BadRequest(ApiResponse.ErrorResult("A refresh token is required."));
-
-        var tokenHash = HashToken(dto.RefreshToken);
-        var existing = await _refreshTokenRepository.GetByTokenHashAsync(tokenHash);
-        if (existing == null || existing.RevokedAt != null || existing.ExpiresAt <= DateTime.UtcNow)
-            return Unauthorized(ApiResponse.ErrorResult("Session expired. Please log in again."));
-
-        var user = await _userRepository.GetByIdAsync(existing.UserId);
-        if (user == null) return Unauthorized(ApiResponse.ErrorResult("Session expired. Please log in again."));
-
-        var rawReplacement = GenerateRefreshToken();
-        var replacement = CreateRefreshToken(user.Id, rawReplacement, existing.DeviceId, existing.DeviceName);
-        if (!await _refreshTokenRepository.RotateAsync(tokenHash, replacement))
+        try
         {
-            // A refresh token is single-use. A concurrent/replayed use is rejected.
-            return Unauthorized(ApiResponse.ErrorResult("Session expired. Please log in again."));
-        }
+            if (!ModelState.IsValid) return BadRequest(ApiResponse.ErrorResult("A refresh token is required."));
 
-        return Ok(ApiResponse<AuthResponseDto>.SuccessResult(
-            CreateAuthResponse(user, _jwtService.GenerateToken(user.Id, user.Username), rawReplacement),
-            "Session refreshed."));
+            var tokenHash = HashToken(dto.RefreshToken);
+            var existing = await _refreshTokenRepository.GetByTokenHashAsync(tokenHash);
+            if (existing == null || existing.RevokedAt != null || existing.ExpiresAt <= DateTime.UtcNow)
+                return Unauthorized(ApiResponse.ErrorResult("Session expired. Please log in again."));
+
+            var user = await _userRepository.GetByIdAsync(existing.UserId);
+            if (user == null) return Unauthorized(ApiResponse.ErrorResult("Session expired. Please log in again."));
+
+            var rawReplacement = GenerateRefreshToken();
+            var replacement = CreateRefreshToken(user.Id, rawReplacement, existing.DeviceId, existing.DeviceName);
+            if (!await _refreshTokenRepository.RotateAsync(tokenHash, replacement))
+            {
+                // A refresh token is single-use. A concurrent/replayed use is rejected.
+                Logger.Warn("Session refresh rejected: token was already used. UserId: {0}", user.Id);
+                return Unauthorized(ApiResponse.ErrorResult("Session expired. Please log in again."));
+            }
+
+            Logger.Info("Session refreshed. UserId: {0}", user.Id);
+            return Ok(ApiResponse<AuthResponseDto>.SuccessResult(
+                CreateAuthResponse(user, _jwtService.GenerateToken(user.Id, user.Username), rawReplacement),
+                "Session refreshed."));
+        }
+        catch (Exception ex)
+        {
+            return ApiExceptionHandler.Handle(this, ex, Logger, nameof(Refresh));
+        }
     }
 
     [AllowAnonymous]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout([FromBody] RefreshTokenRequestDto dto)
     {
-        if (ModelState.IsValid) await _refreshTokenRepository.RevokeAsync(HashToken(dto.RefreshToken));
-        return Ok(ApiResponse.SuccessResult("Logged out."));
+        try
+        {
+            if (ModelState.IsValid) await _refreshTokenRepository.RevokeAsync(HashToken(dto.RefreshToken));
+            Logger.Info("Logout request completed. RequestId: {0}", HttpContext.TraceIdentifier);
+            return Ok(ApiResponse.SuccessResult("Logged out."));
+        }
+        catch (Exception ex)
+        {
+            return ApiExceptionHandler.Handle(this, ex, Logger, nameof(Logout));
+        }
     }
 
     [AllowAnonymous]
     [HttpPost("forgot-password")]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
     {
-        // Deliberately identical for unknown accounts, mismatched details, cooldowns,
-        // hourly limits, and mail-delivery failures.
-        const string genericMessage = "If those details match an account, a verification code will be sent shortly.";
-        if (!ModelState.IsValid) return Ok(ApiResponse.SuccessResult(genericMessage));
-
-        var username = dto.Username.Trim().ToLowerInvariant();
-        var email = dto.Email.Trim().ToLowerInvariant();
-        var account = await _passwordResetRepository.FindUserByUsernameAndStoreEmailAsync(username, email);
-        if (!account.HasValue) return Ok(ApiResponse.SuccessResult(genericMessage));
-
-        var hmacKey = GetOtpHmacKey();
-        if (hmacKey is null)
+        try
         {
-            Logger.Error("Password reset OTP is unavailable because PasswordReset:OtpHmacKey is not configured.");
+            // Deliberately identical for unknown accounts, mismatched details, cooldowns,
+            // hourly limits, and mail-delivery failures.
+            const string genericMessage = "If those details match an account, a verification code will be sent shortly.";
+            if (!ModelState.IsValid) return Ok(ApiResponse.SuccessResult(genericMessage));
+
+            var username = dto.Username.Trim().ToLowerInvariant();
+            var email = dto.Email.Trim().ToLowerInvariant();
+            var account = await _passwordResetRepository.FindUserByUsernameAndStoreEmailAsync(username, email);
+            if (!account.HasValue) return Ok(ApiResponse.SuccessResult(genericMessage));
+
+            var hmacKey = GetOtpHmacKey();
+            if (hmacKey is null)
+            {
+                Logger.Error("Password reset OTP is unavailable because PasswordReset:OtpHmacKey is not configured.");
+                return Ok(ApiResponse.SuccessResult(genericMessage));
+            }
+
+            var otp = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+            var issueResult = await _passwordResetRepository.IssueOtpAsync(
+                account.Value.UserId, account.Value.Username, account.Value.Email,
+                ComputeHmac(hmacKey, $"otp|{username}|{email}|{otp}"));
+            if (issueResult != PasswordResetOtpIssueResult.Issued)
+            {
+                Logger.Warn("Password reset code not issued. UserId: {0}, Reason: {1}", account.Value.UserId, issueResult);
+                return Ok(ApiResponse.SuccessResult(genericMessage));
+            }
+
+            if (!_emailQueue.Queue((service, ct) => service.SendPasswordResetOtpAsync(account.Value.Email, otp, ct)))
+                Logger.Error("Password reset OTP email queue is full for user {0}.", account.Value.UserId);
+            else
+                Logger.Info("Password reset code queued. UserId: {0}", account.Value.UserId);
             return Ok(ApiResponse.SuccessResult(genericMessage));
         }
-
-        var otp = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
-        var issueResult = await _passwordResetRepository.IssueOtpAsync(
-            account.Value.UserId, account.Value.Username, account.Value.Email,
-            ComputeHmac(hmacKey, $"otp|{username}|{email}|{otp}"));
-        if (issueResult != PasswordResetOtpIssueResult.Issued) return Ok(ApiResponse.SuccessResult(genericMessage));
-
-        if (!_emailQueue.Queue((service, ct) => service.SendPasswordResetOtpAsync(account.Value.Email, otp, ct)))
-            Logger.Error("Password reset OTP email queue is full for user {0}.", account.Value.UserId);
-        return Ok(ApiResponse.SuccessResult(genericMessage));
+        catch (Exception ex)
+        {
+            return ApiExceptionHandler.Handle(this, ex, Logger, nameof(ForgotPassword));
+        }
     }
 
     [AllowAnonymous]
     [HttpPost("verify-password-reset-otp")]
     public async Task<IActionResult> VerifyPasswordResetOtp([FromBody] VerifyPasswordResetOtpDto dto)
     {
-        const string invalidMessage = "The verification code is invalid, expired, or can no longer be used.";
-        if (!ModelState.IsValid) return BadRequest(ApiResponse.ErrorResult(invalidMessage));
-        var hmacKey = GetOtpHmacKey();
-        if (hmacKey is null) return BadRequest(ApiResponse.ErrorResult(invalidMessage));
+        try
+        {
+            const string invalidMessage = "The verification code is invalid, expired, or can no longer be used.";
+            if (!ModelState.IsValid) return BadRequest(ApiResponse.ErrorResult(invalidMessage));
+            var hmacKey = GetOtpHmacKey();
+            if (hmacKey is null) return BadRequest(ApiResponse.ErrorResult(invalidMessage));
 
-        var username = dto.Username.Trim().ToLowerInvariant();
-        var email = dto.Email.Trim().ToLowerInvariant();
-        var resetToken = GenerateResetToken();
-        var verified = await _passwordResetRepository.VerifyOtpAsync(
-            username, email, ComputeHmac(hmacKey, $"otp|{username}|{email}|{dto.Otp}"),
-            ComputeHmac(hmacKey, $"reset|{resetToken}"));
-        return verified
-            ? Ok(ApiResponse<VerifyPasswordResetOtpResponseDto>.SuccessResult(new() { ResetToken = resetToken }, "Code verified."))
-            : BadRequest(ApiResponse.ErrorResult(invalidMessage));
+            var username = dto.Username.Trim().ToLowerInvariant();
+            var email = dto.Email.Trim().ToLowerInvariant();
+            var resetToken = GenerateResetToken();
+            var verified = await _passwordResetRepository.VerifyOtpAsync(
+                username, email, ComputeHmac(hmacKey, $"otp|{username}|{email}|{dto.Otp}"),
+                ComputeHmac(hmacKey, $"reset|{resetToken}"));
+            Logger.Info("Password reset code verification {0}. RequestId: {1}", verified ? "succeeded" : "failed", HttpContext.TraceIdentifier);
+            return verified
+                ? Ok(ApiResponse<VerifyPasswordResetOtpResponseDto>.SuccessResult(new() { ResetToken = resetToken }, "Code verified."))
+                : BadRequest(ApiResponse.ErrorResult(invalidMessage));
+        }
+        catch (Exception ex)
+        {
+            return ApiExceptionHandler.Handle(this, ex, Logger, nameof(VerifyPasswordResetOtp));
+        }
     }
 
     [AllowAnonymous]
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
     {
-        if (!ModelState.IsValid || string.IsNullOrWhiteSpace(dto.NewPassword))
-            return BadRequest(ApiResponse.ErrorResult("Invalid password reset request."));
-        var hmacKey = GetOtpHmacKey();
-        if (hmacKey is null) return BadRequest(ApiResponse.ErrorResult("This password reset request is invalid, expired, or has already been used."));
-        var passwordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
-        var result = await _passwordResetRepository.UseVerifiedOtpAndResetPasswordAsync(
-            ComputeHmac(hmacKey, $"reset|{dto.ResetToken}"), passwordHash);
-        if (!result.Success) return BadRequest(ApiResponse.ErrorResult("This password reset request is invalid, expired, or has already been used."));
-        if (!_emailQueue.Queue((email, ct) => email.SendPasswordChangedConfirmationAsync(result.Email, ct)))
-            Logger.Error("Password-changed confirmation email queue is full.");
-        return Ok(ApiResponse.SuccessResult("Password changed. Please sign in with your new password."));
+        try
+        {
+            if (!ModelState.IsValid || string.IsNullOrWhiteSpace(dto.NewPassword))
+                return BadRequest(ApiResponse.ErrorResult("Invalid password reset request."));
+            var hmacKey = GetOtpHmacKey();
+            if (hmacKey is null) return BadRequest(ApiResponse.ErrorResult("This password reset request is invalid, expired, or has already been used."));
+            var passwordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+            var result = await _passwordResetRepository.UseVerifiedOtpAndResetPasswordAsync(
+                ComputeHmac(hmacKey, $"reset|{dto.ResetToken}"), passwordHash);
+            if (!result.Success) return BadRequest(ApiResponse.ErrorResult("This password reset request is invalid, expired, or has already been used."));
+            Logger.Info("Password reset completed. RequestId: {0}", HttpContext.TraceIdentifier);
+            if (!_emailQueue.Queue((email, ct) => email.SendPasswordChangedConfirmationAsync(result.Email, ct)))
+                Logger.Error("Password-changed confirmation email queue is full.");
+            return Ok(ApiResponse.SuccessResult("Password changed. Please sign in with your new password."));
+        }
+        catch (Exception ex)
+        {
+            return ApiExceptionHandler.Handle(this, ex, Logger, nameof(ResetPassword));
+        }
     }
 
     private async Task<AuthResponseDto?> IssueTokensAsync(User user, string deviceId, string? deviceName)

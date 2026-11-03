@@ -26,66 +26,87 @@ namespace StoreManagement.Api.Controllers
         [HttpGet]
         public async Task<IActionResult> GetProfile()
         {
-            Logger.Debug("GetProfile started.");
-            var profile = await _storeProfileRepository.GetByUserIdAsync(CurrentUserId);
-            if (profile == null)
+            try
             {
-                return NotFound(ApiResponse.ErrorResult("Store profile not created yet."));
-            }
+                Logger.Debug("GetProfile started.");
+                var profile = await _storeProfileRepository.GetByUserIdAsync(CurrentUserId);
+                if (profile == null)
+                {
+                    return NotFound(ApiResponse.ErrorResult("Store profile not created yet."));
+                }
 
-            return Ok(ApiResponse<StoreProfile>.SuccessResult(profile, "Store profile retrieved."));
+                return Ok(ApiResponse<StoreProfile>.SuccessResult(profile, "Store profile retrieved."));
+            }
+            catch (Exception ex)
+            {
+                return ApiExceptionHandler.Handle(this, ex, Logger, nameof(GetProfile));
+            }
         }
 
         [HttpPost]
         public async Task<IActionResult> CreateOrUpdateProfile([FromBody] CreateOrUpdateStoreProfileDto dto)
         {
-            Logger.Debug("CreateOrUpdateProfile started. StoreName: {0}", dto?.StoreName);
-            if (!ModelState.IsValid || dto == null)
+            try
             {
-                return BadRequest(ApiResponse.ErrorResult("Invalid store profile data."));
+                Logger.Debug("CreateOrUpdateProfile started. StoreName: {0}", dto?.StoreName);
+                if (!ModelState.IsValid || dto == null)
+                {
+                    return BadRequest(ApiResponse.ErrorResult("Invalid store profile data."));
+                }
+
+                var existingProfile = await _storeProfileRepository.GetByUserIdAsync(CurrentUserId);
+                string? previousLogoUrl = existingProfile?.LogoUrl;
+                string? logoUrl = dto.ExistingLogoUrl;
+
+                if (dto.LogoFile != null && dto.LogoFile.Length > 0)
+                {
+                    logoUrl = await _cloudinaryService.UploadImageAsync(dto.LogoFile, "store_logos");
+                }
+
+                var profile = new StoreProfile
+                {
+                    UserId = CurrentUserId,
+                    StoreName = dto.StoreName,
+                    OwnerName = dto.OwnerName,
+                    LogoUrl = logoUrl,
+                    Address = dto.Address,
+                    City = dto.City,
+                    District = dto.District,
+                    Pincode = dto.Pincode,
+                    Email = dto.Email,
+                    GstNumber = dto.GstNumber,
+                    Phone = dto.Phone,
+                    AlternatePhone = dto.AlternatePhone,
+                    AboutUs = dto.AboutUs
+                };
+
+                await _storeProfileRepository.CreateOrUpdateProfileAsync(profile);
+                var updatedProfile = await _storeProfileRepository.GetByUserIdAsync(CurrentUserId);
+                if (updatedProfile != null)
+                {
+                    await _cloudinaryService.DeleteReplacedImageAsync(previousLogoUrl, updatedProfile.LogoUrl);
+                }
+
+                return Ok(ApiResponse<StoreProfile>.SuccessResult(updatedProfile!, "Store profile saved successfully."));
             }
-
-            var existingProfile = await _storeProfileRepository.GetByUserIdAsync(CurrentUserId);
-            string? previousLogoUrl = existingProfile?.LogoUrl;
-            string? logoUrl = dto.ExistingLogoUrl;
-
-            if (dto.LogoFile != null && dto.LogoFile.Length > 0)
+            catch (Exception ex)
             {
-                logoUrl = await _cloudinaryService.UploadImageAsync(dto.LogoFile, "store_logos");
+                return ApiExceptionHandler.Handle(this, ex, Logger, nameof(CreateOrUpdateProfile));
             }
-
-            var profile = new StoreProfile
-            {
-                UserId = CurrentUserId,
-                StoreName = dto.StoreName,
-                OwnerName = dto.OwnerName,
-                LogoUrl = logoUrl,
-                Address = dto.Address,
-                City = dto.City,
-                District = dto.District,
-                Pincode = dto.Pincode,
-                Email = dto.Email,
-                GstNumber = dto.GstNumber,
-                Phone = dto.Phone,
-                AlternatePhone = dto.AlternatePhone,
-                AboutUs = dto.AboutUs
-            };
-
-            await _storeProfileRepository.CreateOrUpdateProfileAsync(profile);
-            var updatedProfile = await _storeProfileRepository.GetByUserIdAsync(CurrentUserId);
-            if (updatedProfile != null)
-            {
-                await _cloudinaryService.DeleteReplacedImageAsync(previousLogoUrl, updatedProfile.LogoUrl);
-            }
-
-            return Ok(ApiResponse<StoreProfile>.SuccessResult(updatedProfile!, "Store profile saved successfully."));
         }
 
         [HttpPut]
         public async Task<IActionResult> UpdateProfile([FromBody] CreateOrUpdateStoreProfileDto dto)
         {
-            Logger.Debug("UpdateProfile started.");
-            return await CreateOrUpdateProfile(dto);
+            try
+            {
+                Logger.Debug("UpdateProfile started.");
+                return await CreateOrUpdateProfile(dto);
+            }
+            catch (Exception ex)
+            {
+                return ApiExceptionHandler.Handle(this, ex, Logger, nameof(UpdateProfile));
+            }
         }
     }
 }

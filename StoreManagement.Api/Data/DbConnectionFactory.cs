@@ -25,7 +25,7 @@ namespace StoreManagement.Api.Data
             try
             {
                 var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
-                Logger.Info("Database connection opened successfully.");
+                Logger.Debug("Database connection opened successfully.");
                 return connection;
             }
             catch (Exception ex)

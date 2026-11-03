@@ -22,9 +22,16 @@ namespace StoreManagement.Api.Controllers
         [HttpGet]
         public async Task<IActionResult> GetDashboard()
         {
-            Logger.Debug("GetDashboard started.");
-            var summary = await _dashboardRepository.GetDashboardSummaryAsync(CurrentUserId);
-            return Ok(ApiResponse<DashboardSummaryDto>.SuccessResult(summary, "Dashboard statistics retrieved."));
+            try
+            {
+                Logger.Debug("GetDashboard started.");
+                var summary = await _dashboardRepository.GetDashboardSummaryAsync(CurrentUserId);
+                return Ok(ApiResponse<DashboardSummaryDto>.SuccessResult(summary, "Dashboard statistics retrieved."));
+            }
+            catch (Exception ex)
+            {
+                return ApiExceptionHandler.Handle(this, ex, Logger, nameof(GetDashboard));
+            }
         }
     }
 }

@@ -1,4 +1,5 @@
 using Dapper;
+using NLog;
 using StoreManagement.Api.Data;
 using StoreManagement.Api.Models;
 
@@ -6,6 +7,7 @@ namespace StoreManagement.Api.Repositories
 {
     public class CategoryRepository : ICategoryRepository
     {
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private readonly IDbConnectionFactory _dbConnectionFactory;
 
         public CategoryRepository(IDbConnectionFactory dbConnectionFactory)
@@ -41,7 +43,9 @@ namespace StoreManagement.Api.Repositories
                 INSERT INTO Categories (UserId, Name, ImageUrl, CreatedAt, UpdatedAt)
                 VALUES (@UserId, @Name, @ImageUrl, NOW(), NOW());
                 SELECT LAST_INSERT_ID();";
-            return await connection.ExecuteScalarAsync<int>(sql, category);
+            var id = await connection.ExecuteScalarAsync<int>(sql, category);
+            Logger.Info("Category created. UserId: {0}, CategoryId: {1}", category.UserId, id);
+            return id;
         }
 
         public async Task<bool> UpdateCategoryAsync(Category category)
@@ -54,6 +58,8 @@ namespace StoreManagement.Api.Repositories
                     UpdatedAt = NOW()
                 WHERE Id = @Id AND UserId = @UserId;";
             var affected = await connection.ExecuteAsync(sql, category);
+            if (affected > 0)
+                Logger.Info("Category updated. UserId: {0}, CategoryId: {1}", category.UserId, category.Id);
             return affected > 0;
         }
 
@@ -62,6 +68,8 @@ namespace StoreManagement.Api.Repositories
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
             const string sql = "DELETE FROM Categories WHERE Id = @Id AND UserId = @UserId;";
             var affected = await connection.ExecuteAsync(sql, new { Id = id, UserId = userId });
+            if (affected > 0)
+                Logger.Info("Category deleted. UserId: {0}, CategoryId: {1}", userId, id);
             return affected > 0;
         }
     }

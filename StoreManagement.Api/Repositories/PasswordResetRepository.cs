@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Dapper;
+using NLog;
 using StoreManagement.Api.Data;
 using StoreManagement.Api.Models;
 
@@ -7,6 +8,7 @@ namespace StoreManagement.Api.Repositories;
 
 public sealed class PasswordResetRepository : IPasswordResetRepository
 {
+    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
     private readonly IDbConnectionFactory _db;
     public PasswordResetRepository(IDbConnectionFactory db) => _db = db;
 
@@ -32,6 +34,7 @@ public sealed class PasswordResetRepository : IPasswordResetRepository
         if (lastIssuedAt > DateTime.UtcNow.AddMinutes(-5))
         {
             await transaction.RollbackAsync();
+            Logger.Debug("Password reset code blocked by cooldown. UserId: {0}", userId);
             return PasswordResetOtpIssueResult.Cooldown;
         }
         var issuedInLastHour = await connection.ExecuteScalarAsync<int>(@"
@@ -40,6 +43,7 @@ public sealed class PasswordResetRepository : IPasswordResetRepository
         if (issuedInLastHour >= 3)
         {
             await transaction.RollbackAsync();
+            Logger.Warn("Password reset code blocked by hourly limit. UserId: {0}", userId);
             return PasswordResetOtpIssueResult.HourlyLimit;
         }
 
@@ -52,6 +56,7 @@ public sealed class PasswordResetRepository : IPasswordResetRepository
             VALUES (@userId, @username, @email, @otpHmacHash, UTC_TIMESTAMP(), DATE_ADD(UTC_TIMESTAMP(), INTERVAL 5 MINUTE), 0);",
             new { userId, username, email, otpHmacHash }, transaction);
         await transaction.CommitAsync();
+        Logger.Debug("Password reset code stored. UserId: {0}", userId);
         return PasswordResetOtpIssueResult.Issued;
     }
 
@@ -94,6 +99,7 @@ public sealed class PasswordResetRepository : IPasswordResetRepository
             SET VerifiedAt = UTC_TIMESTAMP(), ResetTokenHmacHash = @resetTokenHmacHash
             WHERE Id = @id;", new { resetTokenHmacHash, otp.Id }, transaction);
         await transaction.CommitAsync();
+        Logger.Debug("Password reset code verified. UserId: {0}", otp.UserId);
         return true;
     }
 
@@ -116,6 +122,7 @@ public sealed class PasswordResetRepository : IPasswordResetRepository
         await connection.ExecuteAsync("UPDATE PasswordResetOtps SET UsedAt = UTC_TIMESTAMP() WHERE Id = @id;", new { otp.Id }, transaction);
         await connection.ExecuteAsync("UPDATE RefreshTokens SET RevokedAt = COALESCE(RevokedAt, UTC_TIMESTAMP()) WHERE UserId = @userId;", new { userId = otp.UserId }, transaction);
         await transaction.CommitAsync();
+        Logger.Info("Password changed and sessions revoked. UserId: {0}", otp.UserId);
         return (true, otp.Email);
     }
 }

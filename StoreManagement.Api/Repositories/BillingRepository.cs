@@ -1,4 +1,5 @@
 using Dapper;
+using NLog;
 using StoreManagement.Api.Data;
 using StoreManagement.Api.Dtos;
 using StoreManagement.Api.Models;
@@ -7,6 +8,7 @@ namespace StoreManagement.Api.Repositories
 {
     public class BillingRepository : IBillingRepository
     {
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private readonly IDbConnectionFactory _dbConnectionFactory;
 
         public BillingRepository(IDbConnectionFactory dbConnectionFactory)
@@ -16,6 +18,7 @@ namespace StoreManagement.Api.Repositories
 
         public async Task<Invoice> ProcessCheckoutAsync(int userId, CheckoutRequestDto request)
         {
+            Logger.Debug("Checkout started. UserId: {0}, ItemCount: {1}", userId, request.Items.Count);
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
             using var transaction = await connection.BeginTransactionAsync();
 
@@ -146,6 +149,8 @@ namespace StoreManagement.Api.Repositories
                 var store = await connection.QuerySingleOrDefaultAsync<StoreProfile>(getStoreSql, new { UserId = userId }, transaction);
 
                 await transaction.CommitAsync();
+                Logger.Info("Checkout committed. UserId: {0}, InvoiceId: {1}, ItemCount: {2}, Total: {3}",
+                    userId, invoiceId, invoiceItems.Count, grandTotal);
 
                 return new Invoice
                 {
@@ -168,15 +173,17 @@ namespace StoreManagement.Api.Repositories
                     Items = invoiceItems
                 };
             }
-            catch
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
+                Logger.Error(ex, "Checkout rolled back. UserId: {0}", userId);
                 throw;
             }
         }
 
         public async Task<Invoice> ProcessManualCheckoutAsync(int userId, ManualCheckoutRequestDto request)
         {
+            Logger.Debug("Manual checkout started. UserId: {0}, ItemCount: {1}", userId, request.Items.Count);
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
             using var transaction = await connection.BeginTransactionAsync();
 
@@ -249,6 +256,8 @@ namespace StoreManagement.Api.Repositories
                 var store = await connection.QuerySingleOrDefaultAsync<StoreProfile>(getStoreSql, new { UserId = userId }, transaction);
 
                 await transaction.CommitAsync();
+                Logger.Info("Manual checkout committed. UserId: {0}, InvoiceId: {1}, ItemCount: {2}, Total: {3}",
+                    userId, invoiceId, invoiceItems.Count, grandTotal);
 
                 return new Invoice
                 {
@@ -271,9 +280,10 @@ namespace StoreManagement.Api.Repositories
                     Items = invoiceItems
                 };
             }
-            catch
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
+                Logger.Error(ex, "Manual checkout rolled back. UserId: {0}", userId);
                 throw;
             }
         }

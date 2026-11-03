@@ -1,4 +1,5 @@
 using Dapper;
+using NLog;
 using StoreManagement.Api.Data;
 using StoreManagement.Api.Dtos;
 
@@ -6,6 +7,7 @@ namespace StoreManagement.Api.Repositories
 {
     public class DashboardRepository : IDashboardRepository
     {
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private readonly IDbConnectionFactory _dbConnectionFactory;
 
         public DashboardRepository(IDbConnectionFactory dbConnectionFactory)
@@ -15,6 +17,7 @@ namespace StoreManagement.Api.Repositories
 
         public async Task<DashboardSummaryDto> GetDashboardSummaryAsync(int userId)
         {
+            Logger.Debug("Loading dashboard summary. UserId: {0}", userId);
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
 
             var todayStart = DateTime.UtcNow.Date;

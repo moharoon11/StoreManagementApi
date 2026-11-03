@@ -35,150 +35,164 @@ namespace StoreManagement.Api.Controllers
         [HttpPost("extract-bill")]
         public async Task<IActionResult> ExtractBill(IFormFile image)
         {
-            Logger.Debug("ExtractBill started.");
-            if (image == null || image.Length == 0)
-            {
-                return BadRequest(ApiResponse.ErrorResult("Please select an image file to upload."));
-            }
-
-            var jsonResult = await _geminiVisionService.ExtractBillDataAsync(image);
-            if (string.IsNullOrEmpty(jsonResult))
-            {
-                return BadRequest(ApiResponse.ErrorResult("Failed to extract data from the bill. Please ensure the image is clear."));
-            }
-
             try
             {
-                // Gemini sometimes wraps JSON in markdown blocks even if instructed not to. Clean it up.
-                jsonResult = jsonResult.Trim();
-                if (jsonResult.StartsWith("```json"))
+                Logger.Debug("ExtractBill started.");
+                if (image == null || image.Length == 0)
                 {
-                    jsonResult = jsonResult.Substring(7);
-                    if (jsonResult.EndsWith("```"))
-                    {
-                        jsonResult = jsonResult.Substring(0, jsonResult.Length - 3);
-                    }
-                }
-                else if (jsonResult.StartsWith("```"))
-                {
-                    jsonResult = jsonResult.Substring(3);
-                    if (jsonResult.EndsWith("```"))
-                    {
-                        jsonResult = jsonResult.Substring(0, jsonResult.Length - 3);
-                    }
+                    return BadRequest(ApiResponse.ErrorResult("Please select an image file to upload."));
                 }
 
-                var extractedItems = JsonSerializer.Deserialize<List<ExtractedBillItemDto>>(jsonResult, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                if (extractedItems == null || !extractedItems.Any())
+                var jsonResult = await _geminiVisionService.ExtractBillDataAsync(image);
+                if (string.IsNullOrEmpty(jsonResult))
                 {
-                    return BadRequest(ApiResponse.ErrorResult("No products could be extracted from the bill."));
+                    return BadRequest(ApiResponse.ErrorResult("Failed to extract data from the bill. Please ensure the image is clear."));
                 }
 
-                foreach (var item in extractedItems)
+                try
                 {
-                    // Smart Matching
-                    var existingProduct = await _productRepository.GetByNameAsync(item.ProductName, CurrentUserId);
-                    if (existingProduct != null)
+                    // Gemini sometimes wraps JSON in markdown blocks even if instructed not to. Clean it up.
+                    jsonResult = jsonResult.Trim();
+                    if (jsonResult.StartsWith("```json"))
                     {
-                        item.ProductId = existingProduct.Id;
-                        item.IsNewProduct = false;
-                        item.SellingPrice = existingProduct.SellingPrice; // Pre-fill with existing if any
-                        item.Unit = existingProduct.Unit;
+                        jsonResult = jsonResult.Substring(7);
+                        if (jsonResult.EndsWith("```"))
+                        {
+                            jsonResult = jsonResult.Substring(0, jsonResult.Length - 3);
+                        }
                     }
-                    else
+                    else if (jsonResult.StartsWith("```"))
                     {
-                        item.ProductId = null;
-                        item.IsNewProduct = true;
-                        item.SellingPrice = item.CostPrice; // Default to CostPrice, user will change
+                        jsonResult = jsonResult.Substring(3);
+                        if (jsonResult.EndsWith("```"))
+                        {
+                            jsonResult = jsonResult.Substring(0, jsonResult.Length - 3);
+                        }
                     }
-                }
 
-                return Ok(ApiResponse<List<ExtractedBillItemDto>>.SuccessResult(extractedItems, "Bill data extracted successfully."));
+                    var extractedItems = JsonSerializer.Deserialize<List<ExtractedBillItemDto>>(jsonResult, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (extractedItems == null || !extractedItems.Any())
+                    {
+                        return BadRequest(ApiResponse.ErrorResult("No products could be extracted from the bill."));
+                    }
+
+                    foreach (var item in extractedItems)
+                    {
+                        // Smart Matching
+                        var existingProduct = await _productRepository.GetByNameAsync(item.ProductName, CurrentUserId);
+                        if (existingProduct != null)
+                        {
+                            item.ProductId = existingProduct.Id;
+                            item.IsNewProduct = false;
+                            item.SellingPrice = existingProduct.SellingPrice; // Pre-fill with existing if any
+                            item.Unit = existingProduct.Unit;
+                        }
+                        else
+                        {
+                            item.ProductId = null;
+                            item.IsNewProduct = true;
+                            item.SellingPrice = item.CostPrice; // Default to CostPrice, user will change
+                        }
+                    }
+
+                    return Ok(ApiResponse<List<ExtractedBillItemDto>>.SuccessResult(extractedItems, "Bill data extracted successfully."));
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error(ex, "Failed to parse JSON from Gemini.");
+                    return BadRequest(ApiResponse.ErrorResult("The AI service returned malformed data. Please try again with a clearer image."));
+                }
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Failed to parse JSON from Gemini.");
-                return BadRequest(ApiResponse.ErrorResult("The AI service returned malformed data. Please try again with a clearer image."));
+                return ApiExceptionHandler.Handle(this, ex, Logger, nameof(ExtractBill));
             }
         }
 
         [HttpPost("process-bill")]
         public async Task<IActionResult> ProcessBill([FromBody] ConfirmBillRequestDto request)
         {
-            Logger.Debug("ProcessBill started.");
-            if (!ModelState.IsValid)
+            try
             {
-                return BadRequest(ApiResponse.ErrorResult("Invalid bill data."));
-            }
-
-            int successCount = 0;
-
-            foreach (var item in request.Items)
-            {
-                if (item.ProductId.HasValue)
+                Logger.Debug("ProcessBill started.");
+                if (!ModelState.IsValid)
                 {
-                    // Existing product
-                    var existingProduct = await _productRepository.GetByIdAsync(item.ProductId.Value, CurrentUserId);
-                    if (existingProduct != null)
-                    {
-                        // Update stock and prices
-                        existingProduct.CostPrice = item.CostPrice;
-                        existingProduct.SellingPrice = item.SellingPrice;
-                        await _productRepository.UpdateProductAsync(existingProduct);
-                        await _stockRepository.AdjustStockAsync(CurrentUserId, existingProduct.Id, item.Quantity, "BILL_UPLOAD");
-                        successCount++;
-                    }
+                    return BadRequest(ApiResponse.ErrorResult("Invalid bill data."));
                 }
-                else
+
+                int successCount = 0;
+
+                foreach (var item in request.Items)
                 {
-                    // New product
-                    int categoryId;
-                    if (!string.IsNullOrWhiteSpace(item.NewCategoryName))
+                    if (item.ProductId.HasValue)
                     {
-                        var existingCategory = await _categoryRepository.GetByNameAsync(item.NewCategoryName, CurrentUserId);
-                        if (existingCategory != null)
+                        // Existing product
+                        var existingProduct = await _productRepository.GetByIdAsync(item.ProductId.Value, CurrentUserId);
+                        if (existingProduct != null)
                         {
-                            categoryId = existingCategory.Id;
+                            // Update stock and prices
+                            existingProduct.CostPrice = item.CostPrice;
+                            existingProduct.SellingPrice = item.SellingPrice;
+                            await _productRepository.UpdateProductAsync(existingProduct);
+                            await _stockRepository.AdjustStockAsync(CurrentUserId, existingProduct.Id, item.Quantity, "BILL_UPLOAD");
+                            successCount++;
                         }
-                        else
-                        {
-                            var newCat = new Category
-                            {
-                                UserId = CurrentUserId,
-                                Name = item.NewCategoryName.Trim()
-                            };
-                            categoryId = await _categoryRepository.CreateCategoryAsync(newCat);
-                        }
-                    }
-                    else if (item.CategoryId.HasValue)
-                    {
-                        categoryId = item.CategoryId.Value;
                     }
                     else
                     {
-                        Logger.Warn($"Skipping new product {item.ProductName} because no category was provided.");
-                        continue;
+                        // New product
+                        int categoryId;
+                        if (!string.IsNullOrWhiteSpace(item.NewCategoryName))
+                        {
+                            var existingCategory = await _categoryRepository.GetByNameAsync(item.NewCategoryName, CurrentUserId);
+                            if (existingCategory != null)
+                            {
+                                categoryId = existingCategory.Id;
+                            }
+                            else
+                            {
+                                var newCat = new Category
+                                {
+                                    UserId = CurrentUserId,
+                                    Name = item.NewCategoryName.Trim()
+                                };
+                                categoryId = await _categoryRepository.CreateCategoryAsync(newCat);
+                            }
+                        }
+                        else if (item.CategoryId.HasValue)
+                        {
+                            categoryId = item.CategoryId.Value;
+                        }
+                        else
+                        {
+                            Logger.Warn($"Skipping new product {item.ProductName} because no category was provided.");
+                            continue;
+                        }
+
+                        var newProduct = new Product
+                        {
+                            UserId = CurrentUserId,
+                            CategoryId = categoryId,
+                            Name = item.ProductName,
+                            CostPrice = item.CostPrice,
+                            SellingPrice = item.SellingPrice,
+                            // AdjustStockAsync below applies and logs the opening stock.
+                            StockQuantity = 0,
+                            Unit = string.IsNullOrWhiteSpace(item.Unit) ? "Piece" : item.Unit.Trim()
+                        };
+
+                        var newId = await _productRepository.CreateProductAsync(newProduct);
+                        await _stockRepository.AdjustStockAsync(CurrentUserId, newId, item.Quantity, "BILL_UPLOAD");
+                        successCount++;
                     }
-
-                    var newProduct = new Product
-                    {
-                        UserId = CurrentUserId,
-                        CategoryId = categoryId,
-                        Name = item.ProductName,
-                        CostPrice = item.CostPrice,
-                        SellingPrice = item.SellingPrice,
-                        // AdjustStockAsync below applies and logs the opening stock.
-                        StockQuantity = 0,
-                        Unit = string.IsNullOrWhiteSpace(item.Unit) ? "Piece" : item.Unit.Trim()
-                    };
-
-                    var newId = await _productRepository.CreateProductAsync(newProduct);
-                    await _stockRepository.AdjustStockAsync(CurrentUserId, newId, item.Quantity, "BILL_UPLOAD");
-                    successCount++;
                 }
-            }
 
-            return Ok(ApiResponse.SuccessResult($"{successCount} items from the bill were successfully added to inventory."));
+                return Ok(ApiResponse.SuccessResult($"{successCount} items from the bill were successfully added to inventory."));
+            }
+            catch (Exception ex)
+            {
+                return ApiExceptionHandler.Handle(this, ex, Logger, nameof(ProcessBill));
+            }
         }
     }
 }

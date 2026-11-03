@@ -1,4 +1,5 @@
 using Dapper;
+using NLog;
 using StoreManagement.Api.Data;
 using StoreManagement.Api.Models;
 
@@ -6,6 +7,7 @@ namespace StoreManagement.Api.Repositories
 {
     public class FavouriteRepository : IFavouriteRepository
     {
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private readonly IDbConnectionFactory _dbConnectionFactory;
 
         public FavouriteRepository(IDbConnectionFactory dbConnectionFactory)
@@ -21,6 +23,8 @@ namespace StoreManagement.Api.Repositories
                 VALUES (@UserId, @ProductId, NOW())
                 ON DUPLICATE KEY UPDATE CreatedAt = NOW();";
             var affected = await connection.ExecuteAsync(sql, new { UserId = userId, ProductId = productId });
+            if (affected > 0)
+                Logger.Info("Favourite saved. UserId: {0}, ProductId: {1}", userId, productId);
             return affected > 0;
         }
 
@@ -29,6 +33,8 @@ namespace StoreManagement.Api.Repositories
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
             const string sql = "DELETE FROM Favourites WHERE UserId = @UserId AND ProductId = @ProductId;";
             var affected = await connection.ExecuteAsync(sql, new { UserId = userId, ProductId = productId });
+            if (affected > 0)
+                Logger.Info("Favourite removed. UserId: {0}, ProductId: {1}", userId, productId);
             return affected > 0;
         }
 

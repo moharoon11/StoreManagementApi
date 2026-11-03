@@ -32,8 +32,7 @@ public sealed class SubscriptionController(StoreSubscriptionService subscription
         }
         catch (Exception ex)
         {
-            Logger.Error(ex, $"{nameof(Options)} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
-                $"Payload: none | Exception: {ex.Message}");
+            Logger.Error(ex, "Options failed. RequestId: {0}", HttpContext.TraceIdentifier);
             return StatusCode(503, ApiResponse.ErrorResult("Subscription service is temporarily unavailable."));
         }
     }
@@ -52,8 +51,7 @@ public sealed class SubscriptionController(StoreSubscriptionService subscription
         }
         catch (Exception ex)
         {
-            Logger.Error(ex, $"{nameof(Status)} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
-                $"Payload: none | Exception: {ex.Message}");
+            Logger.Error(ex, "Status failed. RequestId: {0}", HttpContext.TraceIdentifier);
             return StatusCode(503, ApiResponse.ErrorResult("Subscription service is temporarily unavailable."));
         }
     }
@@ -64,44 +62,48 @@ public sealed class SubscriptionController(StoreSubscriptionService subscription
         // This endpoint starts a trial or creates a server-priced Razorpay checkout order.
         // The client supplies the term and retry key; the server chooses the customer and price.
         // Allow only the trial option or one of the supported paid billing periods.
-        if (!(request.StartTrial && request.BillingPeriod == "trial") && request.BillingPeriod is not ("three_month" or "six_month" or "one_year"))
-        {
-            Logger.Warn($"{nameof(Start)} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
-                $"Payload: {SerializeSafePayload(request)} | Invalid billing period");
-            return BadRequest(ApiResponse.ErrorResult("Choose trial, three_month, six_month, or one_year."));
-        }
-        if (string.IsNullOrWhiteSpace(request.IdempotencyKey) || request.IdempotencyKey.Length > 80)
-        {
-            // The same key lets a retry return the original subscription/order instead of creating another one.
-            Logger.Warn($"{nameof(Start)} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
-                $"Payload: {SerializeSafePayload(new { request.BillingPeriod, request.StartTrial, request.IdempotencyKey })} | Invalid idempotency key");
-            return BadRequest(ApiResponse.ErrorResult("A valid idempotency key is required."));
-        }
         try
         {
-            // Start a trial or create a paid checkout order for the authenticated user.
-            var result = await subscriptions.StartAsync(CurrentUserId.ToString(), request.StartTrial ? "one_year" : request.BillingPeriod, request.StartTrial, request.IdempotencyKey);
-            Logger.Info($"{nameof(Start)} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
-                $"Payload: {SerializeSafePayload(request)} | SubscriptionId: {result.SubscriptionId} | Status: {result.Status}");
-            return Ok(ApiResponse<StoreSubscriptionOrder>.SuccessResult(result, "Checkout initialized."));
-        }
-        catch (ArgumentException ex)
-        {
-            Logger.Warn($"{nameof(Start)} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
-                $"Payload: {SerializeSafePayload(request)} | Exception: {ex.Message}");
-            return BadRequest(ApiResponse.ErrorResult(ex.Message));
-        }
-        catch (InvalidOperationException ex)
-        {
-            Logger.Warn($"{nameof(Start)} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
-                $"Payload: {SerializeSafePayload(request)} | Exception: {ex.Message}");
-            return Conflict(ApiResponse.ErrorResult(ex.Message));
+            if (!(request.StartTrial && request.BillingPeriod == "trial") && request.BillingPeriod is not ("three_month" or "six_month" or "one_year"))
+            {
+                Logger.Warn($"{nameof(Start)} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
+                    $"Payload: {SerializeSafePayload(request)} | Invalid billing period");
+                return BadRequest(ApiResponse.ErrorResult("Choose trial, three_month, six_month, or one_year."));
+            }
+            if (string.IsNullOrWhiteSpace(request.IdempotencyKey) || request.IdempotencyKey.Length > 80)
+            {
+                // The same key lets a retry return the original subscription/order instead of creating another one.
+                Logger.Warn($"{nameof(Start)} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
+                    $"Payload: {SerializeSafePayload(new { request.BillingPeriod, request.StartTrial, request.IdempotencyKey })} | Invalid idempotency key");
+                return BadRequest(ApiResponse.ErrorResult("A valid idempotency key is required."));
+            }
+            try
+            {
+                // Start a trial or create a paid checkout order for the authenticated user.
+                var result = await subscriptions.StartAsync(CurrentUserId.ToString(), request.StartTrial ? "one_year" : request.BillingPeriod, request.StartTrial, request.IdempotencyKey);
+                Logger.Info($"{nameof(Start)} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
+                    $"Payload: {SerializeSafePayload(request)} | SubscriptionId: {result.SubscriptionId} | Status: {result.Status}");
+                return Ok(ApiResponse<StoreSubscriptionOrder>.SuccessResult(result, "Checkout initialized."));
+            }
+            catch (ArgumentException ex)
+            {
+                Logger.Warn("Start rejected. RequestId: {0}, Reason: {1}", HttpContext.TraceIdentifier, ex.Message);
+                return BadRequest(ApiResponse.ErrorResult(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                Logger.Warn("Start conflicted. RequestId: {0}, Reason: {1}", HttpContext.TraceIdentifier, ex.Message);
+                return Conflict(ApiResponse.ErrorResult(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "Start failed. RequestId: {0}", HttpContext.TraceIdentifier);
+                return StatusCode(500, ApiResponse.ErrorResult("Unable to initialize checkout."));
+            }
         }
         catch (Exception ex)
         {
-            Logger.Error(ex, $"{nameof(Start)} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
-                $"Payload: {SerializeSafePayload(request)} | Exception: {ex.Message}");
-            return StatusCode(500, ApiResponse.ErrorResult("Unable to initialize checkout."));
+            return ApiExceptionHandler.Handle(this, ex, Logger, nameof(Start));
         }
     }
 
@@ -121,9 +123,7 @@ public sealed class SubscriptionController(StoreSubscriptionService subscription
         }
         catch (Exception ex)
         {
-            Logger.Error(ex, $"{nameof(Verify)} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
-                $"Payload: {JsonSerializer.Serialize(new { request.PaymentId, request.OrderId })} | Exception: {ex.Message}");
-            throw;
+            return ApiExceptionHandler.Handle(this, ex, Logger, nameof(Verify));
         }
     }
 
@@ -143,9 +143,7 @@ public sealed class SubscriptionController(StoreSubscriptionService subscription
         }
         catch (Exception ex)
         {
-            Logger.Error(ex, $"{nameof(Failure)} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
-                $"Payload: {JsonSerializer.Serialize(request)} | Exception: {ex.Message}");
-            throw;
+            return ApiExceptionHandler.Handle(this, ex, Logger, nameof(Failure));
         }
     }
 
@@ -178,9 +176,7 @@ public sealed class SubscriptionController(StoreSubscriptionService subscription
         }
         catch (Exception ex)
         {
-            Logger.Error(ex, $"{nameof(RazorpayWebhook)} | RequestId: {HttpContext.TraceIdentifier} | " +
-                $"Payload: {SerializeSafeJson(payload)} | Exception: {ex.Message}");
-            throw;
+            return ApiExceptionHandler.Handle(this, ex, Logger, nameof(RazorpayWebhook));
         }
     }
 

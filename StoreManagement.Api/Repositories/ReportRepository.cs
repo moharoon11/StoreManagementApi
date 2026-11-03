@@ -1,4 +1,5 @@
 using Dapper;
+using NLog;
 using StoreManagement.Api.Data;
 using StoreManagement.Api.Dtos;
 
@@ -6,6 +7,7 @@ namespace StoreManagement.Api.Repositories
 {
     public class ReportRepository : IReportRepository
     {
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private readonly IDbConnectionFactory _dbConnectionFactory;
 
         public ReportRepository(IDbConnectionFactory dbConnectionFactory)
@@ -15,6 +17,7 @@ namespace StoreManagement.Api.Repositories
 
         public async Task<SalesReportDto> GetSalesReportAsync(int userId, SalesReportFilterDto filter)
         {
+            Logger.Debug("Loading sales report. UserId: {0}, Period: {1}", userId, filter.Period);
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
 
             DateTime now = await connection.ExecuteScalarAsync<DateTime>("SELECT NOW();");

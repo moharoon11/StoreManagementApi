@@ -1,4 +1,5 @@
 using Dapper;
+using NLog;
 using StoreManagement.Api.Data;
 using StoreManagement.Api.Helpers;
 using StoreManagement.Api.Models;
@@ -7,6 +8,7 @@ namespace StoreManagement.Api.Repositories
 {
     public class InvoiceRepository : IInvoiceRepository
     {
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private readonly IDbConnectionFactory _dbConnectionFactory;
 
         public InvoiceRepository(IDbConnectionFactory dbConnectionFactory)
@@ -159,6 +161,8 @@ namespace StoreManagement.Api.Repositories
                 BalanceDue = balanceDue
             });
 
+            if (rows > 0)
+                Logger.Info("Invoice updated. UserId: {0}, InvoiceId: {1}", userId, id);
             return rows > 0;
         }
 
@@ -168,6 +172,8 @@ namespace StoreManagement.Api.Repositories
 
             const string deleteSql = "DELETE FROM Invoices WHERE Id = @Id AND UserId = @UserId;";
             var rows = await connection.ExecuteAsync(deleteSql, new { Id = id, UserId = userId });
+            if (rows > 0)
+                Logger.Info("Invoice deleted. UserId: {0}, InvoiceId: {1}", userId, id);
             return rows > 0;
         }
     }

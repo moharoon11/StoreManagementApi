@@ -23,35 +23,49 @@ namespace StoreManagement.Api.Controllers
         [HttpPost("checkout")]
         public async Task<IActionResult> Checkout([FromBody] CheckoutRequestDto request)
         {
-            Logger.Debug("Checkout started.");
-            if (!ModelState.IsValid ||
-                string.IsNullOrWhiteSpace(request.CustomerMobileNumber) ||
-                request.Items == null ||
-                !request.Items.Any())
+            try
             {
-                return BadRequest(ApiResponse.ErrorResult(
-                    "Provide a customer mobile number and at least one product."));
-            }
+                Logger.Debug("Checkout started.");
+                if (!ModelState.IsValid ||
+                    string.IsNullOrWhiteSpace(request.CustomerMobileNumber) ||
+                    request.Items == null ||
+                    !request.Items.Any())
+                {
+                    return BadRequest(ApiResponse.ErrorResult(
+                        "Provide a customer mobile number and at least one product."));
+                }
 
-            var invoice = await _billingRepository.ProcessCheckoutAsync(CurrentUserId, request);
-            return Ok(ApiResponse<Invoice>.SuccessResult(invoice, "Checkout completed and invoice generated successfully."));
+                var invoice = await _billingRepository.ProcessCheckoutAsync(CurrentUserId, request);
+                return Ok(ApiResponse<Invoice>.SuccessResult(invoice, "Checkout completed and invoice generated successfully."));
+            }
+            catch (Exception ex)
+            {
+                return ApiExceptionHandler.Handle(this, ex, Logger, nameof(Checkout));
+            }
         }
 
         [HttpPost("manual-checkout")]
         public async Task<IActionResult> ManualCheckout([FromBody] ManualCheckoutRequestDto request)
         {
-            Logger.Debug("Manual Checkout started.");
-            if (!ModelState.IsValid ||
-                string.IsNullOrWhiteSpace(request.CustomerMobileNumber) ||
-                request.Items == null ||
-                !request.Items.Any())
+            try
             {
-                return BadRequest(ApiResponse.ErrorResult(
-                    "Provide a customer mobile number and at least one item."));
-            }
+                Logger.Debug("Manual Checkout started.");
+                if (!ModelState.IsValid ||
+                    string.IsNullOrWhiteSpace(request.CustomerMobileNumber) ||
+                    request.Items == null ||
+                    !request.Items.Any())
+                {
+                    return BadRequest(ApiResponse.ErrorResult(
+                        "Provide a customer mobile number and at least one item."));
+                }
 
-            var invoice = await _billingRepository.ProcessManualCheckoutAsync(CurrentUserId, request);
-            return Ok(ApiResponse<Invoice>.SuccessResult(invoice, "Manual checkout completed and invoice generated successfully."));
+                var invoice = await _billingRepository.ProcessManualCheckoutAsync(CurrentUserId, request);
+                return Ok(ApiResponse<Invoice>.SuccessResult(invoice, "Manual checkout completed and invoice generated successfully."));
+            }
+            catch (Exception ex)
+            {
+                return ApiExceptionHandler.Handle(this, ex, Logger, nameof(ManualCheckout));
+            }
         }
     }
 }

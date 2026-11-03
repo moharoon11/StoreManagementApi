@@ -18,7 +18,9 @@ public sealed class CatalogService(CatalogRepository repository)
                 throw new UnauthorizedAccessException("Application is inactive.");
             }
 
-            return await repository.CreatePlanAsync(appId, request);
+            var planId = await repository.CreatePlanAsync(appId, request);
+            Logger.Info("Plan created. ApplicationId: {0}, PlanId: {1}", appId, planId);
+            return planId;
         }
         catch (Exception ex)
         {
@@ -57,7 +59,9 @@ public sealed class CatalogService(CatalogRepository repository)
                 throw new UnauthorizedAccessException("Application is inactive.");
             }
 
-            return await repository.CreateCustomerAsync(appId, request);
+            var customer = await repository.CreateCustomerAsync(appId, request);
+            Logger.Info("Customer saved. ApplicationId: {0}, ExternalId: {1}", appId, request.ExternalId);
+            return customer;
         }
         catch (Exception ex)
         {

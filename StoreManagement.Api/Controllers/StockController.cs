@@ -25,30 +25,44 @@ namespace StoreManagement.Api.Controllers
         [HttpGet("movements")]
         public async Task<IActionResult> GetMovements([FromQuery] int? productId = null, [FromQuery] int limit = 50)
         {
-            Logger.Debug("GetMovements started. ProductId: {0}, Limit: {1}", productId, limit);
-            var movements = await _stockRepository.GetMovementsByUserIdAsync(CurrentUserId, productId, limit);
-            return Ok(ApiResponse<IEnumerable<StockMovement>>.SuccessResult(movements, "Stock movement log retrieved."));
+            try
+            {
+                Logger.Debug("GetMovements started. ProductId: {0}, Limit: {1}", productId, limit);
+                var movements = await _stockRepository.GetMovementsByUserIdAsync(CurrentUserId, productId, limit);
+                return Ok(ApiResponse<IEnumerable<StockMovement>>.SuccessResult(movements, "Stock movement log retrieved."));
+            }
+            catch (Exception ex)
+            {
+                return ApiExceptionHandler.Handle(this, ex, Logger, nameof(GetMovements));
+            }
         }
 
         [HttpPost("adjust")]
         public async Task<IActionResult> AdjustStock([FromBody] ManualStockAdjustmentDto dto)
         {
-            Logger.Debug("AdjustStock started. ProductId: {0}", dto.ProductId);
-            if (!ModelState.IsValid)
+            try
             {
-                return BadRequest(ApiResponse.ErrorResult("Invalid stock adjustment data."));
-            }
+                Logger.Debug("AdjustStock started. ProductId: {0}", dto.ProductId);
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ApiResponse.ErrorResult("Invalid stock adjustment data."));
+                }
 
-            var product = await _productRepository.GetByIdAsync(dto.ProductId, CurrentUserId);
-            if (product == null)
+                var product = await _productRepository.GetByIdAsync(dto.ProductId, CurrentUserId);
+                if (product == null)
+                {
+                    return NotFound(ApiResponse.ErrorResult("Product not found."));
+                }
+
+                await _stockRepository.AdjustStockAsync(CurrentUserId, dto.ProductId, dto.QuantityChanged, dto.Reason);
+                var updatedProduct = await _productRepository.GetByIdAsync(dto.ProductId, CurrentUserId);
+
+                return Ok(ApiResponse<Product>.SuccessResult(updatedProduct!, "Stock adjusted successfully."));
+            }
+            catch (Exception ex)
             {
-                return NotFound(ApiResponse.ErrorResult("Product not found."));
+                return ApiExceptionHandler.Handle(this, ex, Logger, nameof(AdjustStock));
             }
-
-            await _stockRepository.AdjustStockAsync(CurrentUserId, dto.ProductId, dto.QuantityChanged, dto.Reason);
-            var updatedProduct = await _productRepository.GetByIdAsync(dto.ProductId, CurrentUserId);
-
-            return Ok(ApiResponse<Product>.SuccessResult(updatedProduct!, "Stock adjusted successfully."));
         }
     }
 

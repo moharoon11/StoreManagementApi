@@ -3,6 +3,7 @@ using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Options;
 using MimeKit;
+using NLog;
 
 namespace StoreManagement.Api.Services;
 
@@ -19,12 +20,11 @@ public sealed class EmailOptions
 
 public sealed class SmtpEmailService : IEmailService
 {
+    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
     private readonly EmailOptions _options;
-    private readonly ILogger<SmtpEmailService> _logger;
-    public SmtpEmailService(IOptions<EmailOptions> options, ILogger<SmtpEmailService> logger)
+    public SmtpEmailService(IOptions<EmailOptions> options)
     {
         _options = options.Value;
-        _logger = logger;
     }
 
     public Task SendPasswordResetOtpAsync(string recipient, string otp, CancellationToken cancellationToken = default)
@@ -55,20 +55,20 @@ public sealed class SmtpEmailService : IEmailService
             message.Body = new BodyBuilder { HtmlBody = html }.ToMessageBody();
 
             using var client = new SmtpClient();
-            _logger.LogInformation("Connecting to SMTP server {SmtpHost}:{SmtpPort} to send {Subject} to recipient domain {RecipientDomain}.",
+            Logger.Info("Connecting to SMTP server {0}:{1} to send {2} to recipient domain {3}.",
                 _options.SmtpHost, _options.SmtpPort, subject, RecipientDomain(recipient));
             await client.ConnectAsync(_options.SmtpHost, _options.SmtpPort, SecureSocketOptions.SslOnConnect, cancellationToken);
-            _logger.LogDebug("SMTP connection established. Authenticating SMTP user {SmtpUsername}.", _options.SmtpUsername);
+            Logger.Debug("SMTP connection established. Authenticating SMTP user {0}.", _options.SmtpUsername);
             await client.AuthenticateAsync(_options.SmtpUsername, _options.SmtpPassword, cancellationToken);
             await client.SendAsync(message, cancellationToken);
             await client.DisconnectAsync(true, cancellationToken);
-            _logger.LogInformation("Security email accepted by the configured SMTP server for recipient domain {RecipientDomain}.", RecipientDomain(recipient));
+            Logger.Info("Security email accepted by the configured SMTP server for recipient domain {0}.", RecipientDomain(recipient));
         }
         catch (Exception ex)
         {
             // Passing the exception as the first argument preserves its complete
             // type, stack trace, and inner-exception chain in NLog.
-            _logger.LogError(ex, "SMTP delivery failed for {Subject} to recipient domain {RecipientDomain} via {SmtpHost}:{SmtpPort}.",
+            Logger.Error(ex, "SMTP delivery failed for {0} to recipient domain {1} via {2}:{3}.",
                 subject, RecipientDomain(recipient), _options.SmtpHost, _options.SmtpPort);
             throw;
         }

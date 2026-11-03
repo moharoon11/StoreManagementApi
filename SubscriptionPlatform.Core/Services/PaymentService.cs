@@ -43,13 +43,18 @@ public sealed class PaymentService(PaymentRepository repository, RazorpayService
             }
 
             // Match the provider payment to the local row, then mark payment paid and subscription active.
-            return await repository.VerifyAndActivateAsync(
+            var activated = await repository.VerifyAndActivateAsync(
                 appId,
                 paymentId,
                 orderId,
                 providerPaymentId,
                 provider.Amount,
                 provider.Currency);
+            if (activated)
+                Logger.Info("Payment verified and subscription activated. PaymentId: {0}", paymentId);
+            else
+                Logger.Warn("Payment verified by provider but local activation was rejected. PaymentId: {0}", paymentId);
+            return activated;
         }
         catch (Exception ex)
         {
@@ -64,14 +69,19 @@ public sealed class PaymentService(PaymentRepository repository, RazorpayService
         return repository.HistoryAsync(appId);
     }
 
-    public Task<bool> MarkFailedAsync(
+    public async Task<bool> MarkFailedAsync(
         Guid appId,
         Guid paymentId,
         string orderId,
         string externalId)
     {
         // Mark a pending payment as failed after confirming its customer and order ownership.
-        return repository.MarkFailedAsync(appId, paymentId, orderId, externalId);
+        var marked = await repository.MarkFailedAsync(appId, paymentId, orderId, externalId);
+        if (marked)
+            Logger.Info("Payment failure callback recorded. PaymentId: {0}", paymentId);
+        else
+            Logger.Warn("Payment failure callback ignored. PaymentId: {0}", paymentId);
+        return marked;
     }
 
     public async Task<WebhookProcessingResult> ProcessWebhookAsync(
@@ -141,6 +151,7 @@ public sealed class PaymentService(PaymentRepository repository, RazorpayService
                 amount,
                 currency,
                 status);
+            Logger.Info("Payment webhook {0}. EventId: {1}, EventType: {2}", processed ? "processed" : "already handled", eventId, eventType);
             return processed
                 ? WebhookProcessingResult.Processed
                 : WebhookProcessingResult.Duplicate;

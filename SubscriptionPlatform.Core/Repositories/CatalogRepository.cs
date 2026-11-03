@@ -1,4 +1,5 @@
 using Dapper;
+using NLog;
 using SubscriptionPlatform.Api.Data;
 using SubscriptionPlatform.Api.Models;
 
@@ -6,6 +7,7 @@ namespace SubscriptionPlatform.Api.Repositories;
 
 public sealed class CatalogRepository(ConnectionFactory connections)
 {
+    private static readonly Logger Logger = LogManager.GetLogger("SubscriptionPlatform.Repositories.CatalogRepository");
     public async Task<bool> IsApplicationActiveAsync(Guid id)
     {
         await using var db = connections.Create();
@@ -39,6 +41,7 @@ public sealed class CatalogRepository(ConnectionFactory connections)
 
     public async Task<IEnumerable<object>> ListPlansAsync(Guid appId)
     {
+        Logger.Debug("Loading plans. ApplicationId: {0}", appId);
         await using var db = connections.Create();
         return await db.QueryAsync(
             "SELECT id,name,currency,monthly_amount_minor,yearly_amount_minor,three_month_amount_minor,six_month_amount_minor,trial_days,features_json,limits_json FROM plans WHERE application_id=@appId AND active=1",
@@ -47,6 +50,7 @@ public sealed class CatalogRepository(ConnectionFactory connections)
 
     public async Task<object?> GetPlanAsync(Guid appId, Guid planId)
     {
+        Logger.Debug("Loading plan. ApplicationId: {0}, PlanId: {1}", appId, planId);
         await using var db = connections.Create();
         return await db.QuerySingleOrDefaultAsync(
             "SELECT id,name,currency,monthly_amount_minor,yearly_amount_minor,three_month_amount_minor,six_month_amount_minor,trial_days,features_json,limits_json FROM plans WHERE application_id=@appId AND id=@planId AND active=1",
@@ -67,6 +71,7 @@ public sealed class CatalogRepository(ConnectionFactory connections)
 
     public async Task<IEnumerable<object>> ListCustomersAsync(Guid appId)
     {
+        Logger.Debug("Loading customers. ApplicationId: {0}", appId);
         await using var db = connections.Create();
         return await db.QueryAsync(
             "SELECT id,external_id ExternalId,email,created_utc CreatedUtc FROM customers WHERE application_id=@appId",

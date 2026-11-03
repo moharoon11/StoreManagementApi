@@ -1,4 +1,5 @@
 using Dapper;
+using NLog;
 using StoreManagement.Api.Data;
 using StoreManagement.Api.Models;
 
@@ -6,6 +7,7 @@ namespace StoreManagement.Api.Repositories
 {
     public class StockRepository : IStockRepository
     {
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private readonly IDbConnectionFactory _dbConnectionFactory;
 
         public StockRepository(IDbConnectionFactory dbConnectionFactory)
@@ -80,11 +82,14 @@ namespace StoreManagement.Api.Repositories
                 }, transaction);
 
                 await transaction.CommitAsync();
+                Logger.Info("Stock adjusted. UserId: {0}, ProductId: {1}, Previous: {2}, Change: {3}, New: {4}",
+                    userId, productId, previousQty, quantityChanged, newQty);
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
+                Logger.Error(ex, "Stock adjustment rolled back. UserId: {0}, ProductId: {1}", userId, productId);
                 throw;
             }
         }

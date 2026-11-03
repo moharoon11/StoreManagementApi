@@ -1,4 +1,5 @@
 using Dapper;
+using NLog;
 using StoreManagement.Api.Data;
 using StoreManagement.Api.Models;
 
@@ -6,6 +7,7 @@ namespace StoreManagement.Api.Repositories;
 
 public class RefreshTokenRepository : IRefreshTokenRepository
 {
+    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
     private readonly IDbConnectionFactory _dbConnectionFactory;
 
     public RefreshTokenRepository(IDbConnectionFactory dbConnectionFactory) => _dbConnectionFactory = dbConnectionFactory;
@@ -35,6 +37,7 @@ public class RefreshTokenRepository : IRefreshTokenRepository
         if (otherDeviceCount >= maximumDevices)
         {
             await transaction.RollbackAsync();
+            Logger.Warn("Session creation blocked by device limit. UserId: {0}", refreshToken.UserId);
             return false;
         }
 
@@ -46,6 +49,7 @@ public class RefreshTokenRepository : IRefreshTokenRepository
             new { refreshToken.UserId, refreshToken.DeviceId }, transaction);
         await connection.ExecuteAsync(InsertSql, refreshToken, transaction);
         await transaction.CommitAsync();
+        Logger.Debug("Session created. UserId: {0}", refreshToken.UserId);
         return true;
     }
 
@@ -70,28 +74,32 @@ public class RefreshTokenRepository : IRefreshTokenRepository
         if (revoked != 1)
         {
             await transaction.RollbackAsync();
+            Logger.Warn("Session rotation rejected: token already used or expired. UserId: {0}", replacement.UserId);
             return false;
         }
 
         await connection.ExecuteAsync(InsertSql, replacement, transaction);
         await transaction.CommitAsync();
+        Logger.Debug("Session rotated. UserId: {0}", replacement.UserId);
         return true;
     }
 
     public async Task RevokeAsync(string tokenHash)
     {
         await using var connection = await _dbConnectionFactory.CreateConnectionAsync();
-        await connection.ExecuteAsync(@"
+        var affected = await connection.ExecuteAsync(@"
             UPDATE RefreshTokens SET RevokedAt = COALESCE(RevokedAt, UTC_TIMESTAMP())
             WHERE TokenHash = @tokenHash;", new { tokenHash });
+        Logger.Debug("Session revoke processed. Rows: {0}", affected);
     }
 
     public async Task RevokeAllForUserAsync(int userId)
     {
         await using var connection = await _dbConnectionFactory.CreateConnectionAsync();
-        await connection.ExecuteAsync(@"
+        var affected = await connection.ExecuteAsync(@"
             UPDATE RefreshTokens SET RevokedAt = COALESCE(RevokedAt, UTC_TIMESTAMP())
             WHERE UserId = @userId;", new { userId });
+        Logger.Info("User sessions revoked. UserId: {0}, Rows: {1}", userId, affected);
     }
 
     private const string InsertSql = @"

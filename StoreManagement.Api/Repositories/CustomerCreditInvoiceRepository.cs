@@ -1,4 +1,5 @@
 using Dapper;
+using NLog;
 using StoreManagement.Api.Data;
 using StoreManagement.Api.Dtos;
 using StoreManagement.Api.Models;
@@ -7,6 +8,7 @@ namespace StoreManagement.Api.Repositories;
 
 public class CustomerCreditInvoiceRepository(IDbConnectionFactory dbConnectionFactory) : ICustomerCreditInvoiceRepository
 {
+    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
     public async Task<CustomerCreditInvoice> CreateAsync(int userId, CreateCustomerCreditInvoiceDto dto)
     {
         await using var connection = await dbConnectionFactory.CreateConnectionAsync();
@@ -24,6 +26,7 @@ public class CustomerCreditInvoiceRepository(IDbConnectionFactory dbConnectionFa
         await InsertCreditLinesAsync(connection, transaction, invoiceId, dto.BorrowedAmount, invoiceDate,
             dto.ProductName, dto.Quantity, dto.Price, dto.Notes, dto.Items);
         await transaction.CommitAsync();
+        Logger.Debug("Credit invoice committed. UserId: {0}, InvoiceId: {1}", userId, invoiceId);
         return (await GetByIdAsync(invoiceId, userId))!;
     }
 
@@ -66,6 +69,7 @@ public class CustomerCreditInvoiceRepository(IDbConnectionFactory dbConnectionFa
             dto.ProductName, dto.Quantity, dto.Price, dto.Notes, dto.Items);
         await connection.ExecuteAsync("UPDATE CustomerCreditInvoices SET OutstandingBalance = OutstandingBalance + @Amount WHERE Id = @Id;", new { Id = id, dto.Amount }, transaction);
         await transaction.CommitAsync();
+        Logger.Debug("Credit transaction committed. UserId: {0}, InvoiceId: {1}", userId, id);
         return await GetByIdAsync(id, userId);
     }
 
@@ -83,6 +87,7 @@ public class CustomerCreditInvoiceRepository(IDbConnectionFactory dbConnectionFa
             WHERE CustomerCreditInvoiceId = @Id AND TransactionType = 'CREDIT' AND IsReceived = 0;", new { Id = id }, transaction);
         await connection.ExecuteAsync(@"UPDATE CustomerCreditInvoices SET IsReceived = 1, OutstandingBalance = 0, ReceivedAt = UTC_TIMESTAMP() WHERE Id = @Id;", new { Id = id }, transaction);
         await transaction.CommitAsync();
+        Logger.Debug("Credit invoice settlement committed. UserId: {0}, InvoiceId: {1}", userId, id);
         return true;
     }
 
@@ -101,6 +106,7 @@ public class CustomerCreditInvoiceRepository(IDbConnectionFactory dbConnectionFa
         if (remaining <= 0m) return false;
         await ApplyTransactionPaymentAsync(connection, transaction, invoice, credit, remaining);
         await transaction.CommitAsync();
+        Logger.Debug("Credit entry settlement committed. UserId: {0}, InvoiceId: {1}, TransactionId: {2}", userId, invoiceId, transactionId);
         return true;
     }
 
@@ -118,6 +124,7 @@ public class CustomerCreditInvoiceRepository(IDbConnectionFactory dbConnectionFa
 
         await ApplyTransactionPaymentAsync(connection, transaction, invoice, credit, amount);
         await transaction.CommitAsync();
+        Logger.Debug("Credit partial payment committed. UserId: {0}, InvoiceId: {1}, TransactionId: {2}", userId, invoiceId, transactionId);
         return true;
     }
 

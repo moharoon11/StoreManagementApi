@@ -1,11 +1,13 @@
 using System.Security.Cryptography;
 using System.Text;
+using NLog;
 using Razorpay.Api;
 
 namespace SubscriptionPlatform.Api.Services;
 
 public sealed class RazorpayService(IConfiguration config)
 {
+    private static readonly Logger Logger = LogManager.GetLogger("SubscriptionPlatform.Services.RazorpayService");
     public sealed record ProviderPayment(string Id, string OrderId, string Status, long Amount, string Currency);
     public bool Configured =>
         !string.IsNullOrWhiteSpace(config["Razorpay:KeyId"])
@@ -18,6 +20,7 @@ public sealed class RazorpayService(IConfiguration config)
     public string CreateOrder(long amount, string currency, string receipt)
     {
         if (!Configured) throw new InvalidOperationException("Razorpay is not configured. Set Razorpay:KeyId and Razorpay:KeySecret.");
+        Logger.Debug("Creating provider order. AmountMinor: {0}, Currency: {1}", amount, currency);
         var client = new RazorpayClient(KeyId, config["Razorpay:KeySecret"]);
         var result = client.Order.Create(new Dictionary<string, object>
         {
@@ -25,14 +28,19 @@ public sealed class RazorpayService(IConfiguration config)
             ["currency"] = currency,
             ["receipt"] = receipt
         });
-        return result["id"].ToString()!;
+        var orderId = result["id"].ToString()!;
+        Logger.Info("Provider order created. OrderId: {0}", orderId);
+        return orderId;
     }
     public ProviderPayment FetchPayment(string paymentId)
     {
         if (!Configured) throw new InvalidOperationException("Razorpay is not configured.");
+        Logger.Debug("Fetching provider payment. PaymentId: {0}", paymentId);
         var client = new RazorpayClient(KeyId, config["Razorpay:KeySecret"]);
         var payment = client.Payment.Fetch(paymentId);
-        return new ProviderPayment(payment["id"].ToString()!, payment["order_id"].ToString()!, payment["status"].ToString()!, Convert.ToInt64(payment["amount"]), payment["currency"].ToString()!);
+        var result = new ProviderPayment(payment["id"].ToString()!, payment["order_id"].ToString()!, payment["status"].ToString()!, Convert.ToInt64(payment["amount"]), payment["currency"].ToString()!);
+        Logger.Info("Provider payment fetched. PaymentId: {0}, Status: {1}", paymentId, result.Status);
+        return result;
     }
     public bool VerifyPayment(string orderId, string paymentId, string signature)
     {

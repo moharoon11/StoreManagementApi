@@ -3,18 +3,20 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MySqlConnector;
-using NLog.Web;
+using NLog;
 using StoreManagement.Api.Data;
-using StoreManagement.Api.Filters;
 using StoreManagement.Api.Middleware;
 using StoreManagement.Api.Repositories;
 using StoreManagement.Api.Services;
 using SubscriptionPlatform.Core;
 
+var startupLogger = LogManager.GetLogger("Startup");
+try
+{
+LogManager.Setup().LoadConfigurationFromFile(Path.Combine(AppContext.BaseDirectory, "nlog.config"));
+startupLogger.Info("API startup began.");
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
-builder.Logging.ClearProviders();
-builder.Host.UseNLog();
 
 // 1. Database Connection Pooling via MySqlDataSource
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -29,7 +31,6 @@ if (!Guid.TryParse(builder.Configuration["SubscriptionPlatform:ApplicationId"], 
 var dataSource = new MySqlDataSource(connectionString);
 builder.Services.AddSingleton(dataSource);
 builder.Services.AddScoped<IDbConnectionFactory, DbConnectionFactory>();
-builder.Services.AddScoped<ControllerLoggingFilter>();
 
 // 2. Services Registration
 builder.Services.AddHttpClient();
@@ -100,7 +101,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddControllers(options => options.Filters.AddService<ControllerLoggingFilter>());
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
 // 6. Swagger / OpenAPI Configuration with JWT Security Definition
@@ -142,7 +143,6 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // 7. Middleware Pipeline
-app.UseMiddleware<GlobalExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment() || true) // Enable Swagger in all environments for testing ease
 {
@@ -161,4 +161,16 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+app.Lifetime.ApplicationStarted.Register(() => startupLogger.Info("API started | Environment: {0}", app.Environment.EnvironmentName));
+app.Lifetime.ApplicationStopping.Register(() => startupLogger.Info("API stopping."));
 app.Run();
+}
+catch (Exception ex)
+{
+    startupLogger.Fatal(ex, "API startup or host execution failed.");
+    throw;
+}
+finally
+{
+    LogManager.Shutdown();
+}

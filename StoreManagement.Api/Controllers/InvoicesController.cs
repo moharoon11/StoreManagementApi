@@ -26,61 +26,96 @@ namespace StoreManagement.Api.Controllers
             [FromQuery] DateTime? fromDate = null,
             [FromQuery] DateTime? toDate = null)
         {
-            Logger.Debug("GetInvoiceHistory started. PageNumber: {0}, PageSize: {1}", pageNumber, pageSize);
-            var history = await _invoiceRepository.GetInvoiceHistoryAsync(CurrentUserId, pageNumber, pageSize, fromDate, toDate);
-            return Ok(ApiResponse<PagedResponse<Invoice>>.SuccessResult(history, "Invoice history retrieved."));
+            try
+            {
+                Logger.Debug("GetInvoiceHistory started. PageNumber: {0}, PageSize: {1}", pageNumber, pageSize);
+                var history = await _invoiceRepository.GetInvoiceHistoryAsync(CurrentUserId, pageNumber, pageSize, fromDate, toDate);
+                return Ok(ApiResponse<PagedResponse<Invoice>>.SuccessResult(history, "Invoice history retrieved."));
+            }
+            catch (Exception ex)
+            {
+                return ApiExceptionHandler.Handle(this, ex, Logger, nameof(GetInvoiceHistory));
+            }
         }
 
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById(int id)
         {
-            Logger.Debug("GetById started. InvoiceId: {0}", id);
-            var invoice = await _invoiceRepository.GetByIdAsync(id, CurrentUserId);
-            if (invoice == null)
+            try
             {
-                return NotFound(ApiResponse.ErrorResult("Invoice not found."));
-            }
+                Logger.Debug("GetById started. InvoiceId: {0}", id);
+                var invoice = await _invoiceRepository.GetByIdAsync(id, CurrentUserId);
+                if (invoice == null)
+                {
+                    return NotFound(ApiResponse.ErrorResult("Invoice not found."));
+                }
 
-            return Ok(ApiResponse<Invoice>.SuccessResult(invoice, "Invoice details retrieved."));
+                return Ok(ApiResponse<Invoice>.SuccessResult(invoice, "Invoice details retrieved."));
+            }
+            catch (Exception ex)
+            {
+                return ApiExceptionHandler.Handle(this, ex, Logger, nameof(GetById));
+            }
         }
 
         [HttpGet("summary")]
         public async Task<IActionResult> GetSummary([FromQuery] DateTime? fromDate = null, [FromQuery] DateTime? toDate = null)
         {
-            Logger.Debug("GetSummary started.");
-            var summary = await _invoiceRepository.GetInvoiceSummaryAsync(CurrentUserId, fromDate, toDate);
-            return Ok(ApiResponse<InvoiceSummaryDto>.SuccessResult(summary, "Invoice summary retrieved."));
+            try
+            {
+                Logger.Debug("GetSummary started.");
+                var summary = await _invoiceRepository.GetInvoiceSummaryAsync(CurrentUserId, fromDate, toDate);
+                return Ok(ApiResponse<InvoiceSummaryDto>.SuccessResult(summary, "Invoice summary retrieved."));
+            }
+            catch (Exception ex)
+            {
+                return ApiExceptionHandler.Handle(this, ex, Logger, nameof(GetSummary));
+            }
         }
 
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] Dtos.UpdateInvoiceDto dto)
         {
-            Logger.Debug("Update invoice started. InvoiceId: {0}", id);
-            if (!ModelState.IsValid || dto == null)
+            try
             {
-                return BadRequest(ApiResponse.ErrorResult("Invalid invoice update data."));
-            }
+                Logger.Debug("Update invoice started. InvoiceId: {0}", id);
+                if (!ModelState.IsValid || dto == null)
+                {
+                    return BadRequest(ApiResponse.ErrorResult("Invalid invoice update data."));
+                }
 
-            var updated = await _invoiceRepository.UpdateInvoiceAsync(id, CurrentUserId, dto);
-            if (!updated)
+                var updated = await _invoiceRepository.UpdateInvoiceAsync(id, CurrentUserId, dto);
+                if (!updated)
+                {
+                    return NotFound(ApiResponse.ErrorResult("Invoice not found or update failed."));
+                }
+
+                return Ok(ApiResponse.SuccessResult("Invoice updated successfully."));
+            }
+            catch (Exception ex)
             {
-                return NotFound(ApiResponse.ErrorResult("Invoice not found or update failed."));
+                return ApiExceptionHandler.Handle(this, ex, Logger, nameof(Update));
             }
-
-            return Ok(ApiResponse.SuccessResult("Invoice updated successfully."));
         }
 
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
-            Logger.Debug("Delete invoice started. InvoiceId: {0}", id);
-            var deleted = await _invoiceRepository.DeleteInvoiceAsync(id, CurrentUserId);
-            if (!deleted)
+            try
             {
-                return NotFound(ApiResponse.ErrorResult("Invoice not found or delete failed."));
-            }
+                Logger.Debug("Delete invoice started. InvoiceId: {0}", id);
+                var deleted = await _invoiceRepository.DeleteInvoiceAsync(id, CurrentUserId);
+                if (!deleted)
+                {
+                    return NotFound(ApiResponse.ErrorResult("Invoice not found or delete failed."));
+                }
 
-            return Ok(ApiResponse.SuccessResult("Invoice deleted successfully."));
+                return Ok(ApiResponse.SuccessResult("Invoice deleted successfully."));
+            }
+            catch (Exception ex)
+            {
+                return ApiExceptionHandler.Handle(this, ex, Logger, nameof(Delete));
+            }
         }
     }
 }

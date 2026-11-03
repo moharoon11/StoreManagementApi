@@ -1,4 +1,5 @@
 using Dapper;
+using NLog;
 using StoreManagement.Api.Data;
 using StoreManagement.Api.Models;
 
@@ -6,6 +7,7 @@ namespace StoreManagement.Api.Repositories
 {
     public class UserRepository : IUserRepository
     {
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private readonly IDbConnectionFactory _dbConnectionFactory;
 
         public UserRepository(IDbConnectionFactory dbConnectionFactory)
@@ -37,6 +39,7 @@ namespace StoreManagement.Api.Repositories
                 VALUES (@Username, @PasswordHash, NOW(), NOW());
                 SELECT LAST_INSERT_ID();";
             int result = await connection.ExecuteScalarAsync<int>(sql, user);
+            Logger.Debug("User row created. UserId: {0}", result);
             return result;
         }
     }
