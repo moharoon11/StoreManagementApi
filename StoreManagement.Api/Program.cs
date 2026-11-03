@@ -1,11 +1,15 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MySqlConnector;
 using NLog;
+using StoreManagement.Api.Controllers;
 using StoreManagement.Api.Data;
+using StoreManagement.Api.Helpers;
 using StoreManagement.Api.Middleware;
 using StoreManagement.Api.Repositories;
 using StoreManagement.Api.Services;
@@ -90,6 +94,68 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+// These per-IP quotas are launch defaults, not universal standards. Host configuration
+// can override each PermitLimit and WindowSeconds after reviewing traffic and 429s.
+builder.Services.AddRateLimiter(options =>
+{
+    var globalLimit = builder.Configuration.GetValue<int?>("RateLimiting:Global:PermitLimit") ?? 600;
+    var globalWindowSeconds = builder.Configuration.GetValue<int?>("RateLimiting:Global:WindowSeconds") ?? 60;
+    if (globalLimit < 1 || globalWindowSeconds < 1)
+        throw new InvalidOperationException("RateLimiting:Global must have a positive PermitLimit and WindowSeconds.");
+
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = globalLimit,
+                Window = TimeSpan.FromSeconds(globalWindowSeconds),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+
+    var authLimits = new[]
+    {
+        (Policy: nameof(AuthController.Register), Limit: 5, Window: TimeSpan.FromHours(1)),
+        (Policy: nameof(AuthController.Login), Limit: 10, Window: TimeSpan.FromMinutes(1)),
+        (Policy: nameof(AuthController.Refresh), Limit: 30, Window: TimeSpan.FromMinutes(1)),
+        (Policy: nameof(AuthController.Logout), Limit: 30, Window: TimeSpan.FromMinutes(1)),
+        (Policy: nameof(AuthController.ForgotPassword), Limit: 5, Window: TimeSpan.FromHours(1)),
+        (Policy: nameof(AuthController.VerifyPasswordResetOtp), Limit: 10, Window: TimeSpan.FromMinutes(1)),
+        (Policy: nameof(AuthController.ResetPassword), Limit: 10, Window: TimeSpan.FromMinutes(1))
+    };
+
+    foreach (var authLimit in authLimits)
+    {
+        var setting = $"RateLimiting:Auth:{authLimit.Policy}";
+        var permitLimit = builder.Configuration.GetValue<int?>($"{setting}:PermitLimit") ?? authLimit.Limit;
+        var windowSeconds = builder.Configuration.GetValue<int?>($"{setting}:WindowSeconds") ?? (int)authLimit.Window.TotalSeconds;
+        if (permitLimit < 1 || windowSeconds < 1)
+            throw new InvalidOperationException($"{setting} must have a positive PermitLimit and WindowSeconds.");
+
+        options.AddPolicy(authLimit.Policy, context => RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = permitLimit,
+                Window = TimeSpan.FromSeconds(windowSeconds),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+    }
+    options.OnRejected = async (rejection, cancellationToken) =>
+    {
+        var context = rejection.HttpContext;
+        startupLogger.Warn("RateLimiter.OnRejected | Request limit reached. Path: {0}, RequestId: {1}",
+            context.Request.Path, context.TraceIdentifier);
+        context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        if (rejection.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+            context.Response.Headers.RetryAfter = Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
+        await context.Response.WriteAsJsonAsync(
+            ApiResponse.ErrorResult("Too many requests. Please try again shortly."), cancellationToken);
+    };
+});
+
 // 5. CORS Policy for Flutter Application
 builder.Services.AddCors(options =>
 {
@@ -169,7 +235,9 @@ if (app.Environment.IsDevelopment() || true) // Enable Swagger in all environmen
     });
 }
 
+app.UseRouting();
 app.UseCors("AllowAll");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseMiddleware<SubscriptionAccessMiddleware>();
 app.UseAuthorization();
