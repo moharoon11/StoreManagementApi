@@ -39,7 +39,7 @@ namespace StoreManagement.Api.Repositories
                 VALUES (@Username, @PasswordHash, NOW(), NOW());
                 SELECT LAST_INSERT_ID();";
             int result = await connection.ExecuteScalarAsync<int>(sql, user);
-            Logger.Debug("User row created. UserId: {0}", result);
+            Logger.Debug(this.MethodName() + " | User row created. UserId: {0}", result);
             return result;
         }
     }

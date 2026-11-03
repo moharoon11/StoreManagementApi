@@ -24,7 +24,7 @@ public sealed class SubscriptionController(StoreSubscriptionService subscription
         {
             // Load the configured subscription plan and its available terms.
             var plan = await subscriptions.GetOptionsAsync();
-            Logger.Info($"{nameof(Options)} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
+            Logger.Info($"{this.MethodName()} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
                 $"Payload: none | HasPlan: {plan is not null}");
             return plan is null
                 ? StatusCode(503, ApiResponse.ErrorResult("Subscription plan is not configured."))
@@ -32,7 +32,7 @@ public sealed class SubscriptionController(StoreSubscriptionService subscription
         }
         catch (Exception ex)
         {
-            Logger.Error(ex, "Options failed. RequestId: {0}", HttpContext.TraceIdentifier);
+            Logger.Error(ex, this.MethodName() + " | Options failed. RequestId: {0}", HttpContext.TraceIdentifier);
             return StatusCode(503, ApiResponse.ErrorResult("Subscription service is temporarily unavailable."));
         }
     }
@@ -45,13 +45,13 @@ public sealed class SubscriptionController(StoreSubscriptionService subscription
         {
             // Look up the current user's latest subscription using the authenticated user ID.
             var status = await subscriptions.GetStatusAsync(CurrentUserId.ToString());
-            Logger.Info($"{nameof(Status)} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | Payload: none");
+            Logger.Info($"{this.MethodName()} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | Payload: none");
             // Return a safe "no subscription" status when no subscription record exists.
             return Ok(ApiResponse<object>.SuccessResult(status ?? new { has_access = false, status = "none" }, "Subscription status loaded."));
         }
         catch (Exception ex)
         {
-            Logger.Error(ex, "Status failed. RequestId: {0}", HttpContext.TraceIdentifier);
+            Logger.Error(ex, this.MethodName() + " | Status failed. RequestId: {0}", HttpContext.TraceIdentifier);
             return StatusCode(503, ApiResponse.ErrorResult("Subscription service is temporarily unavailable."));
         }
     }
@@ -66,14 +66,14 @@ public sealed class SubscriptionController(StoreSubscriptionService subscription
         {
             if (!(request.StartTrial && request.BillingPeriod == "trial") && request.BillingPeriod is not ("three_month" or "six_month" or "one_year"))
             {
-                Logger.Warn($"{nameof(Start)} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
+                Logger.Warn($"{this.MethodName()} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
                     $"Payload: {SerializeSafePayload(request)} | Invalid billing period");
                 return BadRequest(ApiResponse.ErrorResult("Choose trial, three_month, six_month, or one_year."));
             }
             if (string.IsNullOrWhiteSpace(request.IdempotencyKey) || request.IdempotencyKey.Length > 80)
             {
                 // The same key lets a retry return the original subscription/order instead of creating another one.
-                Logger.Warn($"{nameof(Start)} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
+                Logger.Warn($"{this.MethodName()} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
                     $"Payload: {SerializeSafePayload(new { request.BillingPeriod, request.StartTrial, request.IdempotencyKey })} | Invalid idempotency key");
                 return BadRequest(ApiResponse.ErrorResult("A valid idempotency key is required."));
             }
@@ -81,23 +81,23 @@ public sealed class SubscriptionController(StoreSubscriptionService subscription
             {
                 // Start a trial or create a paid checkout order for the authenticated user.
                 var result = await subscriptions.StartAsync(CurrentUserId.ToString(), request.StartTrial ? "one_year" : request.BillingPeriod, request.StartTrial, request.IdempotencyKey);
-                Logger.Info($"{nameof(Start)} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
+                Logger.Info($"{this.MethodName()} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
                     $"Payload: {SerializeSafePayload(request)} | SubscriptionId: {result.SubscriptionId} | Status: {result.Status}");
                 return Ok(ApiResponse<StoreSubscriptionOrder>.SuccessResult(result, "Checkout initialized."));
             }
             catch (ArgumentException ex)
             {
-                Logger.Warn("Start rejected. RequestId: {0}, Reason: {1}", HttpContext.TraceIdentifier, ex.Message);
+                Logger.Warn(this.MethodName() + " | Start rejected. RequestId: {0}, Reason: {1}", HttpContext.TraceIdentifier, ex.Message);
                 return BadRequest(ApiResponse.ErrorResult(ex.Message));
             }
             catch (InvalidOperationException ex)
             {
-                Logger.Warn("Start conflicted. RequestId: {0}, Reason: {1}", HttpContext.TraceIdentifier, ex.Message);
+                Logger.Warn(this.MethodName() + " | Start conflicted. RequestId: {0}, Reason: {1}", HttpContext.TraceIdentifier, ex.Message);
                 return Conflict(ApiResponse.ErrorResult(ex.Message));
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Start failed. RequestId: {0}", HttpContext.TraceIdentifier);
+                Logger.Error(ex, this.MethodName() + " | Start failed. RequestId: {0}", HttpContext.TraceIdentifier);
                 return StatusCode(500, ApiResponse.ErrorResult("Unable to initialize checkout."));
             }
         }
@@ -115,7 +115,7 @@ public sealed class SubscriptionController(StoreSubscriptionService subscription
         {
             // Verify the Razorpay signature and provider payment details before activating access.
             var verified = await subscriptions.VerifyPaymentAsync(request.PaymentId, request.OrderId, request.RazorpayPaymentId, request.Signature);
-            Logger.Info($"{nameof(Verify)} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
+            Logger.Info($"{this.MethodName()} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
                 $"Payload: {JsonSerializer.Serialize(new { request.PaymentId, request.OrderId })} | Verified: {verified}");
             return verified
                 ? Ok(ApiResponse.SuccessResult("Payment captured and verified."))
@@ -135,7 +135,7 @@ public sealed class SubscriptionController(StoreSubscriptionService subscription
         {
             // Mark the matching pending checkout as failed for the authenticated user.
             var marked = await subscriptions.MarkPaymentFailedAsync(CurrentUserId.ToString(), request.PaymentId, request.OrderId);
-            Logger.Info($"{nameof(Failure)} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
+            Logger.Info($"{this.MethodName()} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
                 $"Payload: {JsonSerializer.Serialize(request)} | Recorded: {marked}");
             return marked
                 ? Ok(ApiResponse.SuccessResult("Failed checkout recorded; you can retry."))
@@ -164,12 +164,12 @@ public sealed class SubscriptionController(StoreSubscriptionService subscription
             var signature = Request.Headers["X-Razorpay-Signature"].ToString();
             if (string.IsNullOrWhiteSpace(eventId))
             {
-                Logger.Warn($"{nameof(RazorpayWebhook)} | RequestId: {HttpContext.TraceIdentifier} | Payload: [redacted webhook body, length={payload.Length}] | Missing event ID");
+                Logger.Warn($"{this.MethodName()} | RequestId: {HttpContext.TraceIdentifier} | Payload: [redacted webhook body, length={payload.Length}] | Missing event ID");
                 return BadRequest(new { error = "missing_event_id" });
             }
             // Verify and reconcile the provider event, including duplicate-event handling.
             var result = await subscriptions.ProcessWebhookAsync(eventId, payload, signature);
-            Logger.Info($"{nameof(RazorpayWebhook)} | RequestId: {HttpContext.TraceIdentifier} | EventId: {eventId} | " +
+            Logger.Info($"{this.MethodName()} | RequestId: {HttpContext.TraceIdentifier} | EventId: {eventId} | " +
                 $"Payload: {SerializeSafeJson(payload)} | ValidSignature: {result.IsValidSignature} | Duplicate: {result.Duplicate}");
             if (!result.IsValidSignature) return Unauthorized(new { error = "invalid_signature" });
             return Ok(new { accepted = true, duplicate = result.Duplicate });

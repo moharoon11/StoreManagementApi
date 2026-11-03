@@ -18,7 +18,7 @@ namespace StoreManagement.Api.Services
 
         public string GenerateToken(int userId, string username)
         {
-            Logger.Debug("GenerateToken started. UserId: {0}, Username: {1}", userId, username);
+            Logger.Debug(this.MethodName() + " | GenerateToken started. UserId: {0}, Username: {1}", userId, username);
             var secretKey = _configuration["JwtSettings:SecretKey"] ?? "DefaultSecretKeyThatIsAtLeast32BytesLongForSecurity!";
             var issuer = _configuration["JwtSettings:Issuer"] ?? "StoreManagementApi";
             var audience = _configuration["JwtSettings:Audience"] ?? "StoreManagementFlutterApp";
@@ -42,7 +42,7 @@ namespace StoreManagement.Api.Services
                 signingCredentials: credentials);
 
             var generatedToken = new JwtSecurityTokenHandler().WriteToken(token);
-            Logger.Info("GenerateToken succeeded. UserId: {0}, Username: {1}", userId, username);
+            Logger.Info(this.MethodName() + " | GenerateToken succeeded. UserId: {0}, Username: {1}", userId, username);
             return generatedToken;
         }
     }

@@ -23,7 +23,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("UploadImage started. FileName: {0}, Folder: {1}", file?.FileName, folder);
+                Logger.Debug(this.MethodName() + " | UploadImage started. FileName: {0}, Folder: {1}", file?.FileName, folder);
                 if (file == null || file.Length == 0)
                 {
                     return BadRequest(ApiResponse.ErrorResult("Please select an image file to upload."));

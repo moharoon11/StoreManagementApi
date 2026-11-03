@@ -44,7 +44,7 @@ namespace StoreManagement.Api.Repositories
                 VALUES (@UserId, @Name, @ImageUrl, NOW(), NOW());
                 SELECT LAST_INSERT_ID();";
             var id = await connection.ExecuteScalarAsync<int>(sql, category);
-            Logger.Info("Category created. UserId: {0}, CategoryId: {1}", category.UserId, id);
+            Logger.Info(this.MethodName() + " | Category created. UserId: {0}, CategoryId: {1}", category.UserId, id);
             return id;
         }
 
@@ -59,7 +59,7 @@ namespace StoreManagement.Api.Repositories
                 WHERE Id = @Id AND UserId = @UserId;";
             var affected = await connection.ExecuteAsync(sql, category);
             if (affected > 0)
-                Logger.Info("Category updated. UserId: {0}, CategoryId: {1}", category.UserId, category.Id);
+                Logger.Info(this.MethodName() + " | Category updated. UserId: {0}, CategoryId: {1}", category.UserId, category.Id);
             return affected > 0;
         }
 
@@ -69,7 +69,7 @@ namespace StoreManagement.Api.Repositories
             const string sql = "DELETE FROM Categories WHERE Id = @Id AND UserId = @UserId;";
             var affected = await connection.ExecuteAsync(sql, new { Id = id, UserId = userId });
             if (affected > 0)
-                Logger.Info("Category deleted. UserId: {0}, CategoryId: {1}", userId, id);
+                Logger.Info(this.MethodName() + " | Category deleted. UserId: {0}, CategoryId: {1}", userId, id);
             return affected > 0;
         }
     }

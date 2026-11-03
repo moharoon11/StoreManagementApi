@@ -9,7 +9,7 @@ public sealed class CatalogService(CatalogRepository repository)
     private static readonly Logger Logger = LogManager.GetLogger("SubscriptionPlatform.Services.CatalogService");
     public async Task<Guid> CreatePlanAsync(Guid appId, PlanRequest request)
     {
-        Logger.Debug($"{nameof(CreatePlanAsync)} | ApplicationId: {appId} | Payload: PlanName={request.Name}, Currency={request.Currency}");
+        Logger.Debug($"{this.MethodName()} | ApplicationId: {appId} | Payload: PlanName={request.Name}, Currency={request.Currency}");
         ValidatePlan(request);
         try
         {
@@ -19,12 +19,12 @@ public sealed class CatalogService(CatalogRepository repository)
             }
 
             var planId = await repository.CreatePlanAsync(appId, request);
-            Logger.Info("Plan created. ApplicationId: {0}, PlanId: {1}", appId, planId);
+            Logger.Info(this.MethodName() + " | Plan created. ApplicationId: {0}, PlanId: {1}", appId, planId);
             return planId;
         }
         catch (Exception ex)
         {
-            Logger.Error(ex, $"{nameof(CreatePlanAsync)} | ApplicationId: {appId} | Exception: {ex.Message}");
+            Logger.Error(ex, $"{this.MethodName()} | ApplicationId: {appId} | Exception: {ex.Message}");
             throw;
         }
     }
@@ -36,13 +36,13 @@ public sealed class CatalogService(CatalogRepository repository)
 
     public Task<object?> GetPlanAsync(Guid appId, Guid planId)
     {
-        Logger.Debug($"{nameof(GetPlanAsync)} | ApplicationId: {appId} | PlanId: {planId}");
+        Logger.Debug($"{this.MethodName()} | ApplicationId: {appId} | PlanId: {planId}");
         return repository.GetPlanAsync(appId, planId);
     }
 
     public async Task<object> CreateCustomerAsync(Guid appId, CustomerRequest request)
     {
-        Logger.Debug($"{nameof(CreateCustomerAsync)} | ApplicationId: {appId} | Payload: ExternalId={request.ExternalId}");
+        Logger.Debug($"{this.MethodName()} | ApplicationId: {appId} | Payload: ExternalId={request.ExternalId}");
         var emailIsValid = string.IsNullOrWhiteSpace(request.Email)
             || new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(request.Email);
         if (string.IsNullOrWhiteSpace(request.ExternalId)
@@ -60,12 +60,12 @@ public sealed class CatalogService(CatalogRepository repository)
             }
 
             var customer = await repository.CreateCustomerAsync(appId, request);
-            Logger.Info("Customer saved. ApplicationId: {0}, ExternalId: {1}", appId, request.ExternalId);
+            Logger.Info(this.MethodName() + " | Customer saved. ApplicationId: {0}, ExternalId: {1}", appId, request.ExternalId);
             return customer;
         }
         catch (Exception ex)
         {
-            Logger.Error(ex, $"{nameof(CreateCustomerAsync)} | ApplicationId: {appId} | Exception: {ex.Message}");
+            Logger.Error(ex, $"{this.MethodName()} | ApplicationId: {appId} | Exception: {ex.Message}");
             throw;
         }
     }

@@ -27,7 +27,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("GetMovements started. ProductId: {0}, Limit: {1}", productId, limit);
+                Logger.Debug(this.MethodName() + " | GetMovements started. ProductId: {0}, Limit: {1}", productId, limit);
                 var movements = await _stockRepository.GetMovementsByUserIdAsync(CurrentUserId, productId, limit);
                 return Ok(ApiResponse<IEnumerable<StockMovement>>.SuccessResult(movements, "Stock movement log retrieved."));
             }
@@ -42,7 +42,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("AdjustStock started. ProductId: {0}", dto.ProductId);
+                Logger.Debug(this.MethodName() + " | AdjustStock started. ProductId: {0}", dto.ProductId);
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(ApiResponse.ErrorResult("Invalid stock adjustment data."));

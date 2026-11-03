@@ -162,7 +162,7 @@ namespace StoreManagement.Api.Repositories
             });
 
             if (rows > 0)
-                Logger.Info("Invoice updated. UserId: {0}, InvoiceId: {1}", userId, id);
+                Logger.Info(this.MethodName() + " | Invoice updated. UserId: {0}, InvoiceId: {1}", userId, id);
             return rows > 0;
         }
 
@@ -173,7 +173,7 @@ namespace StoreManagement.Api.Repositories
             const string deleteSql = "DELETE FROM Invoices WHERE Id = @Id AND UserId = @UserId;";
             var rows = await connection.ExecuteAsync(deleteSql, new { Id = id, UserId = userId });
             if (rows > 0)
-                Logger.Info("Invoice deleted. UserId: {0}, InvoiceId: {1}", userId, id);
+                Logger.Info(this.MethodName() + " | Invoice deleted. UserId: {0}, InvoiceId: {1}", userId, id);
             return rows > 0;
         }
     }

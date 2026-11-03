@@ -21,7 +21,7 @@ namespace StoreManagement.Api.Services
         {
             if (string.IsNullOrEmpty(_apiKey) || _apiKey == "YOUR_GEMINI_API_KEY")
             {
-                Logger.Error("Gemini API key is not configured.");
+                Logger.Error(this.MethodName() + " | Gemini API key is not configured.");
                 throw new Exception("Gemini API key is missing. Please configure it in appsettings.json.");
             }
 
@@ -89,7 +89,7 @@ namespace StoreManagement.Api.Services
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorStr = await response.Content.ReadAsStringAsync();
-                    Logger.Error($"Gemini API failed with status {response.StatusCode}: {errorStr}");
+                    Logger.Error($"{this.MethodName()} | Gemini API failed with status {response.StatusCode}: {errorStr}");
                     return null;
                 }
 
@@ -113,12 +113,12 @@ namespace StoreManagement.Api.Services
                     }
                 }
 
-                Logger.Warn("Could not parse text from Gemini response structure.");
+                Logger.Warn(this.MethodName() + " | Could not parse text from Gemini response structure.");
                 return null;
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Exception while calling Gemini API");
+                Logger.Error(ex, this.MethodName() + " | Exception while calling Gemini API");
                 return null;
             }
         }

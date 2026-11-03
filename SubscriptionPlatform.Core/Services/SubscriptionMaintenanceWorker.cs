@@ -44,7 +44,7 @@ public sealed class SubscriptionMaintenanceWorker(ConnectionFactory connections)
             }
             catch (Exception exception)
             {
-                Logger.Error(exception, $"{nameof(ExecuteAsync)} | Subscription maintenance failed | Exception: {exception.Message}");
+                Logger.Error(exception, $"{this.MethodName()} | Subscription maintenance failed | Exception: {exception.Message}");
             }
 
             // Wait one minute before checking for more expired records.

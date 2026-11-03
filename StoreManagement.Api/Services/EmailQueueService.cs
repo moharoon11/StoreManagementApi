@@ -23,13 +23,13 @@ public sealed class EmailQueueService : BackgroundService, IEmailQueue
                     await send(scope.ServiceProvider.GetRequiredService<IEmailService>(), stoppingToken);
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
-                catch (Exception ex) { Logger.Error(ex, "A security email could not be delivered."); }
+                catch (Exception ex) { Logger.Error(ex, this.MethodName() + " | A security email could not be delivered."); }
             }
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { }
         catch (Exception ex)
         {
-            Logger.Fatal(ex, "Email queue stopped unexpectedly.");
+            Logger.Fatal(ex, this.MethodName() + " | Email queue stopped unexpectedly.");
             throw;
         }
     }

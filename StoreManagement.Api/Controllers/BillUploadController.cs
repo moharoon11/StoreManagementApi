@@ -37,7 +37,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("ExtractBill started.");
+                Logger.Debug(this.MethodName() + " | ExtractBill started.");
                 if (image == null || image.Length == 0)
                 {
                     return BadRequest(ApiResponse.ErrorResult("Please select an image file to upload."));
@@ -99,7 +99,7 @@ namespace StoreManagement.Api.Controllers
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error(ex, "Failed to parse JSON from Gemini.");
+                    Logger.Error(ex, this.MethodName() + " | Failed to parse JSON from Gemini.");
                     return BadRequest(ApiResponse.ErrorResult("The AI service returned malformed data. Please try again with a clearer image."));
                 }
             }
@@ -114,7 +114,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("ProcessBill started.");
+                Logger.Debug(this.MethodName() + " | ProcessBill started.");
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(ApiResponse.ErrorResult("Invalid bill data."));
@@ -165,7 +165,7 @@ namespace StoreManagement.Api.Controllers
                         }
                         else
                         {
-                            Logger.Warn($"Skipping new product {item.ProductName} because no category was provided.");
+                            Logger.Warn($"{this.MethodName()} | Skipping new product {item.ProductName} because no category was provided.");
                             continue;
                         }
 

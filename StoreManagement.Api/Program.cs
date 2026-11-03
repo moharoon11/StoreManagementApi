@@ -14,7 +14,7 @@ var startupLogger = LogManager.GetLogger("Startup");
 try
 {
 LogManager.Setup().LoadConfigurationFromFile(Path.Combine(AppContext.BaseDirectory, "nlog.config"));
-startupLogger.Info("API startup began.");
+startupLogger.Info("Main | API startup began.");
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
 
@@ -161,13 +161,13 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.Lifetime.ApplicationStarted.Register(() => startupLogger.Info("API started | Environment: {0}", app.Environment.EnvironmentName));
-app.Lifetime.ApplicationStopping.Register(() => startupLogger.Info("API stopping."));
+app.Lifetime.ApplicationStarted.Register(() => startupLogger.Info("Main | API started | Environment: {0}", app.Environment.EnvironmentName));
+app.Lifetime.ApplicationStopping.Register(() => startupLogger.Info("Main | API stopping."));
 app.Run();
 }
 catch (Exception ex)
 {
-    startupLogger.Fatal(ex, "API startup or host execution failed.");
+    startupLogger.Fatal(ex, "Main | API startup or host execution failed.");
     throw;
 }
 finally

@@ -28,7 +28,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("GetInvoiceHistory started. PageNumber: {0}, PageSize: {1}", pageNumber, pageSize);
+                Logger.Debug(this.MethodName() + " | GetInvoiceHistory started. PageNumber: {0}, PageSize: {1}", pageNumber, pageSize);
                 var history = await _invoiceRepository.GetInvoiceHistoryAsync(CurrentUserId, pageNumber, pageSize, fromDate, toDate);
                 return Ok(ApiResponse<PagedResponse<Invoice>>.SuccessResult(history, "Invoice history retrieved."));
             }
@@ -43,7 +43,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("GetById started. InvoiceId: {0}", id);
+                Logger.Debug(this.MethodName() + " | GetById started. InvoiceId: {0}", id);
                 var invoice = await _invoiceRepository.GetByIdAsync(id, CurrentUserId);
                 if (invoice == null)
                 {
@@ -63,7 +63,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("GetSummary started.");
+                Logger.Debug(this.MethodName() + " | GetSummary started.");
                 var summary = await _invoiceRepository.GetInvoiceSummaryAsync(CurrentUserId, fromDate, toDate);
                 return Ok(ApiResponse<InvoiceSummaryDto>.SuccessResult(summary, "Invoice summary retrieved."));
             }
@@ -78,7 +78,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("Update invoice started. InvoiceId: {0}", id);
+                Logger.Debug(this.MethodName() + " | Update invoice started. InvoiceId: {0}", id);
                 if (!ModelState.IsValid || dto == null)
                 {
                     return BadRequest(ApiResponse.ErrorResult("Invalid invoice update data."));
@@ -103,7 +103,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("Delete invoice started. InvoiceId: {0}", id);
+                Logger.Debug(this.MethodName() + " | Delete invoice started. InvoiceId: {0}", id);
                 var deleted = await _invoiceRepository.DeleteInvoiceAsync(id, CurrentUserId);
                 if (!deleted)
                 {

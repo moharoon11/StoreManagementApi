@@ -17,7 +17,7 @@ namespace StoreManagement.Api.Repositories
 
         public async Task<DashboardSummaryDto> GetDashboardSummaryAsync(int userId)
         {
-            Logger.Debug("Loading dashboard summary. UserId: {0}", userId);
+            Logger.Debug(this.MethodName() + " | Loading dashboard summary. UserId: {0}", userId);
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
 
             var todayStart = DateTime.UtcNow.Date;

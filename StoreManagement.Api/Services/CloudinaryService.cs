@@ -34,10 +34,10 @@ namespace StoreManagement.Api.Services
 
         public async Task<string?> UploadImageAsync(IFormFile file, string folder = "store_management")
         {
-            Logger.Debug("UploadImageAsync started. FileName: {0}, Folder: {1}", file?.FileName, folder);
+            Logger.Debug(this.MethodName() + " | UploadImageAsync started. FileName: {0}, Folder: {1}", file?.FileName, folder);
             if (file == null || file.Length == 0)
             {
-                Logger.Error("UploadImageAsync failed. Reason: File is missing or empty.");
+                Logger.Error(this.MethodName() + " | UploadImageAsync failed. Reason: File is missing or empty.");
                 return null;
             }
 
@@ -54,21 +54,21 @@ namespace StoreManagement.Api.Services
             if (uploadResult.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 var imageUrl = uploadResult.SecureUrl?.ToString() ?? uploadResult.Url?.ToString();
-                Logger.Info("UploadImageAsync succeeded. FileName: {0}, Folder: {1}", file.FileName, folder);
+                Logger.Info(this.MethodName() + " | UploadImageAsync succeeded. FileName: {0}, Folder: {1}", file.FileName, folder);
                 return imageUrl;
             }
 
             var error = uploadResult.Error?.Message ?? "Cloudinary did not return a success status.";
-            Logger.Error("UploadImageAsync failed. Reason: {0}", error);
+            Logger.Error(this.MethodName() + " | UploadImageAsync failed. Reason: {0}", error);
             throw new InvalidOperationException($"Cloudinary upload failed: {error}");
         }
 
         public async Task<bool> DeleteImageAsync(string publicId)
         {
-            Logger.Debug("DeleteImageAsync started. PublicId: {0}", publicId);
+            Logger.Debug(this.MethodName() + " | DeleteImageAsync started. PublicId: {0}", publicId);
             if (string.IsNullOrEmpty(publicId))
             {
-                Logger.Error("DeleteImageAsync failed. Reason: Public ID is missing.");
+                Logger.Error(this.MethodName() + " | DeleteImageAsync failed. Reason: Public ID is missing.");
                 return false;
             }
 
@@ -76,9 +76,9 @@ namespace StoreManagement.Api.Services
             var result = await _cloudinary.DestroyAsync(deleteParams);
             var succeeded = result.Result == "ok";
             if (succeeded)
-                Logger.Info("DeleteImageAsync succeeded. PublicId: {0}", publicId);
+                Logger.Info(this.MethodName() + " | DeleteImageAsync succeeded. PublicId: {0}", publicId);
             else
-                Logger.Error("DeleteImageAsync failed. Reason: Cloudinary returned {0}. PublicId: {1}", result.Result, publicId);
+                Logger.Error(this.MethodName() + " | DeleteImageAsync failed. Reason: Cloudinary returned {0}. PublicId: {1}", result.Result, publicId);
             return succeeded;
         }
 
@@ -105,7 +105,7 @@ namespace StoreManagement.Api.Services
             }
             catch (Exception ex)
             {
-                Logger.Warn(ex, "Could not delete replaced Cloudinary image. PublicId: {0}", oldPublicId);
+                Logger.Warn(ex, this.MethodName() + " | Could not delete replaced Cloudinary image. PublicId: {0}", oldPublicId);
             }
         }
 

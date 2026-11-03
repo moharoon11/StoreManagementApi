@@ -24,7 +24,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("GetSalesReport started.");
+                Logger.Debug(this.MethodName() + " | GetSalesReport started.");
                 var report = await _reportRepository.GetSalesReportAsync(CurrentUserId, filter);
                 return Ok(ApiResponse<SalesReportDto>.SuccessResult(report, "Sales report retrieved successfully."));
             }

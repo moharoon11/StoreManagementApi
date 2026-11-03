@@ -45,14 +45,14 @@ public sealed class StoreSubscriptionService(
     public Task<object?> GetOptionsAsync()
     {
         // Return the configured plan so the client can display prices and trial options.
-        Logger.Debug($"{nameof(GetOptionsAsync)} | ApplicationId: {ApplicationId} | PlanId: {PlanId}");
+        Logger.Debug($"{this.MethodName()} | ApplicationId: {ApplicationId} | PlanId: {PlanId}");
         return catalog.GetPlanAsync(ApplicationId, PlanId);
     }
 
     public Task<object?> GetStatusAsync(string externalCustomerId)
     {
         // Return the subscription status belonging to the signed-in Store customer.
-        Logger.Debug($"{nameof(GetStatusAsync)} | ApplicationId: {ApplicationId} | ExternalCustomerId: {externalCustomerId}");
+        Logger.Debug($"{this.MethodName()} | ApplicationId: {ApplicationId} | ExternalCustomerId: {externalCustomerId}");
         return subscriptions.GetByExternalCustomerAsync(ApplicationId, externalCustomerId);
     }
 
@@ -63,7 +63,7 @@ public sealed class StoreSubscriptionService(
         string idempotencyKey)
     {
         // This facade adapts the Store API request to the shared subscription platform.
-        Logger.Info($"{nameof(StartAsync)} | ApplicationId: {ApplicationId} | ExternalCustomerId: {externalCustomerId} | " +
+        Logger.Info($"{this.MethodName()} | ApplicationId: {ApplicationId} | ExternalCustomerId: {externalCustomerId} | " +
             $"Payload: BillingPeriod={billingPeriod}, StartTrial={startTrial}");
         // The Store user ID is converted into the platform customer record used by subscriptions.
         dynamic customer = await catalog.CreateCustomerAsync(ApplicationId, new CustomerRequest(externalCustomerId));
@@ -95,7 +95,7 @@ public sealed class StoreSubscriptionService(
         string signature)
     {
         // A successful client callback is not trusted by itself; this verifies the provider payment first.
-        Logger.Debug($"{nameof(VerifyPaymentAsync)} | ApplicationId: {ApplicationId} | Payload: PaymentId={paymentId}, OrderId={orderId}");
+        Logger.Debug($"{this.MethodName()} | ApplicationId: {ApplicationId} | Payload: PaymentId={paymentId}, OrderId={orderId}");
         return payments.VerifyAsync(
             ApplicationId,
             paymentId,
@@ -110,7 +110,7 @@ public sealed class StoreSubscriptionService(
         string orderId)
     {
         // The customer ID is passed through so a user cannot mark another user's payment as failed.
-        Logger.Info($"{nameof(MarkPaymentFailedAsync)} | ApplicationId: {ApplicationId} | Payload: PaymentId={paymentId}, OrderId={orderId}");
+        Logger.Info($"{this.MethodName()} | ApplicationId: {ApplicationId} | Payload: PaymentId={paymentId}, OrderId={orderId}");
         return payments.MarkFailedAsync(
             ApplicationId,
             paymentId,
@@ -121,7 +121,7 @@ public sealed class StoreSubscriptionService(
     public async Task<(bool IsValidSignature, bool Duplicate)> ProcessWebhookAsync(string eventId, string rawPayload, string signature)
     {
         // Keep the raw body unchanged because Razorpay's signature is calculated from those exact bytes.
-        Logger.Debug($"{nameof(ProcessWebhookAsync)} | EventId: {eventId} | PayloadLength: {rawPayload.Length}");
+        Logger.Debug($"{this.MethodName()} | EventId: {eventId} | PayloadLength: {rawPayload.Length}");
         var result = await payments.ProcessWebhookAsync(eventId, rawPayload, signature);
         return (result != WebhookProcessingResult.InvalidSignature, result == WebhookProcessingResult.Duplicate);
     }

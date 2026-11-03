@@ -25,7 +25,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("Checkout started.");
+                Logger.Debug(this.MethodName() + " | Checkout started.");
                 if (!ModelState.IsValid ||
                     string.IsNullOrWhiteSpace(request.CustomerMobileNumber) ||
                     request.Items == null ||
@@ -49,7 +49,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("Manual Checkout started.");
+                Logger.Debug(this.MethodName() + " | Manual Checkout started.");
                 if (!ModelState.IsValid ||
                     string.IsNullOrWhiteSpace(request.CustomerMobileNumber) ||
                     request.Items == null ||

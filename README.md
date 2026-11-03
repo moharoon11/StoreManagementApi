@@ -21,7 +21,7 @@ The published API output includes the class library assembly. The server only ne
 
 ## Logs
 
-The API loads `nlog.config` from its published output and writes application logs to `Logs/Applog.*.log` and subscription logs to `Logs/SubscriptionLog.*.log` beside the executable. NLog messages in controllers, services, and repositories record important operations and failures in plain text. Controller actions catch exceptions and return the existing API error response format, with a request ID in the log. The email worker records delivery failures. ASP.NET Core's own framework logs continue to use the default console logger, so the host should retain console output as well. The files are archived daily and retained for 14 days by `nlog.config`.
+The API loads `nlog.config` from its published output and writes application logs to `Logs/Applog.*.log` and subscription logs to `Logs/SubscriptionLog.*.log` beside the executable. Application log messages start with the calling method name, supplied by the `CallerMemberName` based `this.MethodName()` extension. Controller exception entries name the controller action directly. Controller actions catch exceptions and return the existing API error response format, with a request ID in the log. The email worker records delivery failures. ASP.NET Core's own framework logs continue to use the default console logger, so the host should retain console output as well. The files are archived daily and retained for 14 days by `nlog.config`.
 
 For the end-to-end payment, Razorpay dashboard, database, deployment, and Flutter release steps, open [PAYMENT_GO_LIVE_GUIDE.html](PAYMENT_GO_LIVE_GUIDE.html) in a browser.
 

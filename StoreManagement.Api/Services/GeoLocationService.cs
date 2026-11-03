@@ -25,7 +25,7 @@ public sealed class GeoLocationService : IGeoLocationService
         }
         catch (Exception ex)
         {
-            Logger.Warn(ex, $"{nameof(LookupAsync)} | Geo location lookup failed; returning an empty location. Exception: {ex.Message}");
+            Logger.Warn(ex, $"{this.MethodName()} | Geo location lookup failed; returning an empty location. Exception: {ex.Message}");
             return (null, null); // Geolocation is best-effort and must never block recovery.
         }
     }

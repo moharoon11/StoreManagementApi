@@ -18,25 +18,25 @@ namespace StoreManagement.Api.Repositories
 
         public async Task<StoreProfile?> GetByUserIdAsync(int userId)
         {
-            Logger.Debug($"{ClassName}.{nameof(GetByUserIdAsync)}() started. UserId: {userId}");
+            Logger.Debug($"{ClassName}.{this.MethodName()}() started. UserId: {userId}");
             try
             {
                 using var connection = await _dbConnectionFactory.CreateConnectionAsync();
                 const string sql = "SELECT * FROM StoreProfiles WHERE UserId = @UserId LIMIT 1;";
                 var profile = await connection.QuerySingleOrDefaultAsync<StoreProfile>(sql, new { UserId = userId });
-                Logger.Info($"{ClassName}.{nameof(GetByUserIdAsync)}() succeeded. UserId: {userId}, ProfileFound: {profile is not null}");
+                Logger.Info($"{ClassName}.{this.MethodName()}() succeeded. UserId: {userId}, ProfileFound: {profile is not null}");
                 return profile;
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, $"{ClassName}.{nameof(GetByUserIdAsync)}() failed. UserId: {userId}");
+                Logger.Error(ex, $"{ClassName}.{this.MethodName()}() failed. UserId: {userId}");
                 throw;
             }
         }
 
         public async Task<int> CreateOrUpdateProfileAsync(StoreProfile profile)
         {
-            Logger.Debug($"{ClassName}.{nameof(CreateOrUpdateProfileAsync)}() started. UserId: {profile.UserId}");
+            Logger.Debug($"{ClassName}.{this.MethodName()}() started. UserId: {profile.UserId}");
             try
             {
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
@@ -62,12 +62,12 @@ namespace StoreManagement.Api.Repositories
                 SELECT Id FROM StoreProfiles WHERE UserId = @UserId LIMIT 1;";
             
             var profileId = await connection.ExecuteScalarAsync<int>(sql, profile);
-            Logger.Info($"{ClassName}.{nameof(CreateOrUpdateProfileAsync)}() succeeded. UserId: {profile.UserId}, ProfileId: {profileId}");
+            Logger.Info($"{ClassName}.{this.MethodName()}() succeeded. UserId: {profile.UserId}, ProfileId: {profileId}");
             return profileId;
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, $"{ClassName}.{nameof(CreateOrUpdateProfileAsync)}() failed. UserId: {profile.UserId}");
+                Logger.Error(ex, $"{ClassName}.{this.MethodName()}() failed. UserId: {profile.UserId}");
                 throw;
             }
         }

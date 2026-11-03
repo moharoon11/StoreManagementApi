@@ -28,7 +28,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("GetAll started.");
+                Logger.Debug(this.MethodName() + " | GetAll started.");
                 var categories = await _categoryRepository.GetAllByUserIdAsync(CurrentUserId);
                 return Ok(ApiResponse<IEnumerable<Category>>.SuccessResult(categories, "Categories retrieved."));
             }
@@ -43,7 +43,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("GetById started. CategoryId: {0}", id);
+                Logger.Debug(this.MethodName() + " | GetById started. CategoryId: {0}", id);
                 var category = await _categoryRepository.GetByIdAsync(id, CurrentUserId);
                 if (category == null)
                 {
@@ -63,7 +63,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("Create started. CategoryName: {0}", dto.Name);
+                Logger.Debug(this.MethodName() + " | Create started. CategoryName: {0}", dto.Name);
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(ApiResponse.ErrorResult("Invalid category data."));
@@ -104,7 +104,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("Update started. CategoryId: {0}", id);
+                Logger.Debug(this.MethodName() + " | Update started. CategoryId: {0}", id);
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(ApiResponse.ErrorResult("Invalid category data."));
@@ -150,7 +150,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("Delete started. CategoryId: {0}", id);
+                Logger.Debug(this.MethodName() + " | Delete started. CategoryId: {0}", id);
                 var category = await _categoryRepository.GetByIdAsync(id, CurrentUserId);
                 if (category == null)
                 {
@@ -168,7 +168,7 @@ namespace StoreManagement.Api.Controllers
                 catch (Exception ex)
                 {
                     Logger.Warn(ex,
-                        $"{nameof(Delete)} | UserId: {CurrentUserId} | CategoryId: {id} | " +
+                        $"{this.MethodName()} | UserId: {CurrentUserId} | CategoryId: {id} | " +
                         "The category could not be deleted because it may contain active products.");
                     return BadRequest(ApiResponse.ErrorResult("Cannot delete category because it contains active products."));
                 }

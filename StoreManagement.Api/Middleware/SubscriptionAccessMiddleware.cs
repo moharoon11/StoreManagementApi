@@ -22,7 +22,7 @@ public sealed class SubscriptionAccessMiddleware(RequestDelegate next)
         var userId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? context.User.FindFirst("userId")?.Value;
         if (!int.TryParse(userId, out var id))
         {
-            Logger.Warn("Subscription check rejected: authenticated request has no valid user ID. RequestId: {0}", context.TraceIdentifier);
+            Logger.Warn(this.MethodName() + " | Subscription check rejected: authenticated request has no valid user ID. RequestId: {0}", context.TraceIdentifier);
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return;
         }
@@ -36,7 +36,7 @@ public sealed class SubscriptionAccessMiddleware(RequestDelegate next)
                 (access.ValueKind == JsonValueKind.True || access.ValueKind == JsonValueKind.Number && access.GetInt32() == 1);
             if (!hasAccess)
             {
-                Logger.Warn("Subscription access denied. UserId: {0}, RequestId: {1}, Path: {2}", id, context.TraceIdentifier, path);
+                Logger.Warn(this.MethodName() + " | Subscription access denied. UserId: {0}, RequestId: {1}, Path: {2}", id, context.TraceIdentifier, path);
                 context.Response.StatusCode = StatusCodes.Status402PaymentRequired;
                 context.Response.ContentType = "application/json";
                 await context.Response.WriteAsJsonAsync(new { success = false, message = "An active subscription or free trial is required.", code = "subscription_required" }, context.RequestAborted);
@@ -45,7 +45,7 @@ public sealed class SubscriptionAccessMiddleware(RequestDelegate next)
         }
         catch (Exception ex)
         {
-            Logger.Error(ex, "Subscription access check failed for authenticated user {0}", id);
+            Logger.Error(ex, this.MethodName() + " | Subscription access check failed for authenticated user {0}", id);
             context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
             await context.Response.WriteAsJsonAsync(new { success = false, message = "Subscription service is temporarily unavailable." }, context.RequestAborted);
             return;

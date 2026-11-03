@@ -19,7 +19,7 @@ public class CustomerCreditInvoicesController(ICustomerCreditInvoiceRepository r
     {
         try
         {
-            Logger.Debug("Loading credit invoices. UserId: {0}, PendingOnly: {1}", CurrentUserId, pendingOnly);
+            Logger.Debug(this.MethodName() + " | Loading credit invoices. UserId: {0}, PendingOnly: {1}", CurrentUserId, pendingOnly);
             return Ok(ApiResponse<IReadOnlyList<CustomerCreditInvoice>>.SuccessResult(await repository.GetAllAsync(CurrentUserId, pendingOnly)));
         }
         catch (Exception ex)
@@ -33,7 +33,7 @@ public class CustomerCreditInvoicesController(ICustomerCreditInvoiceRepository r
     {
         try
         {
-            Logger.Debug("Loading credit invoice. UserId: {0}, InvoiceId: {1}", CurrentUserId, id);
+            Logger.Debug(this.MethodName() + " | Loading credit invoice. UserId: {0}, InvoiceId: {1}", CurrentUserId, id);
             var invoice = await repository.GetByIdAsync(id, CurrentUserId);
             return invoice is null ? NotFound(ApiResponse.ErrorResult("Customer credit invoice not found.")) : Ok(ApiResponse<CustomerCreditInvoice>.SuccessResult(invoice));
         }
@@ -51,7 +51,7 @@ public class CustomerCreditInvoicesController(ICustomerCreditInvoiceRepository r
             if (!ModelState.IsValid || !OptionalProductIsValid(dto.ProductName, dto.Quantity, dto.Price) || !ItemsAreValid(dto.Items))
                 return BadRequest(ApiResponse.ErrorResult("Provide product name, quantity, and price together, with positive quantity and price."));
             var invoice = await repository.CreateAsync(CurrentUserId, dto);
-            Logger.Info("Credit invoice created. UserId: {0}, InvoiceId: {1}", CurrentUserId, invoice.Id);
+            Logger.Info(this.MethodName() + " | Credit invoice created. UserId: {0}, InvoiceId: {1}", CurrentUserId, invoice.Id);
             return CreatedAtAction(nameof(GetById), new { id = invoice.Id }, ApiResponse<CustomerCreditInvoice>.SuccessResult(invoice, "Customer credit invoice created."));
         }
         catch (Exception ex)
@@ -69,7 +69,7 @@ public class CustomerCreditInvoicesController(ICustomerCreditInvoiceRepository r
                 return BadRequest(ApiResponse.ErrorResult("Provide product name, quantity, and price together, with positive quantity and price."));
             var invoice = await repository.AddTransactionAsync(id, CurrentUserId, dto);
             if (invoice is not null)
-                Logger.Info("Credit transaction added. UserId: {0}, InvoiceId: {1}", CurrentUserId, id);
+                Logger.Info(this.MethodName() + " | Credit transaction added. UserId: {0}, InvoiceId: {1}", CurrentUserId, id);
             return invoice is null ? NotFound(ApiResponse.ErrorResult("Pending customer credit invoice not found.")) : Ok(ApiResponse<CustomerCreditInvoice>.SuccessResult(invoice, "Transaction added."));
         }
         catch (Exception ex)
@@ -85,7 +85,7 @@ public class CustomerCreditInvoicesController(ICustomerCreditInvoiceRepository r
         {
             var updated = await repository.MarkReceivedAsync(id, CurrentUserId);
             if (updated)
-                Logger.Info("Credit invoice marked received. UserId: {0}, InvoiceId: {1}", CurrentUserId, id);
+                Logger.Info(this.MethodName() + " | Credit invoice marked received. UserId: {0}, InvoiceId: {1}", CurrentUserId, id);
             return updated ? Ok(ApiResponse.SuccessResult("Invoice marked as received.")) : NotFound(ApiResponse.ErrorResult("Pending customer credit invoice not found."));
         }
         catch (Exception ex)
@@ -101,7 +101,7 @@ public class CustomerCreditInvoicesController(ICustomerCreditInvoiceRepository r
         {
             var updated = await repository.MarkTransactionReceivedAsync(id, transactionId, CurrentUserId);
             if (updated)
-                Logger.Info("Credit transaction marked received. UserId: {0}, InvoiceId: {1}, TransactionId: {2}", CurrentUserId, id, transactionId);
+                Logger.Info(this.MethodName() + " | Credit transaction marked received. UserId: {0}, InvoiceId: {1}, TransactionId: {2}", CurrentUserId, id, transactionId);
             return updated ? Ok(ApiResponse.SuccessResult("Credit entry marked as received.")) : NotFound(ApiResponse.ErrorResult("Pending credit entry not found."));
         }
         catch (Exception ex)
@@ -124,7 +124,7 @@ public class CustomerCreditInvoicesController(ICustomerCreditInvoiceRepository r
             var updated = await repository.RecordTransactionPaymentAsync(
                 id, transactionId, CurrentUserId, dto.Amount);
             if (updated)
-                Logger.Info("Credit payment recorded. UserId: {0}, InvoiceId: {1}, TransactionId: {2}", CurrentUserId, id, transactionId);
+                Logger.Info(this.MethodName() + " | Credit payment recorded. UserId: {0}, InvoiceId: {1}, TransactionId: {2}", CurrentUserId, id, transactionId);
             return updated
                 ? Ok(ApiResponse.SuccessResult("Partial payment recorded."))
                 : BadRequest(ApiResponse.ErrorResult("Payment exceeds the remaining credit amount, or this entry is already settled."));

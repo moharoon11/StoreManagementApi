@@ -17,8 +17,8 @@ internal static class ApiExceptionHandler
             _ => (StatusCodes.Status500InternalServerError, "An unexpected server error occurred.")
         };
 
-        logger.Error(exception, "{0} failed. RequestId: {1}, Status: {2}",
-            action, controller.HttpContext.TraceIdentifier, status);
+        logger.Error(exception, "{0}.{1} failed. RequestId: {2}, Status: {3}",
+            controller.GetType().Name, action, controller.HttpContext.TraceIdentifier, status);
         return new ObjectResult(ApiResponse.ErrorResult(message)) { StatusCode = status };
     }
 }

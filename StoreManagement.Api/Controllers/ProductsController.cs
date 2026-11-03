@@ -36,7 +36,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("GetFiltered started.");
+                Logger.Debug(this.MethodName() + " | GetFiltered started.");
                 var result = await _productRepository.GetFilteredProductsAsync(CurrentUserId, filter);
                 return Ok(ApiResponse<PagedResponse<Product>>.SuccessResult(result, "Products retrieved successfully."));
             }
@@ -51,7 +51,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("GetById started. ProductId: {0}", id);
+                Logger.Debug(this.MethodName() + " | GetById started. ProductId: {0}", id);
                 var product = await _productRepository.GetByIdAsync(id, CurrentUserId);
                 if (product == null)
                 {
@@ -71,7 +71,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("Create started. ProductName: {0}", dto.Name);
+                Logger.Debug(this.MethodName() + " | Create started. ProductName: {0}", dto.Name);
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(ApiResponse.ErrorResult("Invalid product data."));
@@ -158,7 +158,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("Update started. ProductId: {0}", id);
+                Logger.Debug(this.MethodName() + " | Update started. ProductId: {0}", id);
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(ApiResponse.ErrorResult("Invalid product data."));
@@ -229,7 +229,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("Delete started. ProductId: {0}", id);
+                Logger.Debug(this.MethodName() + " | Delete started. ProductId: {0}", id);
                 var product = await _productRepository.GetByIdAsync(id, CurrentUserId);
                 if (product == null)
                 {
@@ -256,7 +256,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("UpdateStock started. ProductId: {0}", id);
+                Logger.Debug(this.MethodName() + " | UpdateStock started. ProductId: {0}", id);
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(ApiResponse.ErrorResult("Invalid stock update data."));

@@ -24,7 +24,7 @@ namespace StoreManagement.Api.Repositories
                 ON DUPLICATE KEY UPDATE CreatedAt = NOW();";
             var affected = await connection.ExecuteAsync(sql, new { UserId = userId, ProductId = productId });
             if (affected > 0)
-                Logger.Info("Favourite saved. UserId: {0}, ProductId: {1}", userId, productId);
+                Logger.Info(this.MethodName() + " | Favourite saved. UserId: {0}, ProductId: {1}", userId, productId);
             return affected > 0;
         }
 
@@ -34,7 +34,7 @@ namespace StoreManagement.Api.Repositories
             const string sql = "DELETE FROM Favourites WHERE UserId = @UserId AND ProductId = @ProductId;";
             var affected = await connection.ExecuteAsync(sql, new { UserId = userId, ProductId = productId });
             if (affected > 0)
-                Logger.Info("Favourite removed. UserId: {0}, ProductId: {1}", userId, productId);
+                Logger.Info(this.MethodName() + " | Favourite removed. UserId: {0}, ProductId: {1}", userId, productId);
             return affected > 0;
         }
 

@@ -21,16 +21,16 @@ namespace StoreManagement.Api.Data
 
         public async Task<MySqlConnection> CreateConnectionAsync(CancellationToken cancellationToken = default)
         {
-            Logger.Debug("Database connection opening.");
+            Logger.Debug(this.MethodName() + " | Database connection opening.");
             try
             {
                 var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
-                Logger.Debug("Database connection opened successfully.");
+                Logger.Debug(this.MethodName() + " | Database connection opened successfully.");
                 return connection;
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Database connection failed.");
+                Logger.Error(ex, this.MethodName() + " | Database connection failed.");
                 throw;
             }
         }

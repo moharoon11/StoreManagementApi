@@ -15,7 +15,7 @@ public sealed class SubscriptionService(
     {
         // This is the business layer for creating a subscription. It validates the request,
         // creates the local records, and creates a Razorpay order only for a paid subscription.
-        Logger.Debug($"{nameof(CreateAsync)} | ApplicationId: {appId} | CustomerId: {request.CustomerId} | PlanId: {request.PlanId} | " +
+        Logger.Debug($"{this.MethodName()} | ApplicationId: {appId} | CustomerId: {request.CustomerId} | PlanId: {request.PlanId} | " +
             $"Payload: BillingPeriod={request.BillingPeriod}, StartTrial={request.StartTrial}");
         if (request.BillingPeriod is not ("three_month" or "six_month" or "one_year" or "monthly" or "yearly")
             || string.IsNullOrWhiteSpace(request.IdempotencyKey)
@@ -34,14 +34,14 @@ public sealed class SubscriptionService(
             if (result is null)
             {
                 // Return null when the customer or plan was not found for this application.
-                Logger.Warn($"{nameof(CreateAsync)} | ApplicationId: {appId} | CustomerId: {request.CustomerId} | Payload: no result returned");
+                Logger.Warn($"{this.MethodName()} | ApplicationId: {appId} | CustomerId: {request.CustomerId} | Payload: no result returned");
                 return null;
             }
 
             if (request.StartTrial || result.Status == "trialing")
             {
                 // A trial is already usable, so it does not need a payment row or Razorpay order.
-                Logger.Info($"{nameof(CreateAsync)} | ApplicationId: {appId} | SubscriptionId: {result.SubscriptionId} | Status: {result.Status}");
+                Logger.Info($"{this.MethodName()} | ApplicationId: {appId} | SubscriptionId: {result.SubscriptionId} | Status: {result.Status}");
                 return new(result.SubscriptionId, result.Status);
             }
 
@@ -88,14 +88,14 @@ public sealed class SubscriptionService(
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, $"{nameof(CreateAsync)} | Razorpay order creation failed | PaymentId: {result.PaymentId}");
+                Logger.Error(ex, $"{this.MethodName()} | Razorpay order creation failed | PaymentId: {result.PaymentId}");
                 await repository.MarkOrderFailedAsync(result.PaymentId);
                 throw;
             }
         }
         catch (Exception ex)
         {
-            Logger.Error(ex, $"{nameof(CreateAsync)} | ApplicationId: {appId} | CustomerId: {request.CustomerId} | Exception: {ex.Message}");
+            Logger.Error(ex, $"{this.MethodName()} | ApplicationId: {appId} | CustomerId: {request.CustomerId} | Exception: {ex.Message}");
             throw;
         }
     }

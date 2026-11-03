@@ -139,7 +139,7 @@ namespace StoreManagement.Api.Repositories
                     (@UserId, @CategoryId, @Name, @ImageUrl, @CostPrice, @SellingPrice, @StockQuantity, 0, @Unit, NOW(), NOW());
                 SELECT LAST_INSERT_ID();";
             var id = await connection.ExecuteScalarAsync<int>(sql, product);
-            Logger.Info("Product created. UserId: {0}, ProductId: {1}", product.UserId, id);
+            Logger.Info(this.MethodName() + " | Product created. UserId: {0}, ProductId: {1}", product.UserId, id);
             return id;
         }
 
@@ -159,7 +159,7 @@ namespace StoreManagement.Api.Repositories
                 WHERE Id = @Id AND UserId = @UserId;";
             var affected = await connection.ExecuteAsync(sql, product);
             if (affected > 0)
-                Logger.Info("Product updated. UserId: {0}, ProductId: {1}", product.UserId, product.Id);
+                Logger.Info(this.MethodName() + " | Product updated. UserId: {0}, ProductId: {1}", product.UserId, product.Id);
             return affected > 0;
         }
 
@@ -169,7 +169,7 @@ namespace StoreManagement.Api.Repositories
             const string sql = "DELETE FROM Products WHERE Id = @Id AND UserId = @UserId;";
             var affected = await connection.ExecuteAsync(sql, new { Id = id, UserId = userId });
             if (affected > 0)
-                Logger.Info("Product deleted. UserId: {0}, ProductId: {1}", userId, id);
+                Logger.Info(this.MethodName() + " | Product deleted. UserId: {0}, ProductId: {1}", userId, id);
             return affected > 0;
         }
 
@@ -179,7 +179,7 @@ namespace StoreManagement.Api.Repositories
             const string sql = "UPDATE Products SET StockQuantity = @NewQuantity, UpdatedAt = NOW() WHERE Id = @Id AND UserId = @UserId;";
             var affected = await connection.ExecuteAsync(sql, new { Id = id, UserId = userId, NewQuantity = newQuantity });
             if (affected > 0)
-                Logger.Info("Product stock set. UserId: {0}, ProductId: {1}, Quantity: {2}", userId, id, newQuantity);
+                Logger.Info(this.MethodName() + " | Product stock set. UserId: {0}, ProductId: {1}, Quantity: {2}", userId, id, newQuantity);
             return affected > 0;
         }
     }

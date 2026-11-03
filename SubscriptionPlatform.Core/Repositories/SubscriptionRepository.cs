@@ -38,7 +38,7 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
         if (customer is null || plan is null)
         {
             // Returning null prevents a caller from using another tenant's customer or plan.
-            Logger.Warn("Subscription creation rejected: customer or plan unavailable. ApplicationId: {0}", appId);
+            Logger.Warn(this.MethodName() + " | Subscription creation rejected: customer or plan unavailable. ApplicationId: {0}", appId);
             return null;
         }
 
@@ -53,7 +53,7 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
         if (prior is not null)
         {
             // Return the original IDs and state so the create operation is safe to retry.
-            Logger.Info("Existing checkout reused. SubscriptionId: {0}", (Guid)prior.subscription_id);
+            Logger.Info(this.MethodName() + " | Existing checkout reused. SubscriptionId: {0}", (Guid)prior.subscription_id);
             return new(
                 (Guid)prior.subscription_id,
                 (Guid)prior.id,
@@ -122,7 +122,7 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
                 new { subscriptionId, now }, transaction);
             // The trial is ready immediately, so it needs no payment row or provider order.
             await transaction.CommitAsync();
-            Logger.Info("Trial committed. SubscriptionId: {0}", subscriptionId);
+            Logger.Info(this.MethodName() + " | Trial committed. SubscriptionId: {0}", subscriptionId);
             return new(subscriptionId, Guid.Empty, status, 0, currency);
         }
 
@@ -132,7 +132,7 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
             new { paymentId, subscriptionId, key = scopedKey, amount, currency, now }, transaction);
         // Commit before contacting Razorpay so an interrupted request can find and reuse this payment.
         await transaction.CommitAsync();
-        Logger.Info("Paid subscription checkout committed. SubscriptionId: {0}, PaymentId: {1}", subscriptionId, paymentId);
+        Logger.Info(this.MethodName() + " | Paid subscription checkout committed. SubscriptionId: {0}, PaymentId: {1}", subscriptionId, paymentId);
 
         // The payment row is ready for Razorpay order creation. The payment status
         // is intentionally returned here, not the subscription status.
@@ -145,7 +145,7 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
             "UPDATE payments SET razorpay_order_id=@orderId WHERE id=@paymentId",
             new { paymentId, orderId });
         if (affected > 0)
-            Logger.Info("Provider order linked. PaymentId: {0}, OrderId: {1}", paymentId, orderId);
+            Logger.Info(this.MethodName() + " | Provider order linked. PaymentId: {0}, OrderId: {1}", paymentId, orderId);
     }
 
     public async Task MarkOrderFailedAsync(Guid paymentId)
@@ -155,7 +155,7 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
             "UPDATE payments SET status='order_failed' WHERE id=@paymentId",
             new { paymentId });
         if (affected > 0)
-            Logger.Warn("Provider order creation marked failed. PaymentId: {0}", paymentId);
+            Logger.Warn(this.MethodName() + " | Provider order creation marked failed. PaymentId: {0}", paymentId);
     }
 
     public async Task<object?> GetAsync(Guid id, Guid appId)
@@ -181,7 +181,7 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
             "UPDATE subscriptions SET cancel_at_period_end=1,version=version+1 WHERE id=@id AND application_id=@appId AND status IN ('active','trialing')",
             new { id, appId }) > 0;
         if (changed)
-            Logger.Info("Subscription cancellation scheduled. SubscriptionId: {0}", id);
+            Logger.Info(this.MethodName() + " | Subscription cancellation scheduled. SubscriptionId: {0}", id);
         return changed;
     }
 
@@ -192,7 +192,7 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
             "UPDATE subscriptions s JOIN plans p ON p.id=@planId AND p.application_id=@appId AND p.active=1 SET s.plan_id=p.id,s.version=s.version+1 WHERE s.id=@id AND s.application_id=@appId AND s.status IN ('active','trialing')",
             new { id, planId, appId }) > 0;
         if (changed)
-            Logger.Info("Subscription plan changed. SubscriptionId: {0}, PlanId: {1}", id, planId);
+            Logger.Info(this.MethodName() + " | Subscription plan changed. SubscriptionId: {0}, PlanId: {1}", id, planId);
         return changed;
     }
 }

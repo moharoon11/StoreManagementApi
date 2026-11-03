@@ -55,20 +55,20 @@ public sealed class SmtpEmailService : IEmailService
             message.Body = new BodyBuilder { HtmlBody = html }.ToMessageBody();
 
             using var client = new SmtpClient();
-            Logger.Info("Connecting to SMTP server {0}:{1} to send {2} to recipient domain {3}.",
+            Logger.Info(this.MethodName() + " | Connecting to SMTP server {0}:{1} to send {2} to recipient domain {3}.",
                 _options.SmtpHost, _options.SmtpPort, subject, RecipientDomain(recipient));
             await client.ConnectAsync(_options.SmtpHost, _options.SmtpPort, SecureSocketOptions.SslOnConnect, cancellationToken);
-            Logger.Debug("SMTP connection established. Authenticating SMTP user {0}.", _options.SmtpUsername);
+            Logger.Debug(this.MethodName() + " | SMTP connection established. Authenticating SMTP user {0}.", _options.SmtpUsername);
             await client.AuthenticateAsync(_options.SmtpUsername, _options.SmtpPassword, cancellationToken);
             await client.SendAsync(message, cancellationToken);
             await client.DisconnectAsync(true, cancellationToken);
-            Logger.Info("Security email accepted by the configured SMTP server for recipient domain {0}.", RecipientDomain(recipient));
+            Logger.Info(this.MethodName() + " | Security email accepted by the configured SMTP server for recipient domain {0}.", RecipientDomain(recipient));
         }
         catch (Exception ex)
         {
             // Passing the exception as the first argument preserves its complete
             // type, stack trace, and inner-exception chain in NLog.
-            Logger.Error(ex, "SMTP delivery failed for {0} to recipient domain {1} via {2}:{3}.",
+            Logger.Error(ex, this.MethodName() + " | SMTP delivery failed for {0} to recipient domain {1} via {2}:{3}.",
                 subject, RecipientDomain(recipient), _options.SmtpHost, _options.SmtpPort);
             throw;
         }

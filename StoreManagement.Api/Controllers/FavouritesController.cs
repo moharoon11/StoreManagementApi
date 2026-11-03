@@ -26,7 +26,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("GetFavourites started.");
+                Logger.Debug(this.MethodName() + " | GetFavourites started.");
                 var favourites = await _favouriteRepository.GetFavouritesByUserIdAsync(CurrentUserId);
                 return Ok(ApiResponse<IEnumerable<Product>>.SuccessResult(favourites, "Favourite products retrieved."));
             }
@@ -41,7 +41,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("AddFavourite started. ProductId: {0}", productId);
+                Logger.Debug(this.MethodName() + " | AddFavourite started. ProductId: {0}", productId);
                 var product = await _productRepository.GetByIdAsync(productId, CurrentUserId);
                 if (product == null)
                 {
@@ -67,7 +67,7 @@ namespace StoreManagement.Api.Controllers
         {
             try
             {
-                Logger.Debug("RemoveFavourite started. ProductId: {0}", productId);
+                Logger.Debug(this.MethodName() + " | RemoveFavourite started. ProductId: {0}", productId);
                 var success = await _favouriteRepository.RemoveFavouriteAsync(CurrentUserId, productId);
                 if (!success)
                 {

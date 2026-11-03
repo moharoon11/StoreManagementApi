@@ -22,11 +22,11 @@ public sealed class PaymentService(PaymentRepository repository, RazorpayService
         string signature)
     {
         // Verify the checkout callback before allowing the payment to activate access.
-        Logger.Debug($"{nameof(VerifyAsync)} | ApplicationId: {appId} | Payload: PaymentId={paymentId}, OrderId={orderId}");
+        Logger.Debug($"{this.MethodName()} | ApplicationId: {appId} | Payload: PaymentId={paymentId}, OrderId={orderId}");
         if (!razorpay.VerifyPayment(orderId, providerPaymentId, signature))
         {
             // The signature proves that the callback values came from Razorpay.
-            Logger.Warn($"{nameof(VerifyAsync)} | PaymentId: {paymentId} | OrderId: {orderId} | Provider signature verification failed");
+            Logger.Warn($"{this.MethodName()} | PaymentId: {paymentId} | OrderId: {orderId} | Provider signature verification failed");
             return false;
         }
 
@@ -51,14 +51,14 @@ public sealed class PaymentService(PaymentRepository repository, RazorpayService
                 provider.Amount,
                 provider.Currency);
             if (activated)
-                Logger.Info("Payment verified and subscription activated. PaymentId: {0}", paymentId);
+                Logger.Info(this.MethodName() + " | Payment verified and subscription activated. PaymentId: {0}", paymentId);
             else
-                Logger.Warn("Payment verified by provider but local activation was rejected. PaymentId: {0}", paymentId);
+                Logger.Warn(this.MethodName() + " | Payment verified by provider but local activation was rejected. PaymentId: {0}", paymentId);
             return activated;
         }
         catch (Exception ex)
         {
-            Logger.Error(ex, $"{nameof(VerifyAsync)} | PaymentId: {paymentId} | OrderId: {orderId} | Exception: {ex.Message}");
+            Logger.Error(ex, $"{this.MethodName()} | PaymentId: {paymentId} | OrderId: {orderId} | Exception: {ex.Message}");
             throw;
         }
     }
@@ -78,9 +78,9 @@ public sealed class PaymentService(PaymentRepository repository, RazorpayService
         // Mark a pending payment as failed after confirming its customer and order ownership.
         var marked = await repository.MarkFailedAsync(appId, paymentId, orderId, externalId);
         if (marked)
-            Logger.Info("Payment failure callback recorded. PaymentId: {0}", paymentId);
+            Logger.Info(this.MethodName() + " | Payment failure callback recorded. PaymentId: {0}", paymentId);
         else
-            Logger.Warn("Payment failure callback ignored. PaymentId: {0}", paymentId);
+            Logger.Warn(this.MethodName() + " | Payment failure callback ignored. PaymentId: {0}", paymentId);
         return marked;
     }
 
@@ -90,11 +90,11 @@ public sealed class PaymentService(PaymentRepository repository, RazorpayService
         string signature)
     {
         // Webhooks can arrive without a logged-in user, so the provider signature is their authentication.
-        Logger.Debug($"{nameof(ProcessWebhookAsync)} | EventId: {eventId} | PayloadLength: {raw.Length}");
+        Logger.Debug($"{this.MethodName()} | EventId: {eventId} | PayloadLength: {raw.Length}");
         if (!razorpay.VerifyWebhook(raw, signature))
         {
             // Never parse or apply an event that was not signed by Razorpay.
-            Logger.Warn($"{nameof(ProcessWebhookAsync)} | EventId: {eventId} | Provider signature verification failed");
+            Logger.Warn($"{this.MethodName()} | EventId: {eventId} | Provider signature verification failed");
             return WebhookProcessingResult.InvalidSignature;
         }
 
@@ -151,14 +151,14 @@ public sealed class PaymentService(PaymentRepository repository, RazorpayService
                 amount,
                 currency,
                 status);
-            Logger.Info("Payment webhook {0}. EventId: {1}, EventType: {2}", processed ? "processed" : "already handled", eventId, eventType);
+            Logger.Info(this.MethodName() + " | Payment webhook {0}. EventId: {1}, EventType: {2}", processed ? "processed" : "already handled", eventId, eventType);
             return processed
                 ? WebhookProcessingResult.Processed
                 : WebhookProcessingResult.Duplicate;
         }
         catch (Exception ex)
         {
-            Logger.Error(ex, $"{nameof(ProcessWebhookAsync)} | EventId: {eventId} | Exception: {ex.Message}");
+            Logger.Error(ex, $"{this.MethodName()} | EventId: {eventId} | Exception: {ex.Message}");
             throw;
         }
     }
