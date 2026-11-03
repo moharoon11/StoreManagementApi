@@ -70,7 +70,9 @@ namespace StoreManagement.Api.Repositories
                 }
             }
 
-            return new PagedResponse<Invoice>(invoices, pageNumber, pageSize, totalCount);
+            var page = new PagedResponse<Invoice>(invoices, pageNumber, pageSize, totalCount);
+            Logger.Debug(this.MethodName() + " | Invoice history loaded. UserId: {0}, Returned: {1}, Total: {2}", userId, invoices.Count, totalCount);
+            return page;
         }
 
         public async Task<Invoice?> GetByIdAsync(int id, int userId)
@@ -83,7 +85,11 @@ namespace StoreManagement.Api.Repositories
 
             var invoice = await connection.QuerySingleOrDefaultAsync<Invoice>(invoiceSql, new { Id = id, UserId = userId });
 
-            if (invoice == null) return null;
+            if (invoice == null)
+            {
+                Logger.Debug(this.MethodName() + " | Invoice not found. UserId: {0}, InvoiceId: {1}", userId, id);
+                return null;
+            }
 
             const string itemsSql = "SELECT * FROM InvoiceItems WHERE InvoiceId = @InvoiceId;";
             var items = await connection.QueryAsync<InvoiceItem>(itemsSql, new { InvoiceId = id });
@@ -93,6 +99,7 @@ namespace StoreManagement.Api.Repositories
             var store = await connection.QuerySingleOrDefaultAsync<StoreProfile>(storeSql, new { UserId = invoice.UserId });
             invoice.Store = store;
 
+            Logger.Debug(this.MethodName() + " | Invoice loaded. UserId: {0}, InvoiceId: {1}, ItemCount: {2}", userId, id, invoice.Items.Count);
             return invoice;
         }
 
@@ -126,6 +133,7 @@ namespace StoreManagement.Api.Repositories
                 WHERE {whereSql};";
 
             var summary = await connection.QuerySingleOrDefaultAsync<InvoiceSummaryDto>(summarySql, parameters);
+            Logger.Debug(this.MethodName() + " | Invoice summary found: {0}. UserId: {1}", summary is not null, userId);
             return summary ?? new InvoiceSummaryDto();
         }
 

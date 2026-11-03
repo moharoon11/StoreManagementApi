@@ -19,7 +19,8 @@ namespace StoreManagement.Api.Repositories
         {
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
             const string sql = "SELECT * FROM Users WHERE Username = @Username LIMIT 1;";
-            User? user =  await connection.QuerySingleOrDefaultAsync<User>(sql, new { Username = username });
+            User? user = await connection.QuerySingleOrDefaultAsync<User>(sql, new { Username = username });
+            Logger.Debug(this.MethodName() + " | User found by username: {0}", user is not null);
             return user;
         }
 
@@ -28,6 +29,7 @@ namespace StoreManagement.Api.Repositories
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
             const string sql = "SELECT * FROM Users WHERE Id = @Id LIMIT 1;";
             User? user = await connection.QuerySingleOrDefaultAsync<User>(sql, new { Id = id });
+            Logger.Debug(this.MethodName() + " | User found by ID: {0}. UserId: {1}", user is not null, id);
             return user;
         }
 

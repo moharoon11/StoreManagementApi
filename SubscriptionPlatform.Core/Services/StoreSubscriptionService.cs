@@ -44,18 +44,22 @@ public sealed class StoreSubscriptionService(
         }
     }
 
-    public Task<object?> GetOptionsAsync()
+    public async Task<object?> GetOptionsAsync()
     {
         // Return the configured plan so the client can display prices and trial options.
         Logger.Debug($"{this.MethodName()} | ApplicationId: {ApplicationId} | PlanId: {PlanId}");
-        return catalog.GetPlanAsync(ApplicationId, PlanId);
+        var plan = await catalog.GetPlanAsync(ApplicationId, PlanId);
+        Logger.Debug(this.MethodName() + " | Configured plan found: {0}", plan is not null);
+        return plan;
     }
 
-    public Task<object?> GetStatusAsync(string externalCustomerId)
+    public async Task<object?> GetStatusAsync(string externalCustomerId)
     {
         // Return the subscription status belonging to the signed-in Store customer.
         Logger.Debug($"{this.MethodName()} | ApplicationId: {ApplicationId} | ExternalCustomerId: {externalCustomerId}");
-        return subscriptions.GetByExternalCustomerAsync(ApplicationId, externalCustomerId);
+        var status = await subscriptions.GetByExternalCustomerAsync(ApplicationId, externalCustomerId);
+        Logger.Debug(this.MethodName() + " | Customer subscription found: {0}. ExternalCustomerId: {1}", status is not null, externalCustomerId);
+        return status;
     }
 
     public async Task<StoreSubscriptionOrder> StartAsync(
@@ -80,7 +84,7 @@ public sealed class StoreSubscriptionService(
         var result = await subscriptions.CreateAsync(ApplicationId, request)
             ?? throw new InvalidOperationException("Configured plan or customer is unavailable.");
         // Return the IDs and server-calculated payment values needed to open Razorpay Checkout.
-        return new StoreSubscriptionOrder(
+        var order = new StoreSubscriptionOrder(
             result.SubscriptionId,
             result.Status,
             result.PaymentId,
@@ -88,9 +92,11 @@ public sealed class StoreSubscriptionService(
             result.KeyId,
             result.AmountMinor,
             result.Currency);
+        Logger.Info(this.MethodName() + " | Subscription start returned. SubscriptionId: {0}, Status: {1}, PaymentId: {2}", order.SubscriptionId, order.Status, order.PaymentId);
+        return order;
     }
 
-    public Task<bool> VerifyPaymentAsync(
+    public async Task<bool> VerifyPaymentAsync(
         Guid paymentId,
         string orderId,
         string razorpayPaymentId,
@@ -98,26 +104,30 @@ public sealed class StoreSubscriptionService(
     {
         // A successful client callback is not trusted by itself; this verifies the provider payment first.
         Logger.Debug($"{this.MethodName()} | ApplicationId: {ApplicationId} | Payload: PaymentId={paymentId}, OrderId={orderId}");
-        return payments.VerifyAsync(
+        var verified = await payments.VerifyAsync(
             ApplicationId,
             paymentId,
             orderId,
             razorpayPaymentId,
             signature);
+        Logger.Debug(this.MethodName() + " | Payment verification result: {0}. PaymentId: {1}", verified, paymentId);
+        return verified;
     }
 
-    public Task<bool> MarkPaymentFailedAsync(
+    public async Task<bool> MarkPaymentFailedAsync(
         string externalCustomerId,
         Guid paymentId,
         string orderId)
     {
         // The customer ID is passed through so a user cannot mark another user's payment as failed.
         Logger.Info($"{this.MethodName()} | ApplicationId: {ApplicationId} | Payload: PaymentId={paymentId}, OrderId={orderId}");
-        return payments.MarkFailedAsync(
+        var marked = await payments.MarkFailedAsync(
             ApplicationId,
             paymentId,
             orderId,
             externalCustomerId);
+        Logger.Debug(this.MethodName() + " | Payment failure recorded: {0}. PaymentId: {1}", marked, paymentId);
+        return marked;
     }
 
     public async Task<(bool IsValidSignature, bool Duplicate)> ProcessWebhookAsync(string eventId, string rawPayload, string signature)
@@ -125,6 +135,7 @@ public sealed class StoreSubscriptionService(
         // Keep the raw body unchanged because Razorpay's signature is calculated from those exact bytes.
         Logger.Debug($"{this.MethodName()} | EventId: {eventId} | PayloadLength: {rawPayload.Length}");
         var result = await payments.ProcessWebhookAsync(eventId, rawPayload, signature);
+        Logger.Debug(this.MethodName() + " | Webhook result: {0}. EventId: {1}", result, eventId);
         return (result != WebhookProcessingResult.InvalidSignature, result == WebhookProcessingResult.Duplicate);
     }
 }

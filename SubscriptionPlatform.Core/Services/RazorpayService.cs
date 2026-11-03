@@ -52,12 +52,16 @@ public sealed class RazorpayService(IConfiguration config)
     }
     public bool VerifyPayment(string orderId, string paymentId, string signature)
     {
-        return Verify($"{orderId}|{paymentId}", signature, config["Razorpay:KeySecret"]);
+        var verified = Verify($"{orderId}|{paymentId}", signature, config["Razorpay:KeySecret"]);
+        Logger.Debug(this.MethodName() + " | Provider payment signature valid: {0}. OrderId: {1}, PaymentId: {2}", verified, orderId, paymentId);
+        return verified;
     }
 
     public bool VerifyWebhook(string payload, string signature)
     {
-        return Verify(payload, signature, config["Razorpay:WebhookSecret"]);
+        var verified = Verify(payload, signature, config["Razorpay:WebhookSecret"]);
+        Logger.Debug(this.MethodName() + " | Provider webhook signature valid: {0}. PayloadLength: {1}", verified, payload.Length);
+        return verified;
     }
     private static bool Verify(string message, string? signature, string? secret)
     {

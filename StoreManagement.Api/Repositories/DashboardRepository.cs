@@ -117,7 +117,7 @@ namespace StoreManagement.Api.Repositories
                 });
             }
 
-            return new DashboardSummaryDto
+            var summary = new DashboardSummaryDto
             {
                 TodaySales = todayStats.TodaySales,
                 TodayInvoiceCount = todayStats.TodayInvoiceCount,
@@ -129,6 +129,8 @@ namespace StoreManagement.Api.Repositories
                 StockOverview = stockOverview,
                 SalesTrend = salesTrend
             };
+            Logger.Debug(this.MethodName() + " | Dashboard loaded. UserId: {0}, Products: {1}, InvoicesToday: {2}", userId, summary.TotalProducts, summary.TodayInvoiceCount);
+            return summary;
         }
     }
 }

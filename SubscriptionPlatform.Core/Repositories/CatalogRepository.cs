@@ -10,16 +10,18 @@ public sealed class CatalogRepository(ConnectionFactory connections)
     private static readonly Logger Logger = LogManager.GetLogger("SubscriptionPlatform.Repositories.CatalogRepository");
     public async Task<bool> IsApplicationActiveAsync(Guid id)
     {
-        await using var db = connections.Create();
-        return await db.ExecuteScalarAsync<int>(
+        await using var db = await connections.OpenConnectionAsync();
+        var active = await db.ExecuteScalarAsync<int>(
             "SELECT COUNT(*) FROM registered_applications WHERE id=@id AND active=1",
             new { id }) > 0;
+        Logger.Debug(this.MethodName() + " | Application active: {0}. ApplicationId: {1}", active, id);
+        return active;
     }
 
     public async Task<Guid> CreatePlanAsync(Guid appId, PlanRequest request)
     {
         var id = Guid.NewGuid();
-        await using var db = connections.Create();
+        await using var db = await connections.OpenConnectionAsync();
         await db.ExecuteAsync(
             "INSERT INTO plans(id,application_id,name,currency,monthly_amount_minor,yearly_amount_minor,three_month_amount_minor,six_month_amount_minor,trial_days,features_json,limits_json,active) VALUES(@id,@appId,@Name,@Currency,@MonthlyAmountMinor,@YearlyAmountMinor,@ThreeMonthAmountMinor,@SixMonthAmountMinor,@TrialDays,@FeaturesJson,@LimitsJson,1)",
             new
@@ -36,45 +38,54 @@ public sealed class CatalogRepository(ConnectionFactory connections)
                 request.FeaturesJson,
                 request.LimitsJson
             });
+        Logger.Info(this.MethodName() + " | Plan row created. ApplicationId: {0}, PlanId: {1}", appId, id);
         return id;
     }
 
     public async Task<IEnumerable<object>> ListPlansAsync(Guid appId)
     {
         Logger.Debug(this.MethodName() + " | Loading plans. ApplicationId: {0}", appId);
-        await using var db = connections.Create();
-        return await db.QueryAsync(
+        await using var db = await connections.OpenConnectionAsync();
+        var plans = (await db.QueryAsync(
             "SELECT id,name,currency,monthly_amount_minor,yearly_amount_minor,three_month_amount_minor,six_month_amount_minor,trial_days,features_json,limits_json FROM plans WHERE application_id=@appId AND active=1",
-            new { appId });
+            new { appId })).AsList();
+        Logger.Debug(this.MethodName() + " | Plans loaded. ApplicationId: {0}, Count: {1}", appId, plans.Count);
+        return plans;
     }
 
     public async Task<object?> GetPlanAsync(Guid appId, Guid planId)
     {
         Logger.Debug(this.MethodName() + " | Loading plan. ApplicationId: {0}, PlanId: {1}", appId, planId);
-        await using var db = connections.Create();
-        return await db.QuerySingleOrDefaultAsync(
+        await using var db = await connections.OpenConnectionAsync();
+        var plan = await db.QuerySingleOrDefaultAsync(
             "SELECT id,name,currency,monthly_amount_minor,yearly_amount_minor,three_month_amount_minor,six_month_amount_minor,trial_days,features_json,limits_json FROM plans WHERE application_id=@appId AND id=@planId AND active=1",
             new { appId, planId });
+        Logger.Debug(this.MethodName() + " | Plan found: {0}. ApplicationId: {1}, PlanId: {2}", plan is not null, appId, planId);
+        return plan;
     }
 
     public async Task<object> CreateCustomerAsync(Guid appId, CustomerRequest request)
     {
         var id = Guid.NewGuid();
-        await using var db = connections.Create();
+        await using var db = await connections.OpenConnectionAsync();
         await db.ExecuteAsync(
             "INSERT INTO customers(id,application_id,external_id,email,created_utc) VALUES(@id,@appId,@ExternalId,@Email,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE email=COALESCE(VALUES(email),email)",
             new { id, appId, request.ExternalId, request.Email });
-        return await db.QuerySingleAsync(
+        var customer = await db.QuerySingleAsync(
             "SELECT id,external_id ExternalId,email FROM customers WHERE application_id=@appId AND external_id=@ExternalId",
             new { appId, request.ExternalId });
+        Logger.Debug(this.MethodName() + " | Customer row loaded after save. ApplicationId: {0}, ExternalId: {1}", appId, request.ExternalId);
+        return customer;
     }
 
     public async Task<IEnumerable<object>> ListCustomersAsync(Guid appId)
     {
         Logger.Debug(this.MethodName() + " | Loading customers. ApplicationId: {0}", appId);
-        await using var db = connections.Create();
-        return await db.QueryAsync(
+        await using var db = await connections.OpenConnectionAsync();
+        var customers = (await db.QueryAsync(
             "SELECT id,external_id ExternalId,email,created_utc CreatedUtc FROM customers WHERE application_id=@appId",
-            new { appId });
+            new { appId })).AsList();
+        Logger.Debug(this.MethodName() + " | Customers loaded. ApplicationId: {0}, Count: {1}", appId, customers.Count);
+        return customers;
     }
 }

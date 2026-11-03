@@ -19,6 +19,8 @@ dotnet publish StoreManagement.Api/StoreManagement.Api.csproj -c Release
 
 The published API output includes the class library assembly. The server only needs that publish output and the configured runtime secrets and database connection values; it does not need the source project folders.
 
+The API uses a `MySqlDataSource` for `DefaultConnection`; the subscription library owns a separate `MySqlDataSource` for `SubscriptionDatabase`. Both open a connection for each operation and dispose it afterward so it returns to its own pool. MySqlConnector enables pooling by default. Set pool sizes in each connection string according to the database server's capacity.
+
 ## Logs
 
 The API loads `nlog.config` from its published output and writes application logs to `Logs/Applog.*.log` and subscription logs to `Logs/SubscriptionLog.*.log` beside the executable. Application log messages start with the calling method name, supplied by the `CallerMemberName` based `this.MethodName()` extension. Controller exception entries name the controller action directly. Controller actions catch exceptions and return the existing API error response format, with a request ID in the log. The email worker records delivery failures. ASP.NET Core's own framework logs continue to use the default console logger, so the host should retain console output as well. The files are archived daily and retained for 14 days by `nlog.config`.

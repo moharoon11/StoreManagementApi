@@ -42,8 +42,9 @@ public sealed class SubscriptionService(
             if (request.StartTrial || result.Status == "trialing")
             {
                 // A trial is already usable, so it does not need a payment row or Razorpay order.
-                Logger.Info($"{this.MethodName()} | ApplicationId: {appId} | SubscriptionId: {result.SubscriptionId} | Status: {result.Status}");
-                return new(result.SubscriptionId, result.Status);
+                var trial = new SubscriptionCreatedResponse(result.SubscriptionId, result.Status);
+                Logger.Info(this.MethodName() + " | Trial returned. ApplicationId: {0}, SubscriptionId: {1}, Status: {2}", appId, trial.SubscriptionId, trial.Status);
+                return trial;
             }
 
             // A retry that already has an order must reuse that order. Creating a second order
@@ -51,7 +52,7 @@ public sealed class SubscriptionService(
             if (!string.IsNullOrWhiteSpace(result.RazorpayOrderId))
             {
                 // Reuse the existing provider order when this is an idempotent retry.
-                return new(
+                var existingOrder = new SubscriptionCreatedResponse(
                     result.SubscriptionId,
                     "pending_payment",
                     result.PaymentId,
@@ -59,12 +60,16 @@ public sealed class SubscriptionService(
                     razorpay.KeyId,
                     result.Amount,
                     result.Currency);
+                Logger.Info(this.MethodName() + " | Existing checkout order returned. SubscriptionId: {0}, PaymentId: {1}", existingOrder.SubscriptionId, existingOrder.PaymentId);
+                return existingOrder;
             }
 
             if (result.Status != "order_pending")
             {
                 // Return the stored state when the payment was already failed, paid, or expired.
-                return new(result.SubscriptionId, result.Status, result.PaymentId);
+                var storedState = new SubscriptionCreatedResponse(result.SubscriptionId, result.Status, result.PaymentId);
+                Logger.Debug(this.MethodName() + " | Stored checkout state returned. SubscriptionId: {0}, Status: {1}", storedState.SubscriptionId, storedState.Status);
+                return storedState;
             }
 
             try
@@ -78,7 +83,7 @@ public sealed class SubscriptionService(
                 // to this exact local payment row.
                 await repository.SetOrderAsync(result.PaymentId, orderId);
 
-                return new(
+                var checkout = new SubscriptionCreatedResponse(
                     result.SubscriptionId,
                     "pending_payment",
                     result.PaymentId,
@@ -86,6 +91,8 @@ public sealed class SubscriptionService(
                     razorpay.KeyId,
                     result.Amount,
                     result.Currency);
+                Logger.Info(this.MethodName() + " | Checkout order returned. SubscriptionId: {0}, PaymentId: {1}, OrderId: {2}", checkout.SubscriptionId, checkout.PaymentId, checkout.OrderId);
+                return checkout;
             }
             catch (Exception ex)
             {
@@ -100,27 +107,35 @@ public sealed class SubscriptionService(
             throw;
         }
     }
-    public Task<object?> GetAsync(Guid id, Guid appId)
+    public async Task<object?> GetAsync(Guid id, Guid appId)
     {
         // Retrieve one subscription while restricting the query to the application owner.
-        return repository.GetAsync(id, appId);
+        var subscription = await repository.GetAsync(id, appId);
+        Logger.Debug(this.MethodName() + " | Subscription found: {0}. SubscriptionId: {1}, ApplicationId: {2}", subscription is not null, id, appId);
+        return subscription;
     }
 
-    public Task<object?> GetByExternalCustomerAsync(Guid appId, string externalId)
+    public async Task<object?> GetByExternalCustomerAsync(Guid appId, string externalId)
     {
         // Retrieve the latest subscription for a customer's external application ID.
-        return repository.GetByExternalCustomerAsync(appId, externalId);
+        var subscription = await repository.GetByExternalCustomerAsync(appId, externalId);
+        Logger.Debug(this.MethodName() + " | Customer subscription found: {0}. ApplicationId: {1}, ExternalId: {2}", subscription is not null, appId, externalId);
+        return subscription;
     }
 
-    public Task<bool> CancelAsync(Guid id, Guid appId)
+    public async Task<bool> CancelAsync(Guid id, Guid appId)
     {
         // Set the period-end cancellation flag; this does not remove access immediately.
-        return repository.CancelAsync(id, appId);
+        var cancelled = await repository.CancelAsync(id, appId);
+        Logger.Debug(this.MethodName() + " | Cancellation scheduled: {0}. SubscriptionId: {1}", cancelled, id);
+        return cancelled;
     }
 
-    public Task<bool> ChangePlanAsync(Guid id, Guid appId, Guid planId)
+    public async Task<bool> ChangePlanAsync(Guid id, Guid appId, Guid planId)
     {
         // Replace the plan only for an active/trialing subscription; the repository enforces ownership.
-        return repository.ChangePlanAsync(id, appId, planId);
+        var changed = await repository.ChangePlanAsync(id, appId, planId);
+        Logger.Debug(this.MethodName() + " | Plan changed: {0}. SubscriptionId: {1}, PlanId: {2}", changed, id, planId);
+        return changed;
     }
 }

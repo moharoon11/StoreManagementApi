@@ -108,7 +108,10 @@ namespace StoreManagement.Api.Services
                         var textPart = parts[0];
                         if (textPart.TryGetProperty("text", out var textNode))
                         {
-                            return textNode.GetString();
+                            var extractedText = textNode.GetString();
+                            Logger.Debug(this.MethodName() + " | Gemini response text present: {0}, Length: {1}",
+                                !string.IsNullOrEmpty(extractedText), extractedText?.Length ?? 0);
+                            return extractedText;
                         }
                     }
                 }

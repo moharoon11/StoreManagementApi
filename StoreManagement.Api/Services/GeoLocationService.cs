@@ -12,15 +12,25 @@ public sealed class GeoLocationService : IGeoLocationService
     public GeoLocationService(IHttpClientFactory clientFactory, IConfiguration configuration) => (_clientFactory, _configuration) = (clientFactory, configuration);
     public async Task<(string? City, string? Region)> LookupAsync(string? publicIp, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(publicIp) || !IPAddress.TryParse(publicIp, out var ip) || IPAddress.IsLoopback(ip)) return (null, null);
+        if (string.IsNullOrWhiteSpace(publicIp) || !IPAddress.TryParse(publicIp, out var ip) || IPAddress.IsLoopback(ip))
+        {
+            Logger.Debug(this.MethodName() + " | Geo location lookup skipped: public IP is missing or invalid.");
+            return (null, null);
+        }
         var template = _configuration["GeoIp:LookupUrl"];
-        if (string.IsNullOrWhiteSpace(template)) return (null, null);
+        if (string.IsNullOrWhiteSpace(template))
+        {
+            Logger.Debug(this.MethodName() + " | Geo location lookup skipped: lookup URL is not configured.");
+            return (null, null);
+        }
         try
         {
             var client = _clientFactory.CreateClient(nameof(GeoLocationService));
             client.Timeout = TimeSpan.FromSeconds(2);
             var url = template.Replace("{ip}", Uri.EscapeDataString(publicIp));
             var data = await client.GetFromJsonAsync<GeoIpResponse>(url, cancellationToken);
+            Logger.Debug(this.MethodName() + " | Geo location lookup completed. CityFound: {0}, RegionFound: {1}",
+                !string.IsNullOrWhiteSpace(data?.City), !string.IsNullOrWhiteSpace(data?.Region ?? data?.RegionName));
             return (data?.City, data?.Region ?? data?.RegionName);
         }
         catch (Exception ex)

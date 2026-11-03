@@ -98,8 +98,12 @@ namespace StoreManagement.Api.Services
                     SELECT EXISTS(SELECT 1 FROM Products WHERE ImageUrl = @Url)
                          + EXISTS(SELECT 1 FROM Categories WHERE ImageUrl = @Url)
                          + EXISTS(SELECT 1 FROM StoreProfiles WHERE LogoUrl = @Url);";
-                if (await connection.ExecuteScalarAsync<int>(sql, new { Url = oldUrl }) > 0)
+                var references = await connection.ExecuteScalarAsync<int>(sql, new { Url = oldUrl });
+                if (references > 0)
+                {
+                    Logger.Debug(this.MethodName() + " | Replaced image retained because it is still referenced. PublicId: {0}, References: {1}", oldPublicId, references);
                     return;
+                }
 
                 await DeleteImageAsync(oldPublicId);
             }

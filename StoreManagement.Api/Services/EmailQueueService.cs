@@ -10,7 +10,13 @@ public sealed class EmailQueueService : BackgroundService, IEmailQueue
         Channel.CreateBounded<Func<IEmailService, CancellationToken, Task>>(new BoundedChannelOptions(1000) { FullMode = BoundedChannelFullMode.DropWrite });
     private readonly IServiceScopeFactory _scopeFactory;
     public EmailQueueService(IServiceScopeFactory scopeFactory) => _scopeFactory = scopeFactory;
-    public bool Queue(Func<IEmailService, CancellationToken, Task> send) => _queue.Writer.TryWrite(send);
+    public bool Queue(Func<IEmailService, CancellationToken, Task> send)
+    {
+        var queued = _queue.Writer.TryWrite(send);
+        if (!queued)
+            Logger.Warn(this.MethodName() + " | Security email could not be queued.");
+        return queued;
+    }
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         try

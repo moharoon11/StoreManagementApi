@@ -92,9 +92,11 @@ namespace StoreManagement.Api.Repositories
                 ORDER BY {orderBy}
                 LIMIT @PageSize OFFSET @Offset;";
 
-            var items = await connection.QueryAsync<Product>(itemsSql, parameters);
+            var items = (await connection.QueryAsync<Product>(itemsSql, parameters)).AsList();
 
-            return new PagedResponse<Product>(items, filter.PageNumber, filter.PageSize, totalCount);
+            var page = new PagedResponse<Product>(items, filter.PageNumber, filter.PageSize, totalCount);
+            Logger.Debug(this.MethodName() + " | Products loaded. UserId: {0}, Returned: {1}, Total: {2}", userId, items.Count, totalCount);
+            return page;
         }
 
         public async Task<Product?> GetByIdAsync(int id, int userId)
@@ -110,7 +112,9 @@ namespace StoreManagement.Api.Repositories
                 LEFT JOIN Favourites f ON p.Id = f.ProductId AND f.UserId = p.UserId
                 WHERE p.Id = @Id AND p.UserId = @UserId 
                 LIMIT 1;";
-            return await connection.QuerySingleOrDefaultAsync<Product>(sql, new { Id = id, UserId = userId });
+            var product = await connection.QuerySingleOrDefaultAsync<Product>(sql, new { Id = id, UserId = userId });
+            Logger.Debug(this.MethodName() + " | Product found: {0}. UserId: {1}, ProductId: {2}", product is not null, userId, id);
+            return product;
         }
 
         public async Task<Product?> GetByNameAsync(string name, int userId)
@@ -126,7 +130,9 @@ namespace StoreManagement.Api.Repositories
                 LEFT JOIN Favourites f ON p.Id = f.ProductId AND f.UserId = p.UserId
                 WHERE LOWER(p.Name) = LOWER(@Name) AND p.UserId = @UserId 
                 LIMIT 1;";
-            return await connection.QuerySingleOrDefaultAsync<Product>(sql, new { Name = name, UserId = userId });
+            var product = await connection.QuerySingleOrDefaultAsync<Product>(sql, new { Name = name, UserId = userId });
+            Logger.Debug(this.MethodName() + " | Product found by name: {0}. UserId: {1}", product is not null, userId);
+            return product;
         }
 
         public async Task<int> CreateProductAsync(Product product)

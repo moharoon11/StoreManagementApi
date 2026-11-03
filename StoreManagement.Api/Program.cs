@@ -29,8 +29,7 @@ if (!Guid.TryParse(builder.Configuration["SubscriptionPlatform:ApplicationId"], 
     !Guid.TryParse(builder.Configuration["SubscriptionPlatform:PlanId"], out _))
     throw new InvalidOperationException("SubscriptionPlatform:ApplicationId and SubscriptionPlatform:PlanId must be configured as GUID values.");
 
-var dataSource = new MySqlDataSource(connectionString);
-builder.Services.AddSingleton(dataSource);
+builder.Services.AddSingleton<MySqlDataSource>(_ => new MySqlDataSource(connectionString));
 builder.Services.AddScoped<IDbConnectionFactory, DbConnectionFactory>();
 
 // 2. Services Registration

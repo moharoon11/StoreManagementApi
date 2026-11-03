@@ -14,8 +14,7 @@ public sealed class PaymentRepository(ConnectionFactory connections)
         string externalId)
     {
         // Keep the payment and subscription changes together so a failed checkout cannot leave access pending.
-        await using var db = connections.Create();
-        await db.OpenAsync();
+        await using var db = await connections.OpenConnectionAsync();
         await using var transaction = await db.BeginTransactionAsync();
         // Find the exact local payment and prove that both the customer and application own it.
         var row = await db.QuerySingleOrDefaultAsync<dynamic>(
@@ -57,8 +56,7 @@ public sealed class PaymentRepository(ConnectionFactory connections)
         string providerCurrency)
     {
         // Activate access only if every payment and subscription update succeeds together.
-        await using var db = connections.Create();
-        await db.OpenAsync();
+        await using var db = await connections.OpenConnectionAsync();
         await using var transaction = await db.BeginTransactionAsync();
         // Lock the local payment while checking the provider response against stored values.
         var payment = await db.QuerySingleOrDefaultAsync<dynamic>(
@@ -122,10 +120,12 @@ public sealed class PaymentRepository(ConnectionFactory connections)
     public async Task<IEnumerable<object>> HistoryAsync(Guid appId)
     {
         // Return payment records only for subscriptions belonging to this application.
-        await using var db = connections.Create();
-        return await db.QueryAsync(
+        await using var db = await connections.OpenConnectionAsync();
+        var payments = (await db.QueryAsync(
             "SELECT p.id,p.subscription_id,p.amount_minor,p.currency,p.status,p.created_utc,p.paid_utc FROM payments p JOIN subscriptions s ON s.id=p.subscription_id WHERE s.application_id=@appId",
-            new { appId });
+            new { appId })).AsList();
+        Logger.Debug(this.MethodName() + " | Payment history loaded. ApplicationId: {0}, Count: {1}", appId, payments.Count);
+        return payments;
     }
 
     public async Task<bool> ProcessWebhookAsync(
@@ -138,8 +138,7 @@ public sealed class PaymentRepository(ConnectionFactory connections)
         string? providerStatus)
     {
         // Open a transaction so duplicate detection and event processing cannot interleave.
-        await using var db = connections.Create();
-        await db.OpenAsync();
+        await using var db = await connections.OpenConnectionAsync();
         await using var transaction = await db.BeginTransactionAsync();
         if (await db.ExecuteScalarAsync<int>(
                 "SELECT COUNT(*) FROM webhook_events WHERE event_id=@eventId",

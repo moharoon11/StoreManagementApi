@@ -15,13 +15,12 @@ public sealed class SubscriptionMaintenanceWorker(ConnectionFactory connections)
             try
             {
                 // Process expirations together so subscription and pending-payment states stay consistent.
-                await using var db = connections.Create();
-                await db.OpenAsync(stoppingToken);
+                await using var db = await connections.OpenConnectionAsync(stoppingToken);
                 await using var tx = await db.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted, stoppingToken);
                 // Find active terms, grace periods, and unpaid orders that have passed their allowed time.
-                var expired = await db.QueryAsync<(Guid id, string status)>(new CommandDefinition(
+                var expired = (await db.QueryAsync<(Guid id, string status)>(new CommandDefinition(
                     "SELECT id,status FROM subscriptions WHERE (status='active' AND ends_utc<=UTC_TIMESTAMP(6)) OR (status='grace' AND grace_ends_utc<=UTC_TIMESTAMP(6)) OR (status='pending_payment' AND created_utc<=DATE_SUB(UTC_TIMESTAMP(6),INTERVAL 30 MINUTE)) FOR UPDATE",
-                    transaction: tx, cancellationToken: stoppingToken));
+                    transaction: tx, cancellationToken: stoppingToken))).AsList();
                 foreach (var row in expired)
                 {
                     // Remove access after the term or checkout window ends.
@@ -36,6 +35,8 @@ public sealed class SubscriptionMaintenanceWorker(ConnectionFactory connections)
                 }
                 // Commit all expirations found during this pass.
                 await tx.CommitAsync(stoppingToken);
+                if (expired.Count > 0)
+                    Logger.Info(this.MethodName() + " | Subscription maintenance expired {0} records.", expired.Count);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {

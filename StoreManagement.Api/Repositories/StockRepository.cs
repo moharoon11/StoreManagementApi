@@ -35,7 +35,9 @@ namespace StoreManagement.Api.Repositories
                 ORDER BY sm.CreatedAt DESC
                 LIMIT @Limit;";
 
-            return await connection.QueryAsync<StockMovement>(sql, new { UserId = userId, ProductId = productId, Limit = limit });
+            var movements = (await connection.QueryAsync<StockMovement>(sql, new { UserId = userId, ProductId = productId, Limit = limit })).AsList();
+            Logger.Debug(this.MethodName() + " | Stock movements loaded. UserId: {0}, ProductId: {1}, Count: {2}", userId, productId, movements.Count);
+            return movements;
         }
 
         public async Task<bool> AdjustStockAsync(int userId, int productId, decimal quantityChanged, string reason)

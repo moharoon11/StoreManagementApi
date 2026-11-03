@@ -15,12 +15,14 @@ public sealed class PasswordResetRepository : IPasswordResetRepository
     public async Task<(int UserId, string Username, string Email)?> FindUserByUsernameAndStoreEmailAsync(string normalizedUsername, string normalizedEmail)
     {
         await using var connection = await _db.CreateConnectionAsync();
-        return await connection.QuerySingleOrDefaultAsync<(int UserId, string Username, string Email)>(@"
+        var account = await connection.QuerySingleOrDefaultAsync<(int UserId, string Username, string Email)>(@"
             SELECT u.Id AS UserId, u.Username, sp.Email
             FROM Users u INNER JOIN StoreProfiles sp ON sp.UserId = u.Id
             WHERE LOWER(TRIM(u.Username)) = @normalizedUsername
               AND LOWER(TRIM(sp.Email)) = @normalizedEmail
             LIMIT 1;", new { normalizedUsername, normalizedEmail });
+        Logger.Debug(this.MethodName() + " | Password reset account query returned a user ID: {0}", account.UserId > 0);
+        return account;
     }
 
     public async Task<PasswordResetOtpIssueResult> IssueOtpAsync(int userId, string username, string email, string otpHmacHash)

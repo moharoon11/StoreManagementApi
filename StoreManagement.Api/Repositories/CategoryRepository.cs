@@ -19,21 +19,27 @@ namespace StoreManagement.Api.Repositories
         {
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
             const string sql = "SELECT * FROM Categories WHERE UserId = @UserId ORDER BY Name ASC;";
-            return await connection.QueryAsync<Category>(sql, new { UserId = userId });
+            var categories = (await connection.QueryAsync<Category>(sql, new { UserId = userId })).AsList();
+            Logger.Debug(this.MethodName() + " | Categories loaded. UserId: {0}, Count: {1}", userId, categories.Count);
+            return categories;
         }
 
         public async Task<Category?> GetByIdAsync(int id, int userId)
         {
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
             const string sql = "SELECT * FROM Categories WHERE Id = @Id AND UserId = @UserId LIMIT 1;";
-            return await connection.QuerySingleOrDefaultAsync<Category>(sql, new { Id = id, UserId = userId });
+            var category = await connection.QuerySingleOrDefaultAsync<Category>(sql, new { Id = id, UserId = userId });
+            Logger.Debug(this.MethodName() + " | Category found: {0}. UserId: {1}, CategoryId: {2}", category is not null, userId, id);
+            return category;
         }
 
         public async Task<Category?> GetByNameAsync(string name, int userId)
         {
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
             const string sql = "SELECT * FROM Categories WHERE LOWER(Name) = LOWER(@Name) AND UserId = @UserId LIMIT 1;";
-            return await connection.QuerySingleOrDefaultAsync<Category>(sql, new { Name = name, UserId = userId });
+            var category = await connection.QuerySingleOrDefaultAsync<Category>(sql, new { Name = name, UserId = userId });
+            Logger.Debug(this.MethodName() + " | Category found by name: {0}. UserId: {1}", category is not null, userId);
+            return category;
         }
 
         public async Task<int> CreateCategoryAsync(Category category)

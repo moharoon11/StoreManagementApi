@@ -99,7 +99,7 @@ namespace StoreManagement.Api.Repositories
 
             var categorySales = (await connection.QueryAsync<CategorySalesDto>(categorySalesSql, parameters)).ToList();
 
-            return new SalesReportDto
+            var report = new SalesReportDto
             {
                 TotalSales = summary.TotalSales,
                 TotalInvoices = summary.TotalInvoices,
@@ -107,6 +107,8 @@ namespace StoreManagement.Api.Repositories
                 TopSoldProducts = topProducts,
                 SalesByCategory = categorySales
             };
+            Logger.Debug(this.MethodName() + " | Sales report loaded. UserId: {0}, InvoiceCount: {1}, TopProducts: {2}", userId, report.TotalInvoices, topProducts.Count);
+            return report;
         }
     }
 }

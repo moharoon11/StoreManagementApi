@@ -56,8 +56,10 @@ public class RefreshTokenRepository : IRefreshTokenRepository
     public async Task<RefreshToken?> GetByTokenHashAsync(string tokenHash)
     {
         await using var connection = await _dbConnectionFactory.CreateConnectionAsync();
-        return await connection.QuerySingleOrDefaultAsync<RefreshToken>(
+        var token = await connection.QuerySingleOrDefaultAsync<RefreshToken>(
             "SELECT * FROM RefreshTokens WHERE TokenHash = @tokenHash LIMIT 1;", new { tokenHash });
+        Logger.Debug(this.MethodName() + " | Refresh token found: {0}", token is not null);
+        return token;
     }
 
     public async Task<bool> RotateAsync(string currentTokenHash, RefreshToken replacement)

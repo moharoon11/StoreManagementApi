@@ -51,7 +51,9 @@ namespace StoreManagement.Api.Repositories
                 INNER JOIN Categories c ON p.CategoryId = c.Id
                 WHERE f.UserId = @UserId
                 ORDER BY f.CreatedAt DESC;";
-            return await connection.QueryAsync<Product>(sql, new { UserId = userId });
+            var favourites = (await connection.QueryAsync<Product>(sql, new { UserId = userId })).AsList();
+            Logger.Debug(this.MethodName() + " | Favourites loaded. UserId: {0}, Count: {1}", userId, favourites.Count);
+            return favourites;
         }
     }
 }

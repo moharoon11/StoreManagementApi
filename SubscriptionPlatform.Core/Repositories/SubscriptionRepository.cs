@@ -22,8 +22,7 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
     {
         // Keep customer checks, duplicate detection, and inserts in one transaction so two requests
         // cannot create two current subscriptions for the same customer.
-        await using var db = connections.Create();
-        await db.OpenAsync();
+        await using var db = await connections.OpenConnectionAsync();
         await using var transaction = await db.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
 
         // The customer must belong to this application; the row lock also serializes competing starts.
@@ -143,7 +142,7 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
     }
     public async Task SetOrderAsync(Guid paymentId, string orderId)
     {
-        await using var db = connections.Create();
+        await using var db = await connections.OpenConnectionAsync();
         var affected = await db.ExecuteAsync(
             "UPDATE payments SET razorpay_order_id=@orderId WHERE id=@paymentId",
             new { paymentId, orderId });
@@ -153,7 +152,7 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
 
     public async Task MarkOrderFailedAsync(Guid paymentId)
     {
-        await using var db = connections.Create();
+        await using var db = await connections.OpenConnectionAsync();
         var affected = await db.ExecuteAsync(
             "UPDATE payments SET status='order_failed' WHERE id=@paymentId",
             new { paymentId });
@@ -163,23 +162,27 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
 
     public async Task<object?> GetAsync(Guid id, Guid appId)
     {
-        await using var db = connections.Create();
-        return await db.QuerySingleOrDefaultAsync(
+        await using var db = await connections.OpenConnectionAsync();
+        var subscription = await db.QuerySingleOrDefaultAsync(
             "SELECT s.*,p.name plan_name FROM subscriptions s JOIN plans p ON p.id=s.plan_id WHERE s.id=@id AND s.application_id=@appId",
             new { id, appId });
+        Logger.Debug(this.MethodName() + " | Subscription found: {0}. SubscriptionId: {1}, ApplicationId: {2}", subscription is not null, id, appId);
+        return subscription;
     }
 
     public async Task<object?> GetByExternalCustomerAsync(Guid appId, string externalId)
     {
-        await using var db = connections.Create();
-        return await db.QuerySingleOrDefaultAsync(
+        await using var db = await connections.OpenConnectionAsync();
+        var subscription = await db.QuerySingleOrDefaultAsync(
             "SELECT s.id subscription_id,s.status,s.billing_period,s.starts_utc,s.ends_utc,s.grace_ends_utc,s.cancel_at_period_end,CASE WHEN s.status IN ('active','trialing') AND s.ends_utc>UTC_TIMESTAMP(6) THEN 1 WHEN s.status='grace' AND s.grace_ends_utc>UTC_TIMESTAMP(6) THEN 1 ELSE 0 END has_access FROM subscriptions s JOIN customers c ON c.id=s.customer_id WHERE s.application_id=@appId AND c.external_id=@externalId ORDER BY s.created_utc DESC LIMIT 1",
             new { appId, externalId });
+        Logger.Debug(this.MethodName() + " | Customer subscription found: {0}. ApplicationId: {1}, ExternalId: {2}", subscription is not null, appId, externalId);
+        return subscription;
     }
 
     public async Task<bool> CancelAsync(Guid id, Guid appId)
     {
-        await using var db = connections.Create();
+        await using var db = await connections.OpenConnectionAsync();
         var changed = await db.ExecuteAsync(
             "UPDATE subscriptions SET cancel_at_period_end=1,version=version+1 WHERE id=@id AND application_id=@appId AND status IN ('active','trialing')",
             new { id, appId }) > 0;
@@ -190,7 +193,7 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
 
     public async Task<bool> ChangePlanAsync(Guid id, Guid appId, Guid planId)
     {
-        await using var db = connections.Create();
+        await using var db = await connections.OpenConnectionAsync();
         var changed = await db.ExecuteAsync(
             "UPDATE subscriptions s JOIN plans p ON p.id=@planId AND p.application_id=@appId AND p.active=1 SET s.plan_id=p.id,s.version=s.version+1 WHERE s.id=@id AND s.application_id=@appId AND s.status IN ('active','trialing')",
             new { id, planId, appId }) > 0;

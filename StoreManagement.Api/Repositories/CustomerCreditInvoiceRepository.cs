@@ -36,13 +36,18 @@ public class CustomerCreditInvoiceRepository(IDbConnectionFactory dbConnectionFa
         var sql = @"SELECT * FROM CustomerCreditInvoices WHERE UserId = @UserId" +
                   (pendingOnly ? " AND IsReceived = 0" : string.Empty) + " ORDER BY IsReceived, InvoiceDate DESC, Id DESC;";
         var invoices = (await connection.QueryAsync<CustomerCreditInvoice>(sql, new { UserId = userId })).ToList();
-        if (invoices.Count == 0) return invoices;
+        if (invoices.Count == 0)
+        {
+            Logger.Debug(this.MethodName() + " | No credit invoices found. UserId: {0}, PendingOnly: {1}", userId, pendingOnly);
+            return invoices;
+        }
         var transactions = await connection.QueryAsync<CustomerCreditTransaction>(
             "SELECT * FROM CustomerCreditTransactions WHERE CustomerCreditInvoiceId IN @Ids ORDER BY TransactionDate DESC, Id DESC;",
             new { Ids = invoices.Select(x => x.Id).ToArray() });
         var grouped = transactions.GroupBy(x => x.CustomerCreditInvoiceId).ToDictionary(x => x.Key, x => x.ToList());
         foreach (var invoice in invoices)
             invoice.Transactions = grouped.GetValueOrDefault(invoice.Id, new List<CustomerCreditTransaction>());
+        Logger.Debug(this.MethodName() + " | Credit invoices loaded. UserId: {0}, Count: {1}", userId, invoices.Count);
         return invoices;
     }
 
@@ -58,6 +63,7 @@ public class CustomerCreditInvoiceRepository(IDbConnectionFactory dbConnectionFa
         }
         const string transactionSql = "SELECT * FROM CustomerCreditTransactions WHERE CustomerCreditInvoiceId = @Id ORDER BY TransactionDate DESC, Id DESC;";
         invoice.Transactions = (await connection.QueryAsync<CustomerCreditTransaction>(transactionSql, new { Id = id })).ToList();
+        Logger.Debug(this.MethodName() + " | Credit invoice loaded. UserId: {0}, InvoiceId: {1}, TransactionCount: {2}", userId, id, invoice.Transactions.Count);
         return invoice;
     }
 
@@ -78,7 +84,10 @@ public class CustomerCreditInvoiceRepository(IDbConnectionFactory dbConnectionFa
         await connection.ExecuteAsync("UPDATE CustomerCreditInvoices SET OutstandingBalance = OutstandingBalance + @Amount WHERE Id = @Id;", new { Id = id, dto.Amount }, transaction);
         await transaction.CommitAsync();
         Logger.Debug(this.MethodName() + " | Credit transaction committed. UserId: {0}, InvoiceId: {1}", userId, id);
-        return await GetByIdAsync(id, userId);
+        var updatedInvoice = await GetByIdAsync(id, userId);
+        if (updatedInvoice is null)
+            Logger.Warn(this.MethodName() + " | Committed credit invoice could not be reloaded. UserId: {0}, InvoiceId: {1}", userId, id);
+        return updatedInvoice;
     }
 
     public async Task<bool> MarkReceivedAsync(int id, int userId)

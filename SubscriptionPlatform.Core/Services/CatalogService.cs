@@ -29,15 +29,19 @@ public sealed class CatalogService(CatalogRepository repository)
         }
     }
 
-    public Task<IEnumerable<object>> ListPlansAsync(Guid appId)
+    public async Task<IEnumerable<object>> ListPlansAsync(Guid appId)
     {
-        return repository.ListPlansAsync(appId);
+        var plans = (await repository.ListPlansAsync(appId)).ToList();
+        Logger.Debug(this.MethodName() + " | Plan list returned. ApplicationId: {0}, Count: {1}", appId, plans.Count);
+        return plans;
     }
 
-    public Task<object?> GetPlanAsync(Guid appId, Guid planId)
+    public async Task<object?> GetPlanAsync(Guid appId, Guid planId)
     {
         Logger.Debug($"{this.MethodName()} | ApplicationId: {appId} | PlanId: {planId}");
-        return repository.GetPlanAsync(appId, planId);
+        var plan = await repository.GetPlanAsync(appId, planId);
+        Logger.Debug(this.MethodName() + " | Plan found: {0}. ApplicationId: {1}, PlanId: {2}", plan is not null, appId, planId);
+        return plan;
     }
 
     public async Task<object> CreateCustomerAsync(Guid appId, CustomerRequest request)
@@ -71,9 +75,11 @@ public sealed class CatalogService(CatalogRepository repository)
         }
     }
 
-    public Task<IEnumerable<object>> ListCustomersAsync(Guid appId)
+    public async Task<IEnumerable<object>> ListCustomersAsync(Guid appId)
     {
-        return repository.ListCustomersAsync(appId);
+        var customers = (await repository.ListCustomersAsync(appId)).ToList();
+        Logger.Debug(this.MethodName() + " | Customer list returned. ApplicationId: {0}, Count: {1}", appId, customers.Count);
+        return customers;
     }
 
     private void ValidatePlan(PlanRequest request)

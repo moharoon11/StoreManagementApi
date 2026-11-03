@@ -64,10 +64,12 @@ public sealed class PaymentService(PaymentRepository repository, RazorpayService
         }
     }
 
-    public Task<IEnumerable<object>> HistoryAsync(Guid appId)
+    public async Task<IEnumerable<object>> HistoryAsync(Guid appId)
     {
         // Return payment history limited to subscriptions owned by this application.
-        return repository.HistoryAsync(appId);
+        var payments = (await repository.HistoryAsync(appId)).ToList();
+        Logger.Debug(this.MethodName() + " | Payment history returned. ApplicationId: {0}, Count: {1}", appId, payments.Count);
+        return payments;
     }
 
     public async Task<bool> MarkFailedAsync(
