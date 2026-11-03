@@ -60,6 +60,21 @@ public sealed class CatalogService(CatalogRepository repository)
         }
     }
 
+    public async Task<bool> UpdatePlanAsync(Guid appId, Guid planId, PlanRequest request)
+    {
+        ValidatePlan(request);
+        if (!await repository.IsApplicationActiveAsync(appId))
+            throw new UnauthorizedAccessException("Application is inactive.");
+        return await repository.UpdatePlanAsync(appId, planId, request);
+    }
+
+    public async Task<bool> DeletePlanAsync(Guid appId, Guid planId)
+    {
+        if (!await repository.IsApplicationActiveAsync(appId))
+            throw new UnauthorizedAccessException("Application is inactive.");
+        return await repository.DeletePlanAsync(appId, planId);
+    }
+
     public async Task<object> CreateCustomerAsync(Guid appId, CustomerRequest request)
     {
         Logger.Debug($"{this.MethodName()} | ApplicationId: {appId} | Payload: ExternalId={request.ExternalId}");
@@ -111,11 +126,18 @@ public sealed class CatalogService(CatalogRepository repository)
         if (string.IsNullOrWhiteSpace(request.Name)
             || request.Name.Length > 120
             || request.Currency.Length != 3
-            || request.MonthlyAmountMinor < 0
-            || request.YearlyAmountMinor < 0
-            || request.ThreeMonthAmountMinor < 0
-            || request.SixMonthAmountMinor < 0
-            || request.TrialDays is < 0 or > 90)
+            || request.TrialDays is < 0 or > 90
+            || request.PricingOptions is null
+            || request.PricingOptions.Any(option =>
+                string.IsNullOrWhiteSpace(option.Code)
+                || option.Code.Length > 50
+                || string.IsNullOrWhiteSpace(option.DisplayName)
+                || option.DisplayName.Length > 120
+                || (option.DurationSeconds <= 0 && option.DurationDays <= 0)
+                || option.AmountMinor < 0
+                || option.Currency.Length != 3
+                || option.SortOrder < 0)
+            || request.PricingOptions.GroupBy(option => option.Code, StringComparer.OrdinalIgnoreCase).Any(group => group.Count() > 1))
         {
             Logger.Debug(this.MethodName() + " | Plan request validation failed.");
             throw new ArgumentException("Plan fields are invalid.");

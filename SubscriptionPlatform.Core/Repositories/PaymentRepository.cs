@@ -70,7 +70,7 @@ public sealed class PaymentRepository(ConnectionFactory connections)
             await using var transaction = await db.BeginTransactionAsync();
             // Lock the local payment while checking the provider response against stored values.
             var payment = await db.QuerySingleOrDefaultAsync<dynamic>(
-                "SELECT p.*,s.application_id,s.billing_period,s.status sub_status FROM payments p JOIN subscriptions s ON s.id=p.subscription_id WHERE p.id=@paymentId AND s.application_id=@appId FOR UPDATE",
+            "SELECT p.*,s.application_id,s.billing_period,s.duration_seconds,s.status sub_status FROM payments p JOIN subscriptions s ON s.id=p.subscription_id WHERE p.id=@paymentId AND s.application_id=@appId FOR UPDATE",
                 new { paymentId, appId }, transaction);
 
             if (payment is null)
@@ -101,13 +101,7 @@ public sealed class PaymentRepository(ConnectionFactory connections)
 
             // The paid term starts at verification time, not when the checkout order was created.
             var now = DateTime.UtcNow;
-            var end = (string)payment.billing_period switch
-            {
-                "three_month" => now.AddMonths(3),
-                "six_month" => now.AddMonths(6),
-                "one_year" or "yearly" => now.AddYears(1),
-                _ => now.AddMonths(1)
-            };
+        var end = now.AddSeconds((int)payment.duration_seconds);
 
             // Save the provider payment ID so later retries recognize the same successful payment.
             await db.ExecuteAsync(
@@ -185,7 +179,7 @@ public sealed class PaymentRepository(ConnectionFactory connections)
             {
                 // Find and lock the local payment associated with the provider order.
                 var payment = await db.QuerySingleOrDefaultAsync<dynamic>(
-                    "SELECT p.id,p.subscription_id,p.status,p.amount_minor,p.currency,p.razorpay_order_id,s.billing_period,s.status sub_status FROM payments p JOIN subscriptions s ON s.id=p.subscription_id WHERE p.razorpay_order_id=@orderId FOR UPDATE",
+                "SELECT p.id,p.subscription_id,p.status,p.amount_minor,p.currency,p.razorpay_order_id,s.billing_period,s.duration_seconds,s.status sub_status FROM payments p JOIN subscriptions s ON s.id=p.subscription_id WHERE p.razorpay_order_id=@orderId FOR UPDATE",
                     new { orderId }, transaction);
                 if (payment is not null)
                 {
@@ -199,13 +193,7 @@ public sealed class PaymentRepository(ConnectionFactory connections)
                         // A captured event can activate access only when it matches the stored order and amount.
                         // The paid term starts when the provider confirms capture.
                         var now = DateTime.UtcNow;
-                        var end = (string)payment.billing_period switch
-                        {
-                            "three_month" => now.AddMonths(3),
-                            "six_month" => now.AddMonths(6),
-                            "one_year" or "yearly" => now.AddYears(1),
-                            _ => now.AddMonths(1)
-                        };
+                    var end = now.AddSeconds((int)payment.duration_seconds);
                         // Save the provider payment ID for future duplicate-event checks.
                         await db.ExecuteAsync(
                             "UPDATE payments SET status='paid',razorpay_payment_id=@paymentProviderId,paid_utc=@now WHERE id=@id",

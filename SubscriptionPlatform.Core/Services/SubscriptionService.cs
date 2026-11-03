@@ -17,7 +17,7 @@ public sealed class SubscriptionService(
         // creates the local records, and creates a Razorpay order only for a paid subscription.
         Logger.Debug($"{this.MethodName()} | ApplicationId: {appId} | CustomerId: {request.CustomerId} | PlanId: {request.PlanId} | " +
             $"Payload: BillingPeriod={request.BillingPeriod}, StartTrial={request.StartTrial}");
-        if (request.BillingPeriod is not ("three_month" or "six_month" or "one_year" or "monthly" or "yearly")
+        if ((!request.StartTrial && request.PlanOptionId is null && string.IsNullOrWhiteSpace(request.BillingPeriod))
             || string.IsNullOrWhiteSpace(request.IdempotencyKey)
             || request.IdempotencyKey.Length > 80)
         {

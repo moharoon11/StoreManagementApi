@@ -19,7 +19,7 @@ public sealed class SubscriptionMaintenanceWorker(ConnectionFactory connections)
                 await using var tx = await db.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted, stoppingToken);
                 // Find active terms, grace periods, and unpaid orders that have passed their allowed time.
                 var expired = (await db.QueryAsync<(Guid id, string status)>(new CommandDefinition(
-                    "SELECT id,status FROM subscriptions WHERE (status='active' AND ends_utc<=UTC_TIMESTAMP(6)) OR (status='grace' AND grace_ends_utc<=UTC_TIMESTAMP(6)) OR (status='pending_payment' AND created_utc<=DATE_SUB(UTC_TIMESTAMP(6),INTERVAL 30 MINUTE)) FOR UPDATE",
+                    "SELECT id,status FROM subscriptions WHERE (status IN ('active','trialing') AND ends_utc<=UTC_TIMESTAMP(6)) OR (status='grace' AND grace_ends_utc<=UTC_TIMESTAMP(6)) OR (status='pending_payment' AND created_utc<=DATE_SUB(UTC_TIMESTAMP(6),INTERVAL 30 MINUTE)) FOR UPDATE",
                     transaction: tx, cancellationToken: stoppingToken))).AsList();
                 foreach (var row in expired)
                 {

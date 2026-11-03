@@ -80,24 +80,26 @@ public sealed class StoreSubscriptionService(
 
     public async Task<StoreSubscriptionOrder> StartAsync(
         string externalCustomerId,
-        string billingPeriod,
+        string? billingPeriod,
         bool startTrial,
-        string idempotencyKey)
+        string idempotencyKey,
+        int? planOptionId = null)
     {
         try
         {
             // This facade adapts the Store API request to the shared subscription platform.
             Logger.Info($"{this.MethodName()} | ApplicationId: {ApplicationId} | ExternalCustomerId: {externalCustomerId} | " +
-                $"Payload: BillingPeriod={billingPeriod}, StartTrial={startTrial}");
+                $"Payload: BillingPeriod={billingPeriod}, PlanOptionId={planOptionId}, StartTrial={startTrial}");
             // The Store user ID is converted into the platform customer record used by subscriptions.
             dynamic customer = await catalog.CreateCustomerAsync(ApplicationId, new CustomerRequest(externalCustomerId));
             // Use the configured plan so the Store client cannot choose another application's plan.
             var request = new CreateSubscriptionRequest(
                 (Guid)customer.id,
                 PlanId,
-                billingPeriod,
+                startTrial ? "trial" : billingPeriod ?? string.Empty,
                 idempotencyKey,
-                startTrial);
+                startTrial,
+                planOptionId);
             // Create the trial or paid subscription, including the local payment row for paid terms.
             var result = await subscriptions.CreateAsync(ApplicationId, request)
                 ?? throw new InvalidOperationException("Configured plan or customer is unavailable.");

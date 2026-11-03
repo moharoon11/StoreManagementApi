@@ -63,14 +63,11 @@ public sealed class SubscriptionController(StoreSubscriptionService subscription
     {
         // This endpoint starts a trial or creates a server-priced Razorpay checkout order.
         // The client supplies the term and retry key; the server chooses the customer and price.
-        // Allow only the trial option or one of the supported paid billing periods.
         try
         {
-            if (!(request.StartTrial && request.BillingPeriod == "trial") && request.BillingPeriod is not ("three_month" or "six_month" or "one_year"))
+            if (!request.StartTrial && request.PlanOptionId is null && string.IsNullOrWhiteSpace(request.BillingPeriod))
             {
-                Logger.Warn($"{this.MethodName()} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
-                    $"Payload: {SerializeSafePayload(request)} | Invalid billing period");
-                return BadRequest(ApiResponse.ErrorResult("Choose trial, three_month, six_month, or one_year."));
+                return BadRequest(ApiResponse.ErrorResult("Choose a subscription option."));
             }
             if (string.IsNullOrWhiteSpace(request.IdempotencyKey) || request.IdempotencyKey.Length > 80)
             {
@@ -82,7 +79,7 @@ public sealed class SubscriptionController(StoreSubscriptionService subscription
             try
             {
                 // Start a trial or create a paid checkout order for the authenticated user.
-                var result = await subscriptions.StartAsync(CurrentUserId.ToString(), request.StartTrial ? "one_year" : request.BillingPeriod, request.StartTrial, request.IdempotencyKey);
+                var result = await subscriptions.StartAsync(CurrentUserId.ToString(), request.BillingPeriod, request.StartTrial, request.IdempotencyKey, request.PlanOptionId);
                 Logger.Info($"{this.MethodName()} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
                     $"Payload: {SerializeSafePayload(request)} | SubscriptionId: {result.SubscriptionId} | Status: {result.Status}");
                 return Ok(ApiResponse<StoreSubscriptionOrder>.SuccessResult(result, "Checkout initialized."));
@@ -240,6 +237,6 @@ public sealed class SubscriptionController(StoreSubscriptionService subscription
     }
 }
 
-public sealed record StartSubscriptionRequest(string BillingPeriod, bool StartTrial, string IdempotencyKey);
+public sealed record StartSubscriptionRequest(string? BillingPeriod, bool StartTrial, string IdempotencyKey, int? PlanOptionId = null);
 public sealed record VerifySubscriptionPaymentRequest(Guid PaymentId, string OrderId, string RazorpayPaymentId, string Signature);
 public sealed record FailedSubscriptionPaymentRequest(Guid PaymentId, string OrderId);

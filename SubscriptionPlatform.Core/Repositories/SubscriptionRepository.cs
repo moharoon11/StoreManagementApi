@@ -2,6 +2,7 @@ using Dapper;
 using NLog;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using SubscriptionPlatform.Api.Data;
 using SubscriptionPlatform.Api.Models;
 
@@ -33,7 +34,7 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
                 new { request.CustomerId, appId }, transaction);
             // The active plan is the source of truth for prices, currency, and trial rules.
             var plan = await db.QuerySingleOrDefaultAsync<dynamic>(
-                "SELECT currency,monthly_amount_minor,yearly_amount_minor,three_month_amount_minor,six_month_amount_minor,trial_days FROM plans WHERE id=@PlanId AND application_id=@appId AND active=1",
+                "SELECT currency,pricing_json,trial_days FROM plans WHERE id=@PlanId AND application_id=@appId AND active=1",
                 new { request.PlanId, appId }, transaction);
 
             if (customer is null || plan is null)
@@ -87,18 +88,30 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
                 throw new InvalidOperationException("Trial is not eligible.");
             }
 
+            string pricingJson = plan.pricing_json is null ? "[]" : Convert.ToString(plan.pricing_json) ?? "[]";
+            var options = JsonSerializer.Deserialize<List<PlanOptionRequest>>(
+                pricingJson,
+                new JsonSerializerOptions(JsonSerializerDefaults.Web)) ?? new List<PlanOptionRequest>();
+            var selectedOption = request.PlanOptionId is int optionId
+                ? options.SingleOrDefault(option => option.Id == optionId && option.Active)
+                : options.SingleOrDefault(option => string.Equals(option.Code, request.BillingPeriod, StringComparison.OrdinalIgnoreCase) && option.Active);
+
+            if (!request.StartTrial && selectedOption is null)
+            {
+                Logger.Warn(this.MethodName() + " | Selected plan option was not found. PlanId: {0}, OptionId: {1}, Code: {2}", request.PlanId, request.PlanOptionId, request.BillingPeriod);
+                throw new InvalidOperationException("The selected subscription option is unavailable.");
+            }
+
             // These server-created IDs are the stable references used by later payment requests.
             var subscriptionId = Guid.NewGuid();
             var paymentId = Guid.NewGuid();
-            // Select the configured amount for the requested billing period.
-            var amount = request.BillingPeriod switch
-            {
-                "three_month" => (long)plan.three_month_amount_minor,
-                "six_month" => (long)plan.six_month_amount_minor,
-                "one_year" => (long)plan.yearly_amount_minor,
-                "yearly" => (long)plan.yearly_amount_minor,
-                _ => (long)plan.monthly_amount_minor
-            };
+            // Read the amount, currency, and duration from the selected JSON option.
+            var amount = request.StartTrial ? 0 : selectedOption!.AmountMinor;
+            var durationSeconds = request.StartTrial
+                ? trialDays * 86400
+                : selectedOption!.DurationSeconds > 0
+                    ? selectedOption.DurationSeconds
+                    : selectedOption.DurationDays * 86400;
 
             if (!request.StartTrial && amount <= 0)
             {
@@ -108,15 +121,17 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
             }
 
             // A trial gets an end date now; a paid term waits for payment before its real term begins.
-            var currency = (string)plan.currency;
+            var currency = request.StartTrial ? (string)plan.currency : selectedOption!.Currency;
             var now = DateTime.UtcNow;
             var status = request.StartTrial ? "trialing" : "pending_payment";
+            var billingPeriod = request.StartTrial ? "trial" : selectedOption!.Code;
+            var durationDays = Math.Max(1, (int)Math.Ceiling(durationSeconds / 86400d));
             var ends = request.StartTrial ? now.AddDays(trialDays) : now;
 
             // Save the local subscription before contacting Razorpay so the order has a local owner.
             await db.ExecuteAsync(
-                "INSERT INTO subscriptions(id,application_id,customer_id,plan_id,status,billing_period,starts_utc,ends_utc,version,created_utc) VALUES(@subscriptionId,@appId,@CustomerId,@PlanId,@status,@BillingPeriod,@now,@ends,0,@now)",
-                new { subscriptionId, appId, request.CustomerId, request.PlanId, status, request.BillingPeriod, now, ends }, transaction);
+                "INSERT INTO subscriptions(id,application_id,customer_id,plan_id,status,billing_period,duration_days,duration_seconds,starts_utc,ends_utc,version,created_utc) VALUES(@subscriptionId,@appId,@CustomerId,@PlanId,@status,@BillingPeriod,@DurationDays,@DurationSeconds,@now,@ends,0,@now)",
+                new { subscriptionId, appId, request.CustomerId, request.PlanId, status, BillingPeriod = billingPeriod, DurationDays = durationDays, DurationSeconds = durationSeconds, now, ends }, transaction);
 
             if (request.StartTrial)
             {

@@ -9,13 +9,21 @@ public sealed record CreateApplicationRequest(string Name);
 public sealed record PlanRequest(
     string Name,
     string Currency,
-    long MonthlyAmountMinor,
-    long YearlyAmountMinor,
     int TrialDays,
     string FeaturesJson = "{}",
     string LimitsJson = "{}",
-    long ThreeMonthAmountMinor = 0,
-    long SixMonthAmountMinor = 0);
+    IReadOnlyList<PlanOptionRequest>? PricingOptions = null);
+
+public sealed record PlanOptionRequest(
+    int? Id,
+    string Code,
+    string DisplayName,
+    long AmountMinor,
+    string Currency,
+    int DurationSeconds = 0,
+    bool Active = true,
+    int SortOrder = 0,
+    int DurationDays = 0);
 
 public sealed record CustomerRequest(
     string ExternalId,
@@ -26,7 +34,8 @@ public sealed record CreateSubscriptionRequest(
     Guid PlanId,
     string BillingPeriod,
     string IdempotencyKey,
-    bool StartTrial = false);
+    bool StartTrial = false,
+    int? PlanOptionId = null);
 
 public sealed record VerifyPaymentRequest(
     Guid PaymentId,
