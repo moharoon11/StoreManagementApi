@@ -17,13 +17,17 @@ public sealed class PasswordResetRepository : IPasswordResetRepository
         try
         {
             await using var connection = await _db.CreateConnectionAsync();
-            var account = await connection.QuerySingleOrDefaultAsync<(int UserId, string Username, string Email)>(@"
+            var accounts = (await connection.QueryAsync<(int UserId, string Username, string Email)>(@"
             SELECT u.Id AS UserId, u.Username, sp.Email
             FROM Users u INNER JOIN StoreProfiles sp ON sp.UserId = u.Id
             WHERE LOWER(TRIM(u.Username)) = @normalizedUsername
               AND LOWER(TRIM(sp.Email)) = @normalizedEmail
-            LIMIT 1;", new { normalizedUsername, normalizedEmail });
-            Logger.Debug(this.MethodName() + " | Password reset account query returned a user ID: {0}", account.UserId > 0);
+            LIMIT 1;", new { normalizedUsername, normalizedEmail })).AsList();
+            Logger.Debug(this.MethodName() + " | Password reset account query returned a user ID: {0}", accounts.Count > 0);
+            if (accounts.Count == 0)
+                return null;
+
+            var account = accounts[0];
             return account;
         }
         catch (Exception ex)
