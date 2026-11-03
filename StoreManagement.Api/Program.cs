@@ -42,7 +42,6 @@ builder.Services.AddSingleton<IEmailQueue>(sp => sp.GetRequiredService<EmailQueu
 builder.Services.AddHostedService(sp => sp.GetRequiredService<EmailQueueService>());
 builder.Services.AddScoped<IGeoLocationService, GeoLocationService>();
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
-builder.Services.AddScoped<IPdfService, PdfService>();
 builder.Services.AddScoped<IGeminiVisionService, GeminiVisionService>();
 
 // 3. Repositories Registration

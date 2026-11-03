@@ -4,7 +4,6 @@ using NLog;
 using StoreManagement.Api.Helpers;
 using StoreManagement.Api.Models;
 using StoreManagement.Api.Repositories;
-using StoreManagement.Api.Services;
 
 namespace StoreManagement.Api.Controllers
 {
@@ -82,24 +81,6 @@ namespace StoreManagement.Api.Controllers
             }
 
             return Ok(ApiResponse.SuccessResult("Invoice deleted successfully."));
-        }
-
-        [AllowAnonymous]
-        [HttpGet("{id:int}/pdf")]
-        public async Task<IActionResult> DownloadPdf(int id, [FromServices] IPdfService pdfService)
-        {
-            Logger.Debug("DownloadPdf api started. InvoiceId: {0}", id);
-            var invoice = await _invoiceRepository.GetByIdAsync(id, 0);
-            if (invoice == null)
-            {
-                Logger.Debug($"{nameof(DownloadPdf)} |  Pdf not found for downloading | pdf is null for id = {id}");
-                return NotFound(ApiResponse.ErrorResult("Invoice not found."));
-            }
-
-            var pdfBytes = pdfService.GenerateInvoicePdf(invoice);
-            var fileName = $"Invoice_{invoice.InvoiceNumber}.pdf";
-
-            return File(pdfBytes, "application/pdf", fileName);
         }
     }
 }
