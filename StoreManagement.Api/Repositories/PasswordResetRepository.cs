@@ -72,9 +72,15 @@ public sealed class PasswordResetRepository : IPasswordResetRepository
               AND LOWER(TRIM(sp.Email)) = @normalizedEmail
               AND o.InvalidatedAt IS NULL AND o.UsedAt IS NULL AND o.VerifiedAt IS NULL
             ORDER BY o.Id DESC LIMIT 1 FOR UPDATE;", new { normalizedUsername, normalizedEmail }, transaction);
-        if (otp is null) { await transaction.RollbackAsync(); return false; }
+        if (otp is null)
+        {
+            Logger.Debug(this.MethodName() + " | OTP verification rejected: no active code found.");
+            await transaction.RollbackAsync();
+            return false;
+        }
         if (otp.ExpiresAt <= DateTime.UtcNow || otp.FailedAttempts >= 3)
         {
+            Logger.Debug(this.MethodName() + " | OTP verification rejected: code expired or attempt limit reached. UserId: {0}", otp.UserId);
             await connection.ExecuteAsync("UPDATE PasswordResetOtps SET InvalidatedAt = UTC_TIMESTAMP() WHERE Id = @id;", new { otp.Id }, transaction);
             await transaction.CommitAsync();
             return false;
@@ -84,6 +90,7 @@ public sealed class PasswordResetRepository : IPasswordResetRepository
         var expected = Convert.FromHexString(otp.OtpHmacHash);
         if (!CryptographicOperations.FixedTimeEquals(supplied, expected))
         {
+            Logger.Debug(this.MethodName() + " | OTP verification rejected: incorrect code. UserId: {0}", otp.UserId);
             var attempts = otp.FailedAttempts + 1;
             await connection.ExecuteAsync(@"
                 UPDATE PasswordResetOtps
@@ -111,6 +118,7 @@ public sealed class PasswordResetRepository : IPasswordResetRepository
             "SELECT * FROM PasswordResetOtps WHERE ResetTokenHmacHash = @resetTokenHmacHash FOR UPDATE;", new { resetTokenHmacHash }, transaction);
         if (otp is null || otp.VerifiedAt is null || otp.UsedAt is not null || otp.InvalidatedAt is not null || otp.ExpiresAt <= DateTime.UtcNow)
         {
+            Logger.Debug(this.MethodName() + " | Password reset rejected: token missing, unverified, used, invalidated, or expired.");
             await transaction.RollbackAsync();
             return (false, string.Empty);
         }

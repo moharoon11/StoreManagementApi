@@ -40,12 +40,14 @@ namespace StoreManagement.Api.Controllers
                 Logger.Debug(this.MethodName() + " | ExtractBill started.");
                 if (image == null || image.Length == 0)
                 {
+                    Logger.Debug(this.MethodName() + " | Please select an image file to upload. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult("Please select an image file to upload."));
                 }
 
                 var jsonResult = await _geminiVisionService.ExtractBillDataAsync(image);
                 if (string.IsNullOrEmpty(jsonResult))
                 {
+                    Logger.Warn(this.MethodName() + " | Failed to extract data from the bill. Please ensure the image is clear. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult("Failed to extract data from the bill. Please ensure the image is clear."));
                 }
 
@@ -73,6 +75,7 @@ namespace StoreManagement.Api.Controllers
                     var extractedItems = JsonSerializer.Deserialize<List<ExtractedBillItemDto>>(jsonResult, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                     if (extractedItems == null || !extractedItems.Any())
                     {
+                        Logger.Warn(this.MethodName() + " | No products could be extracted from the bill. RequestId: {0}", HttpContext.TraceIdentifier);
                         return BadRequest(ApiResponse.ErrorResult("No products could be extracted from the bill."));
                     }
 
@@ -97,9 +100,14 @@ namespace StoreManagement.Api.Controllers
 
                     return Ok(ApiResponse<List<ExtractedBillItemDto>>.SuccessResult(extractedItems, "Bill data extracted successfully."));
                 }
-                catch (Exception ex)
+                catch (JsonException ex)
                 {
                     Logger.Error(ex, this.MethodName() + " | Failed to parse JSON from Gemini.");
+                    return BadRequest(ApiResponse.ErrorResult("The AI service returned malformed data. Please try again with a clearer image."));
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error(ex, this.MethodName() + " | Failed to process Gemini bill data.");
                     return BadRequest(ApiResponse.ErrorResult("The AI service returned malformed data. Please try again with a clearer image."));
                 }
             }
@@ -117,6 +125,7 @@ namespace StoreManagement.Api.Controllers
                 Logger.Debug(this.MethodName() + " | ProcessBill started.");
                 if (!ModelState.IsValid)
                 {
+                    Logger.Debug(this.MethodName() + " | Invalid bill data. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult("Invalid bill data."));
                 }
 
@@ -136,6 +145,10 @@ namespace StoreManagement.Api.Controllers
                             await _productRepository.UpdateProductAsync(existingProduct);
                             await _stockRepository.AdjustStockAsync(CurrentUserId, existingProduct.Id, item.Quantity, "BILL_UPLOAD");
                             successCount++;
+                        }
+                        else
+                        {
+                            Logger.Warn(this.MethodName() + " | Bill item skipped: selected product no longer exists. ProductId: {0}", item.ProductId.Value);
                         }
                     }
                     else
@@ -187,6 +200,7 @@ namespace StoreManagement.Api.Controllers
                     }
                 }
 
+                Logger.Info(this.MethodName() + " | Bill processing completed. AddedItems: {0}, RequestedItems: {1}", successCount, request.Items.Count);
                 return Ok(ApiResponse.SuccessResult($"{successCount} items from the bill were successfully added to inventory."));
             }
             catch (Exception ex)

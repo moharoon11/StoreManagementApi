@@ -22,6 +22,7 @@ public sealed class SubscriptionService(
             || request.IdempotencyKey.Length > 80)
         {
             // Reject unsupported billing periods and unusable idempotency keys before accessing the database.
+            Logger.Warn(this.MethodName() + " | Subscription request validation failed: billing period or idempotency key invalid. ApplicationId: {0}", appId);
             throw new ArgumentException("Billing period or idempotency key is invalid.");
         }
 

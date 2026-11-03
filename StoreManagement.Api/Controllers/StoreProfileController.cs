@@ -32,6 +32,7 @@ namespace StoreManagement.Api.Controllers
                 var profile = await _storeProfileRepository.GetByUserIdAsync(CurrentUserId);
                 if (profile == null)
                 {
+                    Logger.Debug(this.MethodName() + " | Store profile not created yet. RequestId: {0}", HttpContext.TraceIdentifier);
                     return NotFound(ApiResponse.ErrorResult("Store profile not created yet."));
                 }
 
@@ -51,6 +52,7 @@ namespace StoreManagement.Api.Controllers
                 Logger.Debug(this.MethodName() + " | CreateOrUpdateProfile started. StoreName: {0}", dto?.StoreName);
                 if (!ModelState.IsValid || dto == null)
                 {
+                    Logger.Debug(this.MethodName() + " | Invalid store profile data. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult("Invalid store profile data."));
                 }
 

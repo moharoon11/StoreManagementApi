@@ -24,8 +24,10 @@ public sealed class SubscriptionController(StoreSubscriptionService subscription
         {
             // Load the configured subscription plan and its available terms.
             var plan = await subscriptions.GetOptionsAsync();
-            Logger.Info($"{this.MethodName()} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
-                $"Payload: none | HasPlan: {plan is not null}");
+            if (plan is null)
+                Logger.Warn(this.MethodName() + " | Configured subscription plan was not found. RequestId: {0}", HttpContext.TraceIdentifier);
+            else
+                Logger.Info(this.MethodName() + " | Subscription options loaded. RequestId: {0}, UserId: {1}", HttpContext.TraceIdentifier, CurrentUserId);
             return plan is null
                 ? StatusCode(503, ApiResponse.ErrorResult("Subscription plan is not configured."))
                 : Ok(ApiResponse<object>.SuccessResult(plan, "Subscription options loaded."));
@@ -115,8 +117,10 @@ public sealed class SubscriptionController(StoreSubscriptionService subscription
         {
             // Verify the Razorpay signature and provider payment details before activating access.
             var verified = await subscriptions.VerifyPaymentAsync(request.PaymentId, request.OrderId, request.RazorpayPaymentId, request.Signature);
-            Logger.Info($"{this.MethodName()} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
-                $"Payload: {JsonSerializer.Serialize(new { request.PaymentId, request.OrderId })} | Verified: {verified}");
+            if (verified)
+                Logger.Info(this.MethodName() + " | Payment verified. RequestId: {0}, PaymentId: {1}, OrderId: {2}", HttpContext.TraceIdentifier, request.PaymentId, request.OrderId);
+            else
+                Logger.Warn(this.MethodName() + " | Payment verification rejected. RequestId: {0}, PaymentId: {1}, OrderId: {2}", HttpContext.TraceIdentifier, request.PaymentId, request.OrderId);
             return verified
                 ? Ok(ApiResponse.SuccessResult("Payment captured and verified."))
                 : BadRequest(ApiResponse.ErrorResult("Razorpay payment could not be verified. Access was not activated."));
@@ -135,8 +139,10 @@ public sealed class SubscriptionController(StoreSubscriptionService subscription
         {
             // Mark the matching pending checkout as failed for the authenticated user.
             var marked = await subscriptions.MarkPaymentFailedAsync(CurrentUserId.ToString(), request.PaymentId, request.OrderId);
-            Logger.Info($"{this.MethodName()} | RequestId: {HttpContext.TraceIdentifier} | UserId: {CurrentUserId} | " +
-                $"Payload: {JsonSerializer.Serialize(request)} | Recorded: {marked}");
+            if (marked)
+                Logger.Info(this.MethodName() + " | Failed checkout recorded. RequestId: {0}, PaymentId: {1}, OrderId: {2}", HttpContext.TraceIdentifier, request.PaymentId, request.OrderId);
+            else
+                Logger.Warn(this.MethodName() + " | Failed checkout callback rejected: payment no longer pending. RequestId: {0}, PaymentId: {1}", HttpContext.TraceIdentifier, request.PaymentId);
             return marked
                 ? Ok(ApiResponse.SuccessResult("Failed checkout recorded; you can retry."))
                 : Conflict(ApiResponse.ErrorResult("Payment is no longer pending."));
@@ -169,9 +175,13 @@ public sealed class SubscriptionController(StoreSubscriptionService subscription
             }
             // Verify and reconcile the provider event, including duplicate-event handling.
             var result = await subscriptions.ProcessWebhookAsync(eventId, payload, signature);
+            if (!result.IsValidSignature)
+            {
+                Logger.Warn(this.MethodName() + " | Razorpay webhook rejected: invalid signature or payment mismatch. EventId: {0}, PayloadLength: {1}", eventId, payload.Length);
+                return Unauthorized(new { error = "invalid_signature" });
+            }
             Logger.Info($"{this.MethodName()} | RequestId: {HttpContext.TraceIdentifier} | EventId: {eventId} | " +
-                $"Payload: {SerializeSafeJson(payload)} | ValidSignature: {result.IsValidSignature} | Duplicate: {result.Duplicate}");
-            if (!result.IsValidSignature) return Unauthorized(new { error = "invalid_signature" });
+                $"Payload: {SerializeSafeJson(payload)} | Duplicate: {result.Duplicate}");
             return Ok(new { accepted = true, duplicate = result.Duplicate });
         }
         catch (Exception ex)
@@ -200,9 +210,10 @@ public sealed class SubscriptionController(StoreSubscriptionService subscription
             RedactSensitiveFields(node);
             return node?.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) ?? "null";
         }
-        catch (JsonException)
+        catch (JsonException ex)
         {
             // Avoid logging malformed content directly; expose only its length.
+            Logger.Error(ex, "SerializeSafeJson | Failed to parse webhook JSON for logging. PayloadLength: {0}", payload.Length);
             return $"[invalid JSON payload, length={payload.Length}]";
         }
     }

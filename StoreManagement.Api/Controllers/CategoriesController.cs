@@ -47,6 +47,7 @@ namespace StoreManagement.Api.Controllers
                 var category = await _categoryRepository.GetByIdAsync(id, CurrentUserId);
                 if (category == null)
                 {
+                    Logger.Debug(this.MethodName() + " | Category not found. RequestId: {0}", HttpContext.TraceIdentifier);
                     return NotFound(ApiResponse.ErrorResult("Category not found."));
                 }
 
@@ -66,12 +67,14 @@ namespace StoreManagement.Api.Controllers
                 Logger.Debug(this.MethodName() + " | Create started. CategoryName: {0}", dto.Name);
                 if (!ModelState.IsValid)
                 {
+                    Logger.Debug(this.MethodName() + " | Invalid category data. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult("Invalid category data."));
                 }
 
                 var existing = await _categoryRepository.GetByNameAsync(dto.Name, CurrentUserId);
                 if (existing != null)
                 {
+                    Logger.Debug(this.MethodName() + " | Category name already exists. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult($"Category with name '{dto.Name}' already exists."));
                 }
 
@@ -107,12 +110,14 @@ namespace StoreManagement.Api.Controllers
                 Logger.Debug(this.MethodName() + " | Update started. CategoryId: {0}", id);
                 if (!ModelState.IsValid)
                 {
+                    Logger.Debug(this.MethodName() + " | Invalid category data. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult("Invalid category data."));
                 }
 
                 var category = await _categoryRepository.GetByIdAsync(id, CurrentUserId);
                 if (category == null)
                 {
+                    Logger.Debug(this.MethodName() + " | Category not found. RequestId: {0}", HttpContext.TraceIdentifier);
                     return NotFound(ApiResponse.ErrorResult("Category not found."));
                 }
 
@@ -129,6 +134,7 @@ namespace StoreManagement.Api.Controllers
                 var updated = await _categoryRepository.UpdateCategoryAsync(category);
                 if (!updated)
                 {
+                    Logger.Warn(this.MethodName() + " | Failed to update category. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult("Failed to update category."));
                 }
 
@@ -154,6 +160,7 @@ namespace StoreManagement.Api.Controllers
                 var category = await _categoryRepository.GetByIdAsync(id, CurrentUserId);
                 if (category == null)
                 {
+                    Logger.Debug(this.MethodName() + " | Category not found. RequestId: {0}", HttpContext.TraceIdentifier);
                     return NotFound(ApiResponse.ErrorResult("Category not found."));
                 }
 
@@ -162,6 +169,7 @@ namespace StoreManagement.Api.Controllers
                     var deleted = await _categoryRepository.DeleteCategoryAsync(id, CurrentUserId);
                     if (!deleted)
                     {
+                        Logger.Warn(this.MethodName() + " | Could not delete category. RequestId: {0}", HttpContext.TraceIdentifier);
                         return BadRequest(ApiResponse.ErrorResult("Could not delete category."));
                     }
                 }

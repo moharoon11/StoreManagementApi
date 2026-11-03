@@ -22,6 +22,7 @@ public sealed class StoreSubscriptionService(
                 return id;
             }
 
+            Logger.Error(this.MethodName() + " | SubscriptionPlatform:ApplicationId is missing or invalid.");
             throw new InvalidOperationException(
                 "SubscriptionPlatform:ApplicationId must be configured.");
         }
@@ -37,6 +38,7 @@ public sealed class StoreSubscriptionService(
                 return id;
             }
 
+            Logger.Error(this.MethodName() + " | SubscriptionPlatform:PlanId is missing or invalid.");
             throw new InvalidOperationException(
                 "SubscriptionPlatform:PlanId must be configured.");
         }

@@ -45,12 +45,14 @@ namespace StoreManagement.Api.Controllers
                 Logger.Debug(this.MethodName() + " | AdjustStock started. ProductId: {0}", dto.ProductId);
                 if (!ModelState.IsValid)
                 {
+                    Logger.Debug(this.MethodName() + " | Invalid stock adjustment data. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult("Invalid stock adjustment data."));
                 }
 
                 var product = await _productRepository.GetByIdAsync(dto.ProductId, CurrentUserId);
                 if (product == null)
                 {
+                    Logger.Debug(this.MethodName() + " | Product not found. RequestId: {0}", HttpContext.TraceIdentifier);
                     return NotFound(ApiResponse.ErrorResult("Product not found."));
                 }
 

@@ -39,6 +39,7 @@ public sealed class PaymentService(PaymentRepository repository, RazorpayService
                 || provider.Status != "captured")
             {
                 // A payment is usable only when its order, ID, and captured status all match.
+                Logger.Warn(this.MethodName() + " | Provider payment details did not match the checkout. PaymentId: {0}, OrderId: {1}, ProviderStatus: {2}", paymentId, orderId, provider.Status);
                 return false;
             }
 
@@ -99,7 +100,17 @@ public sealed class PaymentService(PaymentRepository repository, RazorpayService
         }
 
         // Read the event name first; only payment events contain data that changes subscriptions.
-        using var document = JsonDocument.Parse(raw);
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(raw);
+        }
+        catch (JsonException ex)
+        {
+            Logger.Error(ex, this.MethodName() + " | Failed to parse signed webhook JSON. EventId: {0}, PayloadLength: {1}", eventId, raw.Length);
+            throw;
+        }
+        using var parsedDocument = document;
         var root = document.RootElement;
         var eventType = root.GetProperty("event").GetString() ?? "unknown";
         string? orderId = null;
@@ -135,6 +146,7 @@ public sealed class PaymentService(PaymentRepository repository, RazorpayService
                     || !string.Equals(provider.Currency, currency, StringComparison.OrdinalIgnoreCase))
                 {
                     // Do not reconcile a webhook whose details differ from the provider's payment record.
+                    Logger.Warn(this.MethodName() + " | Webhook payment details did not match provider record. EventId: {0}, OrderId: {1}", eventId, orderId);
                     return WebhookProcessingResult.InvalidSignature;
                 }
             }

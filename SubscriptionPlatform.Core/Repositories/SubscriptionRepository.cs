@@ -68,6 +68,7 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
                 "SELECT COUNT(*) FROM subscriptions WHERE customer_id=@customerId AND status NOT IN ('expired','cancelled')",
                 new { customerId = request.CustomerId }, transaction) > 0)
         {
+            Logger.Warn(this.MethodName() + " | Subscription creation rejected: customer already has a current subscription. CustomerId: {0}", request.CustomerId);
             throw new InvalidOperationException("Customer already has a current subscription.");
         }
 
@@ -81,6 +82,7 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
         if (request.StartTrial && (trialDays == 0 || priorSubscriptions > 0))
         {
             // Reject trials when the plan has no trial period or the customer has used subscription history.
+            Logger.Warn(this.MethodName() + " | Trial rejected: no trial period or prior subscription exists. CustomerId: {0}", request.CustomerId);
             throw new InvalidOperationException("Trial is not eligible.");
         }
 
@@ -100,6 +102,7 @@ public sealed class SubscriptionRepository(ConnectionFactory connections)
         if (!request.StartTrial && amount <= 0)
         {
             // Do not create a paid checkout when the selected term has no positive price.
+            Logger.Error(this.MethodName() + " | Paid term has no configured price. PlanId: {0}, BillingPeriod: {1}", request.PlanId, request.BillingPeriod);
             throw new InvalidOperationException("This paid term has no configured price.");
         }
 

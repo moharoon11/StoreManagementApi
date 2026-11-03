@@ -41,14 +41,23 @@ public class AuthController : ControllerBase
     {
         try
         {
-            if (!ModelState.IsValid) return BadRequest(ApiResponse.ErrorResult("Invalid registration data."));
+            if (!ModelState.IsValid)
+            {
+                Logger.Debug(this.MethodName() + " | Registration validation failed.");
+                return BadRequest(ApiResponse.ErrorResult("Invalid registration data."));
+            }
             if (await _userRepository.GetByUsernameAsync(dto.Username) != null)
+            {
+                Logger.Debug(this.MethodName() + " | Registration rejected: username already exists.");
                 return BadRequest(ApiResponse.ErrorResult("Username is already taken."));
+            }
 
             var user = new User { Username = dto.Username, PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password) };
             user.Id = await _userRepository.CreateUserAsync(user);
             Logger.Info(this.MethodName() + " | User registered. UserId: {0}", user.Id);
             var auth = await IssueTokensAsync(user, dto.DeviceId, dto.DeviceName);
+            if (auth is null)
+                Logger.Warn(this.MethodName() + " | Registration session rejected by device limit. UserId: {0}", user.Id);
             return auth is null
                 ? Conflict(ApiResponse.ErrorResult("This account is already active on two devices. Sign out from another device to continue."))
                 : Ok(ApiResponse<AuthResponseDto>.SuccessResult(auth, "User registered successfully."));
@@ -65,7 +74,11 @@ public class AuthController : ControllerBase
     {
         try
         {
-            if (!ModelState.IsValid) return BadRequest(ApiResponse.ErrorResult("Invalid login credentials format."));
+            if (!ModelState.IsValid)
+            {
+                Logger.Debug(this.MethodName() + " | Login request validation failed.");
+                return BadRequest(ApiResponse.ErrorResult("Invalid login credentials format."));
+            }
             var user = await _userRepository.GetByUsernameAsync(dto.Username);
             if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
             {
@@ -91,15 +104,26 @@ public class AuthController : ControllerBase
     {
         try
         {
-            if (!ModelState.IsValid) return BadRequest(ApiResponse.ErrorResult("A refresh token is required."));
+            if (!ModelState.IsValid)
+            {
+                Logger.Debug(this.MethodName() + " | Refresh request validation failed.");
+                return BadRequest(ApiResponse.ErrorResult("A refresh token is required."));
+            }
 
             var tokenHash = HashToken(dto.RefreshToken);
             var existing = await _refreshTokenRepository.GetByTokenHashAsync(tokenHash);
             if (existing == null || existing.RevokedAt != null || existing.ExpiresAt <= DateTime.UtcNow)
+            {
+                Logger.Warn(this.MethodName() + " | Session refresh rejected: token missing, revoked, or expired.");
                 return Unauthorized(ApiResponse.ErrorResult("Session expired. Please log in again."));
+            }
 
             var user = await _userRepository.GetByIdAsync(existing.UserId);
-            if (user == null) return Unauthorized(ApiResponse.ErrorResult("Session expired. Please log in again."));
+            if (user == null)
+            {
+                Logger.Warn(this.MethodName() + " | Session refresh rejected: user no longer exists. UserId: {0}", existing.UserId);
+                return Unauthorized(ApiResponse.ErrorResult("Session expired. Please log in again."));
+            }
 
             var rawReplacement = GenerateRefreshToken();
             var replacement = CreateRefreshToken(user.Id, rawReplacement, existing.DeviceId, existing.DeviceName);
@@ -128,6 +152,7 @@ public class AuthController : ControllerBase
         try
         {
             if (ModelState.IsValid) await _refreshTokenRepository.RevokeAsync(HashToken(dto.RefreshToken));
+            else Logger.Debug(this.MethodName() + " | Logout request had no valid refresh token; returning the standard response.");
             Logger.Info(this.MethodName() + " | Logout request completed. RequestId: {0}", HttpContext.TraceIdentifier);
             return Ok(ApiResponse.SuccessResult("Logged out."));
         }
@@ -146,7 +171,11 @@ public class AuthController : ControllerBase
             // Deliberately identical for unknown accounts, mismatched details, cooldowns,
             // hourly limits, and mail-delivery failures.
             const string genericMessage = "If those details match an account, a verification code will be sent shortly.";
-            if (!ModelState.IsValid) return Ok(ApiResponse.SuccessResult(genericMessage));
+            if (!ModelState.IsValid)
+            {
+                Logger.Debug(this.MethodName() + " | Password reset request validation failed.");
+                return Ok(ApiResponse.SuccessResult(genericMessage));
+            }
 
             var username = dto.Username.Trim().ToLowerInvariant();
             var email = dto.Email.Trim().ToLowerInvariant();
@@ -189,9 +218,17 @@ public class AuthController : ControllerBase
         try
         {
             const string invalidMessage = "The verification code is invalid, expired, or can no longer be used.";
-            if (!ModelState.IsValid) return BadRequest(ApiResponse.ErrorResult(invalidMessage));
+            if (!ModelState.IsValid)
+            {
+                Logger.Debug(this.MethodName() + " | OTP verification request validation failed.");
+                return BadRequest(ApiResponse.ErrorResult(invalidMessage));
+            }
             var hmacKey = GetOtpHmacKey();
-            if (hmacKey is null) return BadRequest(ApiResponse.ErrorResult(invalidMessage));
+            if (hmacKey is null)
+            {
+                Logger.Error(this.MethodName() + " | OTP verification unavailable: PasswordReset:OtpHmacKey is not configured.");
+                return BadRequest(ApiResponse.ErrorResult(invalidMessage));
+            }
 
             var username = dto.Username.Trim().ToLowerInvariant();
             var email = dto.Email.Trim().ToLowerInvariant();
@@ -199,7 +236,10 @@ public class AuthController : ControllerBase
             var verified = await _passwordResetRepository.VerifyOtpAsync(
                 username, email, ComputeHmac(hmacKey, $"otp|{username}|{email}|{dto.Otp}"),
                 ComputeHmac(hmacKey, $"reset|{resetToken}"));
-            Logger.Info(this.MethodName() + " | Password reset code verification {0}. RequestId: {1}", verified ? "succeeded" : "failed", HttpContext.TraceIdentifier);
+            if (verified)
+                Logger.Info(this.MethodName() + " | Password reset code verified. RequestId: {0}", HttpContext.TraceIdentifier);
+            else
+                Logger.Debug(this.MethodName() + " | Password reset code rejected. RequestId: {0}", HttpContext.TraceIdentifier);
             return verified
                 ? Ok(ApiResponse<VerifyPasswordResetOtpResponseDto>.SuccessResult(new() { ResetToken = resetToken }, "Code verified."))
                 : BadRequest(ApiResponse.ErrorResult(invalidMessage));
@@ -217,13 +257,24 @@ public class AuthController : ControllerBase
         try
         {
             if (!ModelState.IsValid || string.IsNullOrWhiteSpace(dto.NewPassword))
+            {
+                Logger.Debug(this.MethodName() + " | Password reset request validation failed.");
                 return BadRequest(ApiResponse.ErrorResult("Invalid password reset request."));
+            }
             var hmacKey = GetOtpHmacKey();
-            if (hmacKey is null) return BadRequest(ApiResponse.ErrorResult("This password reset request is invalid, expired, or has already been used."));
+            if (hmacKey is null)
+            {
+                Logger.Error(this.MethodName() + " | Password reset unavailable: PasswordReset:OtpHmacKey is not configured.");
+                return BadRequest(ApiResponse.ErrorResult("This password reset request is invalid, expired, or has already been used."));
+            }
             var passwordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
             var result = await _passwordResetRepository.UseVerifiedOtpAndResetPasswordAsync(
                 ComputeHmac(hmacKey, $"reset|{dto.ResetToken}"), passwordHash);
-            if (!result.Success) return BadRequest(ApiResponse.ErrorResult("This password reset request is invalid, expired, or has already been used."));
+            if (!result.Success)
+            {
+                Logger.Debug(this.MethodName() + " | Password reset token rejected: invalid, expired, or already used.");
+                return BadRequest(ApiResponse.ErrorResult("This password reset request is invalid, expired, or has already been used."));
+            }
             Logger.Info(this.MethodName() + " | Password reset completed. RequestId: {0}", HttpContext.TraceIdentifier);
             if (!_emailQueue.Queue((email, ct) => email.SendPasswordChangedConfirmationAsync(result.Email, ct)))
                 Logger.Error(this.MethodName() + " | Password-changed confirmation email queue is full.");

@@ -26,12 +26,14 @@ namespace StoreManagement.Api.Controllers
                 Logger.Debug(this.MethodName() + " | UploadImage started. FileName: {0}, Folder: {1}", file?.FileName, folder);
                 if (file == null || file.Length == 0)
                 {
+                    Logger.Debug(this.MethodName() + " | Please select an image file to upload. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult("Please select an image file to upload."));
                 }
 
                 var imageUrl = await _cloudinaryService.UploadImageAsync(file, folder);
                 if (string.IsNullOrEmpty(imageUrl))
                 {
+                    Logger.Warn(this.MethodName() + " | Image upload failed. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult("Image upload failed."));
                 }
 

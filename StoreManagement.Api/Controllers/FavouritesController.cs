@@ -45,12 +45,14 @@ namespace StoreManagement.Api.Controllers
                 var product = await _productRepository.GetByIdAsync(productId, CurrentUserId);
                 if (product == null)
                 {
+                    Logger.Debug(this.MethodName() + " | Product not found. RequestId: {0}", HttpContext.TraceIdentifier);
                     return NotFound(ApiResponse.ErrorResult("Product not found."));
                 }
 
                 var success = await _favouriteRepository.AddFavouriteAsync(CurrentUserId, productId);
                 if (!success)
                 {
+                    Logger.Warn(this.MethodName() + " | Could not add product to favourites. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult("Could not add product to favourites."));
                 }
 
@@ -71,6 +73,7 @@ namespace StoreManagement.Api.Controllers
                 var success = await _favouriteRepository.RemoveFavouriteAsync(CurrentUserId, productId);
                 if (!success)
                 {
+                    Logger.Debug(this.MethodName() + " | Favourite not found or already removed. RequestId: {0}", HttpContext.TraceIdentifier);
                     return NotFound(ApiResponse.ErrorResult("Favourite not found or already removed."));
                 }
 

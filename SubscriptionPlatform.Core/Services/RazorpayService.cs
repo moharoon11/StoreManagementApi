@@ -19,7 +19,11 @@ public sealed class RazorpayService(IConfiguration config)
     }
     public string CreateOrder(long amount, string currency, string receipt)
     {
-        if (!Configured) throw new InvalidOperationException("Razorpay is not configured. Set Razorpay:KeyId and Razorpay:KeySecret.");
+        if (!Configured)
+        {
+            Logger.Error(this.MethodName() + " | Razorpay credentials are not configured.");
+            throw new InvalidOperationException("Razorpay is not configured. Set Razorpay:KeyId and Razorpay:KeySecret.");
+        }
         Logger.Debug(this.MethodName() + " | Creating provider order. AmountMinor: {0}, Currency: {1}", amount, currency);
         var client = new RazorpayClient(KeyId, config["Razorpay:KeySecret"]);
         var result = client.Order.Create(new Dictionary<string, object>
@@ -34,7 +38,11 @@ public sealed class RazorpayService(IConfiguration config)
     }
     public ProviderPayment FetchPayment(string paymentId)
     {
-        if (!Configured) throw new InvalidOperationException("Razorpay is not configured.");
+        if (!Configured)
+        {
+            Logger.Error(this.MethodName() + " | Razorpay credentials are not configured.");
+            throw new InvalidOperationException("Razorpay is not configured.");
+        }
         Logger.Debug(this.MethodName() + " | Fetching provider payment. PaymentId: {0}", paymentId);
         var client = new RazorpayClient(KeyId, config["Razorpay:KeySecret"]);
         var payment = client.Payment.Fetch(paymentId);

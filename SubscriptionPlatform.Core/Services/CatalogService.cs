@@ -49,6 +49,7 @@ public sealed class CatalogService(CatalogRepository repository)
             || request.ExternalId.Length > 200
             || !emailIsValid)
         {
+            Logger.Debug(this.MethodName() + " | Customer request validation failed. ApplicationId: {0}", appId);
             throw new ArgumentException("Customer external ID or email is invalid.");
         }
 
@@ -75,7 +76,7 @@ public sealed class CatalogService(CatalogRepository repository)
         return repository.ListCustomersAsync(appId);
     }
 
-    private static void ValidatePlan(PlanRequest request)
+    private void ValidatePlan(PlanRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Name)
             || request.Name.Length > 120
@@ -86,6 +87,7 @@ public sealed class CatalogService(CatalogRepository repository)
             || request.SixMonthAmountMinor < 0
             || request.TrialDays is < 0 or > 90)
         {
+            Logger.Debug(this.MethodName() + " | Plan request validation failed.");
             throw new ArgumentException("Plan fields are invalid.");
         }
     }

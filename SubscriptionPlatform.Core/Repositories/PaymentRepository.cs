@@ -1,10 +1,12 @@
 using Dapper;
+using NLog;
 using SubscriptionPlatform.Api.Data;
 
 namespace SubscriptionPlatform.Api.Repositories;
 
 public sealed class PaymentRepository(ConnectionFactory connections)
 {
+    private static readonly Logger Logger = LogManager.GetLogger("SubscriptionPlatform.Repositories.PaymentRepository");
     public async Task<bool> MarkFailedAsync(
         Guid appId,
         Guid paymentId,
@@ -23,6 +25,7 @@ public sealed class PaymentRepository(ConnectionFactory connections)
         if (row is null || (string)row.status == "paid" || (string?)row.razorpay_order_id != orderId)
         {
             // Never let an unknown or already-paid order be changed by a failure callback.
+            Logger.Warn(this.MethodName() + " | Failure callback rejected: payment missing, already paid, or order mismatch. PaymentId: {0}", paymentId);
             await transaction.RollbackAsync();
             return false;
         }
@@ -65,14 +68,18 @@ public sealed class PaymentRepository(ConnectionFactory connections)
         if (payment is null)
         {
             // Return false when the payment cannot be found or is owned by another application.
+            Logger.Warn(this.MethodName() + " | Payment activation rejected: local payment not found. PaymentId: {0}", paymentId);
             return false;
         }
 
         if ((string)payment.status == "paid")
         {
             // A repeated verify request is safe when it refers to the same provider payment.
-            return (string?)payment.razorpay_order_id == orderId
+            var samePayment = (string?)payment.razorpay_order_id == orderId
                 && (string?)payment.razorpay_payment_id == paymentProviderId;
+            if (!samePayment)
+                Logger.Warn(this.MethodName() + " | Paid payment verification rejected: provider IDs differ. PaymentId: {0}", paymentId);
+            return samePayment;
         }
 
         if ((string?)payment.razorpay_order_id != orderId
@@ -80,6 +87,7 @@ public sealed class PaymentRepository(ConnectionFactory connections)
             || !string.Equals((string)payment.currency, providerCurrency, StringComparison.OrdinalIgnoreCase))
         {
             // The client cannot activate access with a different order, price, or currency.
+            Logger.Warn(this.MethodName() + " | Payment activation rejected: order, amount, or currency mismatch. PaymentId: {0}", paymentId);
             return false;
         }
 
@@ -138,6 +146,7 @@ public sealed class PaymentRepository(ConnectionFactory connections)
                 new { eventId }, transaction) > 0)
         {
             // Razorpay may retry events, so an event ID already stored must have no second effect.
+            Logger.Debug(this.MethodName() + " | Duplicate webhook event ignored. EventId: {0}", eventId);
             await transaction.CommitAsync();
             return false;
         }
@@ -195,6 +204,18 @@ public sealed class PaymentRepository(ConnectionFactory connections)
                         "UPDATE subscriptions SET status='expired',grace_ends_utc=NULL,version=version+1 WHERE id=@sid AND status IN ('pending_payment','grace')",
                         new { sid = (Guid)payment.subscription_id }, transaction);
                 }
+                else if ((string)payment.status == "paid")
+                {
+                    Logger.Debug(this.MethodName() + " | Webhook ignored: local payment is already paid. EventId: {0}, EventType: {1}", eventId, eventType);
+                }
+                else
+                {
+                    Logger.Warn(this.MethodName() + " | Webhook payment did not meet reconciliation conditions. EventId: {0}, EventType: {1}, PaymentStatus: {2}", eventId, eventType, (string)payment.status);
+                }
+            }
+            else
+            {
+                Logger.Warn(this.MethodName() + " | Webhook order has no matching local payment. EventId: {0}, OrderId: {1}", eventId, orderId);
             }
         }
 

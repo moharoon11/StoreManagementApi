@@ -1,4 +1,5 @@
 using System.Text;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -102,6 +103,21 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddControllers();
+var validationLogger = LogManager.GetLogger("ModelValidation");
+builder.Services.PostConfigure<ApiBehaviorOptions>(options =>
+{
+    var existingResponseFactory = options.InvalidModelStateResponseFactory;
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var invalidFields = string.Join(", ", context.ModelState
+            .Where(field => field.Value?.Errors.Count > 0)
+            .Select(field => field.Key));
+        validationLogger.Debug(
+            "InvalidModelStateResponseFactory | Request validation failed. Action: {0}, Fields: {1}, RequestId: {2}",
+            context.ActionDescriptor.DisplayName, invalidFields, context.HttpContext.TraceIdentifier);
+        return existingResponseFactory(context);
+    };
+});
 builder.Services.AddEndpointsApiExplorer();
 
 // 6. Swagger / OpenAPI Configuration with JWT Security Definition

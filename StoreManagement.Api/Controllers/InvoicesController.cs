@@ -47,6 +47,7 @@ namespace StoreManagement.Api.Controllers
                 var invoice = await _invoiceRepository.GetByIdAsync(id, CurrentUserId);
                 if (invoice == null)
                 {
+                    Logger.Debug(this.MethodName() + " | Invoice not found. RequestId: {0}", HttpContext.TraceIdentifier);
                     return NotFound(ApiResponse.ErrorResult("Invoice not found."));
                 }
 
@@ -81,12 +82,14 @@ namespace StoreManagement.Api.Controllers
                 Logger.Debug(this.MethodName() + " | Update invoice started. InvoiceId: {0}", id);
                 if (!ModelState.IsValid || dto == null)
                 {
+                    Logger.Debug(this.MethodName() + " | Invalid invoice update data. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult("Invalid invoice update data."));
                 }
 
                 var updated = await _invoiceRepository.UpdateInvoiceAsync(id, CurrentUserId, dto);
                 if (!updated)
                 {
+                    Logger.Debug(this.MethodName() + " | Invoice not found or update failed. RequestId: {0}", HttpContext.TraceIdentifier);
                     return NotFound(ApiResponse.ErrorResult("Invoice not found or update failed."));
                 }
 
@@ -107,6 +110,7 @@ namespace StoreManagement.Api.Controllers
                 var deleted = await _invoiceRepository.DeleteInvoiceAsync(id, CurrentUserId);
                 if (!deleted)
                 {
+                    Logger.Debug(this.MethodName() + " | Invoice not found or delete failed. RequestId: {0}", HttpContext.TraceIdentifier);
                     return NotFound(ApiResponse.ErrorResult("Invoice not found or delete failed."));
                 }
 

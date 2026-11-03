@@ -31,6 +31,7 @@ namespace StoreManagement.Api.Controllers
                     request.Items == null ||
                     !request.Items.Any())
                 {
+                    Logger.Debug(this.MethodName() + " | Provide a customer mobile number and at least one product. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult(
                         "Provide a customer mobile number and at least one product."));
                 }
@@ -55,6 +56,7 @@ namespace StoreManagement.Api.Controllers
                     request.Items == null ||
                     !request.Items.Any())
                 {
+                    Logger.Debug(this.MethodName() + " | Provide a customer mobile number and at least one item. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult(
                         "Provide a customer mobile number and at least one item."));
                 }

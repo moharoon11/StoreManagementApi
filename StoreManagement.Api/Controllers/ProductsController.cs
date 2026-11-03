@@ -55,6 +55,7 @@ namespace StoreManagement.Api.Controllers
                 var product = await _productRepository.GetByIdAsync(id, CurrentUserId);
                 if (product == null)
                 {
+                    Logger.Debug(this.MethodName() + " | Product not found. RequestId: {0}", HttpContext.TraceIdentifier);
                     return NotFound(ApiResponse.ErrorResult("Product not found."));
                 }
 
@@ -74,10 +75,12 @@ namespace StoreManagement.Api.Controllers
                 Logger.Debug(this.MethodName() + " | Create started. ProductName: {0}", dto.Name);
                 if (!ModelState.IsValid)
                 {
+                    Logger.Debug(this.MethodName() + " | Invalid product data. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult("Invalid product data."));
                 }
                 if (string.IsNullOrWhiteSpace(dto.Unit))
                 {
+                    Logger.Debug(this.MethodName() + " | A product unit is required. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult("A product unit is required."));
                 }
 
@@ -107,12 +110,14 @@ namespace StoreManagement.Api.Controllers
                     var category = await _categoryRepository.GetByIdAsync(dto.CategoryId.Value, CurrentUserId);
                     if (category == null)
                     {
+                        Logger.Debug(this.MethodName() + " | Selected category does not exist. RequestId: {0}", HttpContext.TraceIdentifier);
                         return BadRequest(ApiResponse.ErrorResult("Selected category does not exist."));
                     }
                     categoryId = dto.CategoryId.Value;
                 }
                 else
                 {
+                    Logger.Debug(this.MethodName() + " | Please select an existing category or provide a new category name. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult("Please select an existing category or provide a new category name."));
                 }
 
@@ -161,22 +166,26 @@ namespace StoreManagement.Api.Controllers
                 Logger.Debug(this.MethodName() + " | Update started. ProductId: {0}", id);
                 if (!ModelState.IsValid)
                 {
+                    Logger.Debug(this.MethodName() + " | Invalid product data. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult("Invalid product data."));
                 }
                 if (string.IsNullOrWhiteSpace(dto.Unit))
                 {
+                    Logger.Debug(this.MethodName() + " | A product unit is required. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult("A product unit is required."));
                 }
 
                 var existingProduct = await _productRepository.GetByIdAsync(id, CurrentUserId);
                 if (existingProduct == null)
                 {
+                    Logger.Debug(this.MethodName() + " | Product not found. RequestId: {0}", HttpContext.TraceIdentifier);
                     return NotFound(ApiResponse.ErrorResult("Product not found."));
                 }
 
                 var category = await _categoryRepository.GetByIdAsync(dto.CategoryId, CurrentUserId);
                 if (category == null)
                 {
+                    Logger.Debug(this.MethodName() + " | Selected category does not exist. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult("Selected category does not exist."));
                 }
 
@@ -208,6 +217,7 @@ namespace StoreManagement.Api.Controllers
                 var updated = await _productRepository.UpdateProductAsync(existingProduct);
                 if (!updated)
                 {
+                    Logger.Warn(this.MethodName() + " | Failed to update product. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult("Failed to update product."));
                 }
 
@@ -233,12 +243,14 @@ namespace StoreManagement.Api.Controllers
                 var product = await _productRepository.GetByIdAsync(id, CurrentUserId);
                 if (product == null)
                 {
+                    Logger.Debug(this.MethodName() + " | Product not found. RequestId: {0}", HttpContext.TraceIdentifier);
                     return NotFound(ApiResponse.ErrorResult("Product not found."));
                 }
 
                 var deleted = await _productRepository.DeleteProductAsync(id, CurrentUserId);
                 if (!deleted)
                 {
+                    Logger.Warn(this.MethodName() + " | Could not delete product. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult("Could not delete product."));
                 }
 
@@ -259,12 +271,14 @@ namespace StoreManagement.Api.Controllers
                 Logger.Debug(this.MethodName() + " | UpdateStock started. ProductId: {0}", id);
                 if (!ModelState.IsValid)
                 {
+                    Logger.Debug(this.MethodName() + " | Invalid stock update data. RequestId: {0}", HttpContext.TraceIdentifier);
                     return BadRequest(ApiResponse.ErrorResult("Invalid stock update data."));
                 }
 
                 var product = await _productRepository.GetByIdAsync(id, CurrentUserId);
                 if (product == null)
                 {
+                    Logger.Debug(this.MethodName() + " | Product not found. RequestId: {0}", HttpContext.TraceIdentifier);
                     return NotFound(ApiResponse.ErrorResult("Product not found."));
                 }
 

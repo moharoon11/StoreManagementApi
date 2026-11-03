@@ -44,6 +44,7 @@ public sealed class SmtpEmailService : IEmailService
         if (string.IsNullOrWhiteSpace(_options.SmtpHost) || string.IsNullOrWhiteSpace(_options.SmtpUsername) ||
             string.IsNullOrWhiteSpace(_options.SmtpPassword) || string.IsNullOrWhiteSpace(_options.FromAddress))
         {
+            Logger.Error(this.MethodName() + " | SMTP delivery unavailable: email settings are incomplete.");
             throw new InvalidOperationException("Email is not configured. Set Email:SmtpHost, Email:SmtpUsername, Email:SmtpPassword, and Email:FromAddress in the deployment environment.");
         }
         try

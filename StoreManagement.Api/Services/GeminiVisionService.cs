@@ -116,6 +116,11 @@ namespace StoreManagement.Api.Services
                 Logger.Warn(this.MethodName() + " | Could not parse text from Gemini response structure.");
                 return null;
             }
+            catch (JsonException ex)
+            {
+                Logger.Error(ex, this.MethodName() + " | Gemini returned malformed JSON.");
+                return null;
+            }
             catch (Exception ex)
             {
                 Logger.Error(ex, this.MethodName() + " | Exception while calling Gemini API");
