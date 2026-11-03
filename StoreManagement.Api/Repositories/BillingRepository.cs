@@ -69,6 +69,7 @@ namespace StoreManagement.Api.Repositories
                 bool isReceived = amountReceived >= grandTotal;
                 decimal balanceDue = Math.Max(0m, grandTotal - amountReceived);
                 var invoiceDate = (request.InvoiceDate ?? DateTime.UtcNow).Date;
+                var customerName = request.CustomerName?.Trim() ?? "NO_NAME";
 
                 // 3. Generate unique invoice number
                 var random = new Random();
@@ -84,7 +85,7 @@ namespace StoreManagement.Api.Repositories
                 {
                     UserId = userId,
                     InvoiceNumber = invoiceNumber,
-                    CustomerName = request.CustomerName?.Trim() ?? "NO_NAME",
+                    CustomerName = customerName,
                     CustomerMobileNumber = request.CustomerMobileNumber.Trim(),
                     Subtotal = subtotal,
                     DiscountType = discountType,
@@ -118,14 +119,15 @@ namespace StoreManagement.Api.Repositories
                     item.InvoiceId = invoiceId;
                     await connection.ExecuteAsync(insertItemSql, item, transaction);
 
-                    var product = dbProducts[item.ProductId.Value];
+                    var productId = item.ProductId ?? throw new InvalidOperationException("Checkout item product ID is missing.");
+                    var product = dbProducts[productId];
                     decimal previousQty = product.StockQuantity;
                     decimal newQty = previousQty - item.Quantity;
 
                     await connection.ExecuteAsync(updateStockSql, new
                     {
                         Quantity = item.Quantity,
-                        ProductId = item.ProductId,
+                        ProductId = productId,
                         UserId = userId
                     }, transaction);
 
@@ -150,7 +152,7 @@ namespace StoreManagement.Api.Repositories
                     Id = invoiceId,
                     UserId = userId,
                     InvoiceNumber = invoiceNumber,
-                    CustomerName = request.CustomerName.Trim(),
+                    CustomerName = customerName,
                     CustomerMobileNumber = request.CustomerMobileNumber.Trim(),
                     Subtotal = subtotal,
                     DiscountType = discountType,

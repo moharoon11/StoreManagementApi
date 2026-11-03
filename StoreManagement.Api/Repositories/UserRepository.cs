@@ -17,7 +17,7 @@ namespace StoreManagement.Api.Repositories
         {
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
             const string sql = "SELECT * FROM Users WHERE Username = @Username LIMIT 1;";
-            User user =  await connection.QuerySingleOrDefaultAsync<User>(sql, new { Username = username });
+            User? user =  await connection.QuerySingleOrDefaultAsync<User>(sql, new { Username = username });
             return user;
         }
 
@@ -25,7 +25,8 @@ namespace StoreManagement.Api.Repositories
         {
             using var connection = await _dbConnectionFactory.CreateConnectionAsync();
             const string sql = "SELECT * FROM Users WHERE Id = @Id LIMIT 1;";
-            return await connection.QuerySingleOrDefaultAsync<User>(sql, new { Id = id });
+            User? user = await connection.QuerySingleOrDefaultAsync<User>(sql, new { Id = id });
+            return user;
         }
 
         public async Task<int> CreateUserAsync(User user)
@@ -35,7 +36,8 @@ namespace StoreManagement.Api.Repositories
                 INSERT INTO Users (Username, PasswordHash, CreatedAt, UpdatedAt)
                 VALUES (@Username, @PasswordHash, NOW(), NOW());
                 SELECT LAST_INSERT_ID();";
-            return await connection.ExecuteScalarAsync<int>(sql, user);
+            int result = await connection.ExecuteScalarAsync<int>(sql, user);
+            return result;
         }
     }
 }
